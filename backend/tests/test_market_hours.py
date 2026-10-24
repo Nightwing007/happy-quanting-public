@@ -21,8 +21,8 @@ from app.market_data.base import DataUnavailable
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderStatus, OrderType, Trade
 from app.trading import engine, hours, markets
-from app.trading.engine import live_context as live
 from app.trading.errors import InsufficientFunds, InvalidOrder
+from tests.helpers import live
 
 D = Decimal
 real_calendar = pytest.mark.real_calendar
@@ -283,9 +283,7 @@ def inr(value: Decimal) -> Decimal:
     return (value * D("83.5")).quantize(D("0.01"), rounding=ROUND_HALF_UP)
 
 
-def test_convert_account_currency(
-    db: Session, fake_provider: FakeProvider, caplog: pytest.LogCaptureFixture
-):
+def test_convert_account_currency(db: Session, fake_provider: FakeProvider, caplog: pytest.LogCaptureFixture):
     # A USD account with real charges: buy 10 AAPL and 2 RELIANCE.NS, then sell 4 AAPL.
     first = buy(db, fake_provider, "AAPL", "10")
     engine.place_order(live(db, fake_provider), symbol="AAPL", side="sell", type="market", quantity=D("4"))

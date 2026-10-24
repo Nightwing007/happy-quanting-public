@@ -38,7 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Suspense>
           <BackendStatusBanner />
           <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6">{children}</main>
-          <DataNotice />
+          <Suspense fallback={null}>
+            <DataNotice />
+          </Suspense>
         </Providers>
       </body>
     </html>

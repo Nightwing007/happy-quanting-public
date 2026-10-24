@@ -16,10 +16,21 @@ from app import main
 from app.api.deps import get_live_context
 from app.main import app
 from app.market_data.fake import FakeProvider
-from app.models import Account, AccountKind, Order, OrderSide, OrderStatus, OrderType, Trade, TradeStatus
+from app.models import (
+    Account,
+    AccountKind,
+    Order,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    Trade,
+    TradeStatus,
+    User,
+)
 from app.trading import engine, watchlist
 from app.trading.context import TradingContext
 from app.trading.errors import OrderNotFound, TradeNotFound
+from tests.helpers import live
 
 D = Decimal
 pytestmark = pytest.mark.usefixtures("zero_costs")
@@ -81,9 +92,7 @@ def orders_of(db: Session, account: Account) -> list[Order]:
 @pytest.fixture
 def two(db: Session, fake_provider: FakeProvider) -> tuple[TradingContext, TradingContext]:
     """The live account (March 2026) and a sim account (June 2025), each on its own clock."""
-    live = context(
-        db, engine.get_account(db), fake_provider, Clock(datetime(2026, 3, 2, 10, 0, tzinfo=UTC))
-    )
+    live = context(db, engine.get_account(db), fake_provider, Clock(datetime(2026, 3, 2, 10, 0, tzinfo=UTC)))
     live.account.cash = live.account.starting_cash = D("100000")
     db.commit()
     sim = context(
@@ -241,9 +250,7 @@ EMPTY_READS = {
 
 
 @pytest.mark.parametrize("read", EMPTY_READS.values(), ids=EMPTY_READS.keys())
-def test_every_read_path_of_account_b_is_empty(
-    read, busy_and_empty: tuple[TradingContext, TradingContext]
-):
+def test_every_read_path_of_account_b_is_empty(read, busy_and_empty: tuple[TradingContext, TradingContext]):
     a, b = busy_and_empty
     assert read(b) == []
     # ...and the same read on A is not, so the table is not passing by accident (the background
@@ -309,9 +316,10 @@ def test_resetting_one_account_leaves_the_others_books_alone(
 # --- accounts and the app ------------------------------------------------------------------
 
 
-def test_new_accounts_are_live_by_default_with_no_owner(db: Session):
+def test_new_accounts_are_live_by_default_owned_by_demo(db: Session):
     live = engine.get_account(db)
-    assert (live.kind, live.user_id) == (AccountKind.LIVE, None)
+    assert db.get(User, live.user_id).username == "demo"
+    assert live.kind == AccountKind.LIVE
     sim = make_account(db, AccountKind.SIM)
     assert engine.get_account(db).id == live.id  # the live account stays the one the app shows
     assert [a.id for a in engine.live_accounts(db)] == [live.id]
@@ -321,7 +329,7 @@ def test_new_accounts_are_live_by_default_with_no_owner(db: Session):
 def test_the_live_context_follows_a_replaced_clock(
     db: Session, fake_provider: FakeProvider, fixed_clock: datetime
 ):
-    ctx = engine.live_context(db, fake_provider)
+    ctx = live(db, fake_provider)
     assert ctx.now() == fixed_clock
     assert ctx.account.id == engine.get_account(db).id
 

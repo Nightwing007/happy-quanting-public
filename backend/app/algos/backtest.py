@@ -26,6 +26,7 @@ from app import clock
 from app.algos.api import OrderIntent, Strategy, validate_params
 from app.algos.library import LIBRARY
 from app.algos.runner import _EngineBackend, run_strategy_on
+from app.algos.sandbox import load_strategy
 from app.market_data.base import TRADABLE_TYPES, Bar, Instrument, MarketDataProvider
 from app.market_data.fx import get_fx_rate
 from app.market_data.history import HistoryRangeError, get_history, today_utc, validate_range
@@ -461,6 +462,7 @@ def run_backtest(
     *,
     strategy_key: str | None = None,
     strategy_cls: type[Strategy] | None = None,
+    source: str | None = None,
     params: dict | None = None,
     symbols: list[str],
     interval: str,
@@ -481,7 +483,28 @@ def run_backtest(
     while the scratch accounts still exist and before they are deleted, so a caller that keeps
     the results never loses them to a failure in the cleanup. The accounts are deleted before
     this returns, whatever happens, so a run leaves nothing behind but the returned results.
+
+    `source` is uploaded strategy code: it runs in a sandboxed child process (`sandbox.py`) that is
+    stopped before this returns. Otherwise the strategy is `strategy_key` or `strategy_cls`.
     """
+    sandboxed = load_strategy(source) if source is not None else None
+    try:
+        return _run_backtest(
+            db, provider, strategy_key=strategy_key or (sandboxed.name if sandboxed else None),
+            strategy_cls=sandboxed or strategy_cls, params=params,
+            symbols=symbols, interval=interval, start=start, end=end, starting_cash=starting_cash,
+            brokers=brokers, account_currency=account_currency, today=today, progress=progress,
+            store=store, owner_user_id=owner_user_id, strategy=sandboxed,
+        )  # fmt: skip
+    finally:
+        if sandboxed is not None:
+            sandboxed.close()
+
+
+def _run_backtest(
+    db: Session, provider: MarketDataProvider, *, strategy_key, strategy_cls, params, symbols, interval,
+    start, end, starting_cash, brokers, account_currency, today, progress, store, owner_user_id, strategy,
+) -> BacktestResultsOut:  # fmt: skip
     req = check_request(
         db, provider, strategy_key=strategy_key, strategy_cls=strategy_cls, params=params,
         symbols=symbols, interval=interval, start=start, end=end, starting_cash=starting_cash,
@@ -520,7 +543,7 @@ def run_backtest(
     try:
         ctx = TradingContext(db, account, replay, lambda: replay.cursor)
         hold_ctx = TradingContext(db, hold_account, replay, lambda: replay.cursor)
-        strategy = cls()
+        strategy = strategy or cls()
         run = run_strategy_on(ctx, strategy, values, names)
         if n_bars < strategy.warmup_bars:
             raise BacktestError(

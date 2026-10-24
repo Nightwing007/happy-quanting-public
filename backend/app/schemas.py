@@ -691,6 +691,31 @@ class AlgoOut(BaseModel):
     parameters: list[AlgoParamOut]
 
 
+class ValidateIn(BaseModel):
+    source: str
+
+
+class ProblemOut(BaseModel):
+    line: int  # 1-based; 0 means the file as a whole
+    col: int
+    code: str
+    message: str
+
+
+class StrategyMetaOut(BaseModel):
+    name: str
+    description: str
+    markets: list[str]
+    interval: str
+    parameters: list[AlgoParamOut]
+
+
+class ValidationReportOut(BaseModel):
+    ok: bool
+    problems: list[ProblemOut]
+    meta: StrategyMetaOut | None
+
+
 # --- backtests ----------------------------------------------------------------------------
 
 
@@ -702,8 +727,45 @@ class BacktestBrokersIn(BaseModel):
     crypto: str | None = None
 
 
+class UserAlgoIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=500)
+    strategy: str = Field(description="Key of the predefined algorithm this is built on")
+    params: dict[str, str | int | float | bool] = Field(default_factory=dict)
+
+    @field_validator("name", "description")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("name")
+    @classmethod
+    def _named(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Give the algorithm a name.")
+        return value
+
+
+class UserAlgoOut(BaseModel):
+    id: int
+    name: str
+    description: str
+    strategy: str
+    strategy_name: str
+    interval: str
+    markets: list[str]
+    params: dict[str, str | int | bool]
+    created_at: datetime
+
+
 class BacktestIn(BaseModel):
-    strategy: str = Field(description="Key of a predefined algorithm, from /api/algos/library")
+    strategy: str | None = Field(
+        default=None, description="Key of a predefined algorithm, from /api/algos/library"
+    )
+    algo_id: int | None = Field(
+        default=None,
+        description="A saved algorithm from /api/algos/mine; `params` is laid over its saved settings",
+    )
     params: dict[str, str | int | float | bool] = Field(default_factory=dict)
     symbols: list[str] = Field(min_length=1, max_length=10)
     interval: str
@@ -856,3 +918,33 @@ class BacktestSummaryOut(BaseModel):
 
 class BacktestDetailOut(BacktestSummaryOut):
     results: BacktestResultsOut | None
+
+
+class UserOut(BaseModel):
+    """Who someone is. Never carries the password hash."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    display_name: str
+    avatar_url: str | None
+    bio: str
+    is_creator: bool
+
+
+class SignupIn(BaseModel):
+    username: str
+    password: str
+    display_name: str | None = None
+
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class ProfileIn(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=60)
+    bio: str | None = Field(default=None, max_length=500)
+    avatar_url: str | None = Field(default=None, max_length=500)

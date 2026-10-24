@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import JSON, BigInteger, Date, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import JSON, BigInteger, Date, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base, DecimalString, UTCDateTime
@@ -94,8 +94,9 @@ class Account(Base):
     margin_used: Mapped[Decimal] = mapped_column(DecimalString, default=Decimal(0))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
     kind: Mapped[str] = mapped_column(String, default=AccountKind.LIVE)  # AccountKind
-    # The owner, once there are users. No foreign key yet: the users table does not exist.
-    user_id: Mapped[int | None] = mapped_column(nullable=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_accounts_user_id"), nullable=True
+    )
     # The broker chosen for each segment; see app/trading/brokers.py for the codes.
     broker_india: Mapped[str] = mapped_column(String, default="groww")
     broker_international: Mapped[str] = mapped_column(String, default="ibkr")
@@ -119,9 +120,7 @@ class Trade(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    account_id: Mapped[int] = mapped_column(
-        ForeignKey("accounts.id", name="fk_trades_account_id_accounts")
-    )
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", name="fk_trades_account_id_accounts"))
     symbol: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
     currency: Mapped[str] = mapped_column(String(3))  # the instrument's
@@ -166,9 +165,7 @@ class Order(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    account_id: Mapped[int] = mapped_column(
-        ForeignKey("accounts.id", name="fk_orders_account_id_accounts")
-    )
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", name="fk_orders_account_id_accounts"))
     symbol: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
     currency: Mapped[str] = mapped_column(String(3))
@@ -265,8 +262,9 @@ class SimSession(Base):
     __tablename__ = "sim_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    # The owner, once there are users (same as Account.user_id: no foreign key yet).
-    owner_user_id: Mapped[int | None] = mapped_column(nullable=True)
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_sim_sessions_owner_user_id"), nullable=True
+    )
     account_id: Mapped[int] = mapped_column(
         ForeignKey("accounts.id", name="fk_sim_sessions_account_id_accounts")
     )
@@ -299,8 +297,9 @@ class Backtest(Base):
     __tablename__ = "backtests"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    # The owner, once there are users (same as Account.user_id: no foreign key yet).
-    owner_user_id: Mapped[int | None] = mapped_column(nullable=True)
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_backtests_owner_user_id"), nullable=True
+    )
     strategy_key: Mapped[str] = mapped_column(String)
     params: Mapped[dict] = mapped_column(JSON)  # as given, decimals as strings
     symbols: Mapped[list] = mapped_column(JSON)
@@ -315,3 +314,47 @@ class Backtest(Base):
     error: Mapped[str | None] = mapped_column(String, nullable=True)
     results: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # BacktestResultsOut
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class UserAlgo(Base):
+    """A saved algorithm: one of the predefined strategies plus the settings the person tuned."""
+
+    __tablename__ = "user_algos"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_user_algos_owner_user_id"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(String, default="")
+    strategy_key: Mapped[str] = mapped_column(String)  # a key of the predefined library
+    params: Mapped[dict] = mapped_column(JSON)  # every setting, decimals as strings
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # Stored lower-cased; valid names match ^[a-z0-9_]{3,30}$ (checked in the signup route).
+    username: Mapped[str] = mapped_column(String(30), unique=True)
+    display_name: Mapped[str] = mapped_column(String)
+    avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    bio: Mapped[str] = mapped_column(Text, default="")
+    # "scrypt$n$r$p$salt$hash", or "!" for a user nobody can log in as until a password is set.
+    password_hash: Mapped[str] = mapped_column(String)
+    is_creator: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class UserSession(Base):
+    """A login. Only the SHA-256 of the cookie token is stored, so a leaked database cannot be
+    replayed as cookies."""
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_user_sessions_user_id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)

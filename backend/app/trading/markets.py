@@ -108,8 +108,7 @@ _NSE_EXCHANGE = Fee(
 _BSE_EXCHANGE = Fee(
     "Exchange transaction charge",
     "exchange",
-    "The exchange's fee for matching your trade: 0.00375% for the large and "
-    "mid-cap (A and B group) shares.",
+    "The exchange's fee for matching your trade: 0.00375% for the large and mid-cap (A and B group) shares.",
     percent=D("0.00375"),
     only_types=_EQ_ETF,
     # BSE charges differ by scrip group (e.g. 0.1% for X/XT/Z, 1% for P/R/SS/ST);
@@ -746,13 +745,24 @@ _SHORT_RULES = {
     # US: Reg T initial margin on a short is 50%; borrow is a flat 3% a year (the app has no
     # per-stock borrow rates), charged per day. Whole shares only.
     "US": ShortRule(
-        "overnight", D("50"), D("3"), None, D("1"),
-        source=f"{_DECISIONS} (Reg T 50%, ~3% a year borrow)", checked=_CHECKED_RULES,
+        "overnight",
+        D("50"),
+        D("3"),
+        None,
+        D("1"),
+        source=f"{_DECISIONS} (Reg T 50%, ~3% a year borrow)",
+        checked=_CHECKED_RULES,
     ),  # fmt: skip
     # Crypto: 20% margin (5x); funding 0.01% every 8 hours = 0.03% a day = 10.95% a year.
     "CRYPTO": ShortRule(
-        "margin", D("20"), D("10.95"), None, D("0.00000001"), accrual_hours=8,
-        source=f"{_DECISIONS} (5x, funding 0.01% per 8 hours)", checked=_CHECKED_RULES,
+        "margin",
+        D("20"),
+        D("10.95"),
+        None,
+        D("0.00000001"),
+        accrual_hours=8,
+        source=f"{_DECISIONS} (5x, funding 0.01% per 8 hours)",
+        checked=_CHECKED_RULES,
     ),  # fmt: skip
 }
 # US and crypto let you name the lot you are closing; everywhere else holdings are pooled.

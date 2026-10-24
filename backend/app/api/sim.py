@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Response
 
-from app.api.deps import DbSession, Provider, get_sim_context
+from app.api.deps import CurrentUser, DbSession, Provider, get_sim_context
 from app.api.trading import build_router
 from app.models import SimSession, SimStatus
 from app.schemas import (
@@ -21,9 +21,7 @@ from app.sim import runner
 router = APIRouter(prefix="/api/sim/sessions", tags=["sim"])
 
 # Everything a person does inside a simulation, through the same route bodies as the live account.
-trading_router = build_router(
-    "/api/sim/sessions/{session_id}", get_sim_context, ["sim"], resettable=False
-)
+trading_router = build_router("/api/sim/sessions/{session_id}", get_sim_context, ["sim"], resettable=False)
 
 
 def _out(run: runner.SimRun) -> dict:
@@ -64,7 +62,7 @@ def _session_out(db: DbSession, session: SimSession, provider: Provider) -> SimS
 
 
 @router.post("", response_model=SimSessionOut)
-def create_session(body: SimSessionIn, db: DbSession, provider: Provider):
+def create_session(body: SimSessionIn, db: DbSession, provider: Provider, user: CurrentUser):
     session = runner.create_session(
         db,
         provider,
@@ -73,13 +71,14 @@ def create_session(body: SimSessionIn, db: DbSession, provider: Provider):
         start_date=body.start_date,
         end_date=body.end_date,
         speed=body.speed,
+        owner_user_id=user.id,
     )
     return _session_out(db, session, provider)
 
 
 @router.get("", response_model=list[SimSessionOut])
-def list_sessions(db: DbSession, provider: Provider):
-    return [_session_out(db, s, provider) for s in runner.list_sessions(db)]
+def list_sessions(db: DbSession, provider: Provider, user: CurrentUser):
+    return [_session_out(db, s, provider) for s in runner.list_sessions(db, user.id)]
 
 
 @router.get("/{session_id}", response_model=SimSessionStateOut)
@@ -87,15 +86,16 @@ def get_state(
     session_id: int,
     db: DbSession,
     provider: Provider,
+    user: CurrentUser,
     bars_limit: Annotated[int, Query(ge=0, le=20000)] = 1000,
 ):
-    run = runner.build_run(db, runner.get_session(db, session_id), provider)
+    run = runner.build_run(db, runner.get_session(db, session_id, user.id), provider)
     return SimSessionStateOut(**_out(run), bars=_revealed(run, bars_limit))
 
 
 @router.post("/{session_id}/control", response_model=SimSessionOut)
-def control(session_id: int, body: SimControlIn, db: DbSession, provider: Provider):
-    session = runner.get_session(db, session_id)
+def control(session_id: int, body: SimControlIn, db: DbSession, provider: Provider, user: CurrentUser):
+    session = runner.get_session(db, session_id, user.id)
     if body.speed is not None:
         runner.set_speed(db, session, body.speed)
     match body.action:
@@ -115,6 +115,6 @@ def control(session_id: int, body: SimControlIn, db: DbSession, provider: Provid
 
 
 @router.delete("/{session_id}", status_code=204)
-def delete_session(session_id: int, db: DbSession):
-    runner.delete_session(db, runner.get_session(db, session_id))
+def delete_session(session_id: int, db: DbSession, user: CurrentUser):
+    runner.delete_session(db, runner.get_session(db, session_id, user.id))
     return Response(status_code=204)

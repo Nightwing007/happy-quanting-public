@@ -66,9 +66,7 @@ def history_limits(today: date | None = None) -> list[tuple[str, date | None]]:
 
 def _validate(interval: str, start: date, end: date, today: date) -> None:
     if interval not in LIMITS:
-        raise HistoryRangeError(
-            f"Interval '{interval}' isn't available. Choose one of: {', '.join(LIMITS)}."
-        )
+        raise HistoryRangeError(f"Interval '{interval}' isn't available. Choose one of: {', '.join(LIMITS)}.")
     if start > end:
         raise HistoryRangeError(f"The start date {start:%d %b %Y} is after the end date {end:%d %b %Y}.")
     if end > today:
@@ -97,9 +95,7 @@ def _ts(bar: Bar, daily: bool) -> int:
 
 
 def _to_bar(row: BarCache, daily: bool) -> Bar:
-    when: str | int = (
-        datetime.fromtimestamp(row.ts, UTC).date().isoformat() if daily else row.ts
-    )
+    when: str | int = datetime.fromtimestamp(row.ts, UTC).date().isoformat() if daily else row.ts
     return Bar(when, row.open, row.high, row.low, row.close, row.volume)
 
 
@@ -166,13 +162,23 @@ def _store(db: Session, symbol: str, interval: str, bars: list[Bar], daily: bool
         if row is None:
             db.add(
                 BarCache(
-                    symbol=symbol, interval=interval, ts=ts, open=bar.open, high=bar.high,
-                    low=bar.low, close=bar.close, volume=bar.volume,
+                    symbol=symbol,
+                    interval=interval,
+                    ts=ts,
+                    open=bar.open,
+                    high=bar.high,
+                    low=bar.low,
+                    close=bar.close,
+                    volume=bar.volume,
                 )
             )
         else:  # today's bars grow as the day goes on, so a refetch overwrites
             row.open, row.high, row.low, row.close, row.volume = (
-                bar.open, bar.high, bar.low, bar.close, bar.volume,
+                bar.open,
+                bar.high,
+                bar.low,
+                bar.close,
+                bar.volume,
             )
 
 
@@ -222,4 +228,3 @@ def get_history(
         .order_by(BarCache.ts)
     )
     return [_to_bar(row, daily) for row in rows]
-

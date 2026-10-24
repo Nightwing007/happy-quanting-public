@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SymbolSearch } from "@/components/symbol-search";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { UserAvatar } from "@/components/user-avatar";
+import { useLogout, useMe } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Dashboard" },
   { href: "/trade", label: "Trade" },
   { href: "/sim", label: "Sim" },
+  { href: "/algos", label: "Algos" },
   { href: "/orders", label: "Orders" },
   { href: "/payouts", label: "Payouts" },
   { href: "/settings", label: "Settings" },
@@ -59,7 +63,50 @@ export function SiteHeader() {
           <SunIcon className="hidden dark:block" />
           <MoonIcon className="dark:hidden" />
         </Button>
+
+        <UserMenu />
       </div>
     </header>
+  );
+}
+
+function UserMenu() {
+  const router = useRouter();
+  const { data: user, isPending } = useMe();
+  const logout = useLogout();
+
+  if (isPending) return null;
+  if (!user) {
+    return (
+      <Link href="/login" className="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
+        Log in
+      </Link>
+    );
+  }
+
+  const name = user.display_name || user.username;
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`Account menu for ${name}`}
+        className="flex items-center gap-2 rounded-md p-1 text-sm hover:bg-muted sm:pr-2"
+      >
+        <UserAvatar name={name} url={user.avatar_url} />
+        <span className="hidden max-w-32 truncate sm:inline">{name}</span>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-44 gap-1 p-1">
+        <Link href="/profile" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+          Profile
+        </Link>
+        <button
+          type="button"
+          disabled={logout.isPending}
+          onClick={() => logout.mutate(undefined, { onSuccess: () => router.replace("/login") })}
+          className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+        >
+          Log out
+        </button>
+      </PopoverContent>
+    </Popover>
   );
 }

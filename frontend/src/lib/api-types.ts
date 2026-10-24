@@ -4,6 +4,75 @@
  */
 
 export interface paths {
+    "/api/auth/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup */
+        post: operations["signup_api_auth_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Me */
+        get: operations["read_me_api_me_get"];
+        /** Update Me */
+        put: operations["update_me_api_me_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/algos/library": {
         parameters: {
             query?: never;
@@ -16,6 +85,63 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/algos/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Code
+         * @description Check uploaded strategy code against the rules in docs/algo-rules.md; nothing is saved.
+         */
+        post: operations["validate_code_api_algos_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/algos/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mine */
+        get: operations["list_mine_api_algos_mine_get"];
+        put?: never;
+        /** Create Mine */
+        post: operations["create_mine_api_algos_mine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/algos/mine/{algo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mine */
+        get: operations["get_mine_api_algos_mine__algo_id__get"];
+        /** Update Mine */
+        put: operations["update_mine_api_algos_mine__algo_id__put"];
+        post?: never;
+        /** Delete Mine */
+        delete: operations["delete_mine_api_algos_mine__algo_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -764,7 +890,12 @@ export interface components {
              * Strategy
              * @description Key of a predefined algorithm, from /api/algos/library
              */
-            strategy: string;
+            strategy?: string | null;
+            /**
+             * Algo Id
+             * @description A saved algorithm from /api/algos/mine; `params` is laid over its saved settings
+             */
+            algo_id?: number | null;
             /** Params */
             params?: {
                 [key: string]: string | number | boolean;
@@ -1232,6 +1363,13 @@ export interface components {
             /** Tradable */
             tradable: boolean;
         };
+        /** LoginIn */
+        LoginIn: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
         /** MarketRefOut */
         MarketRefOut: {
             /** Code */
@@ -1630,6 +1768,26 @@ export interface components {
             /** Trades */
             trades: components["schemas"]["TradeOut"][];
         };
+        /** ProblemOut */
+        ProblemOut: {
+            /** Line */
+            line: number;
+            /** Col */
+            col: number;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** ProfileIn */
+        ProfileIn: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Bio */
+            bio?: string | null;
+            /** Avatar Url */
+            avatar_url?: string | null;
+        };
         /** ProtectionIn */
         ProtectionIn: {
             /** Stop Price */
@@ -1740,6 +1898,15 @@ export interface components {
             square_off_minutes_before_close: number | null;
             /** Min Shortable Step */
             min_shortable_step: string;
+        };
+        /** SignupIn */
+        SignupIn: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+            /** Display Name */
+            display_name?: string | null;
         };
         /** SimControlIn */
         SimControlIn: {
@@ -1885,6 +2052,19 @@ export interface components {
                 [key: string]: components["schemas"]["BarOut"][];
             };
         };
+        /** StrategyMetaOut */
+        StrategyMetaOut: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Markets */
+            markets: string[];
+            /** Interval */
+            interval: string;
+            /** Parameters */
+            parameters: components["schemas"]["AlgoParamOut"][];
+        };
         /** TradeOut */
         TradeOut: {
             /** Id */
@@ -1988,6 +2168,74 @@ export interface components {
          * @enum {string}
          */
         TradeStatus: "open" | "closed";
+        /** UserAlgoIn */
+        UserAlgoIn: {
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Strategy
+             * @description Key of the predefined algorithm this is built on
+             */
+            strategy: string;
+            /** Params */
+            params?: {
+                [key: string]: string | number | boolean;
+            };
+        };
+        /** UserAlgoOut */
+        UserAlgoOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Strategy */
+            strategy: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Interval */
+            interval: string;
+            /** Markets */
+            markets: string[];
+            /** Params */
+            params: {
+                [key: string]: string | number | boolean;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * UserOut
+         * @description Who someone is. Never carries the password hash.
+         */
+        UserOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Bio */
+            bio: string;
+            /** Is Creator */
+            is_creator: boolean;
+        };
+        /** ValidateIn */
+        ValidateIn: {
+            /** Source */
+            source: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -2000,6 +2248,14 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** ValidationReportOut */
+        ValidationReportOut: {
+            /** Ok */
+            ok: boolean;
+            /** Problems */
+            problems: components["schemas"]["ProblemOut"][];
+            meta: components["schemas"]["StrategyMetaOut"] | null;
         };
         /** WatchlistIn */
         WatchlistIn: {
@@ -2035,6 +2291,143 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    signup_api_auth_signup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_api_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    read_me_api_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+        };
+    };
+    update_me_api_me_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_library_api_algos_library_get: {
         parameters: {
             query?: never;
@@ -2051,6 +2444,187 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlgoOut"][];
+                };
+            };
+        };
+    };
+    validate_code_api_algos_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mine_api_algos_mine_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAlgoOut"][];
+                };
+            };
+        };
+    };
+    create_mine_api_algos_mine_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserAlgoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAlgoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mine_api_algos_mine__algo_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                algo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAlgoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_mine_api_algos_mine__algo_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                algo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserAlgoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAlgoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_mine_api_algos_mine__algo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                algo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

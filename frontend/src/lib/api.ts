@@ -1,4 +1,8 @@
 import type {
+  Algo,
+  BacktestDetail,
+  BacktestIn,
+  BacktestSummary,
   Bars,
   BrokerGroup,
   Health,
@@ -19,7 +23,13 @@ import type {
   SimSession,
   SimSessionIn,
   SimSessionState,
+  LoginIn,
+  ProfileIn,
+  SignupIn,
   Trade,
+  User,
+  UserAlgo,
+  UserAlgoIn,
   WatchlistItem,
 } from "./types";
 
@@ -99,6 +109,19 @@ export const LIVE_BASE = "/api";
 export const simBase = (id: number) => `/api/sim/sessions/${id}`;
 
 export const getHealth = () => request<Health>("/api/health");
+
+export const signup = (body: SignupIn) =>
+  request<User>("/api/auth/signup", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const login = (body: LoginIn) =>
+  request<User>("/api/auth/login", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const logout = () => request<void>("/api/auth/logout", { method: "POST" });
+
+export const getMe = () => request<User>("/api/me");
+
+export const updateMe = (body: ProfileIn) =>
+  request<User>("/api/me", { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(body) });
 
 export const searchInstruments = (q: string) =>
   request<Instrument[]>(`/api/market/search${qs({ q })}`);
@@ -203,3 +226,21 @@ export const controlSimSession = ({ id, ...body }: { id: number } & SimControl) 
   });
 
 export const deleteSimSession = (id: number) => request<void>(`/api/sim/sessions/${id}`, { method: "DELETE" });
+
+export const getAlgoLibrary = () => request<Algo[]>("/api/algos/library");
+
+export const listMyAlgos = () => request<UserAlgo[]>("/api/algos/mine");
+
+export const createMyAlgo = (body: UserAlgoIn) =>
+  request<UserAlgo>("/api/algos/mine", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const deleteMyAlgo = (id: number) => request<void>(`/api/algos/mine/${id}`, { method: "DELETE" });
+
+export const createBacktest = (body: BacktestIn) =>
+  request<BacktestSummary>("/api/backtests", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const listBacktests = () => request<BacktestSummary[]>("/api/backtests");
+
+export const getBacktest = (id: number) => request<BacktestDetail>(`/api/backtests/${id}`);
+
+export const deleteBacktest = (id: number) => request<void>(`/api/backtests/${id}`, { method: "DELETE" });

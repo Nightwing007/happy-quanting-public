@@ -22,11 +22,12 @@ from app.algos.backtest import (
     run_backtest,
     sweep_scratch_accounts,
 )
+from app.algos.sandbox import SandboxError, UserCodeError
 from app.config import get_settings
 from app.db import SessionLocal
 from app.market_data import get_provider
 from app.market_data.base import MarketDataError, MarketDataProvider
-from app.models import Backtest, BacktestStatus
+from app.models import Backtest, BacktestStatus, UserAlgo
 from app.schemas import BacktestIn, BacktestResultsOut
 from app.trading.errors import TradingError
 
@@ -52,8 +53,17 @@ def queue_backtest(
     sentence when it can't run, so nothing doomed waits in the queue."""
     settings = get_settings()
     cash = body.starting_cash if body.starting_cash is not None else settings.starting_cash
+    strategy, params = body.strategy, body.params
+    if body.algo_id is not None:
+        saved = db.get(UserAlgo, body.algo_id)
+        if saved is None or saved.owner_user_id != owner_user_id:
+            raise BacktestNotFound(f"There is no saved algorithm {body.algo_id}.")
+        # The saved settings are the starting point; anything sent with the request wins.
+        strategy, params = saved.strategy_key, {**saved.params, **body.params}
+    elif strategy is None:
+        raise BacktestError("Say which algorithm to test: a library key or a saved algorithm.")
     req = check_request(
-        db, provider, strategy_key=body.strategy, strategy_cls=None, params=body.params,
+        db, provider, strategy_key=strategy, strategy_cls=None, params=params,
         symbols=body.symbols, interval=body.interval, start=body.start_date, end=body.end_date,
         starting_cash=cash, brokers=body.brokers, today=today,
     )  # fmt: skip
@@ -78,15 +88,31 @@ def queue_backtest(
     return row
 
 
-def get_backtest(db: Session, backtest_id: int) -> Backtest:
+def _load(db: Session, backtest_id: int) -> Backtest:
     found = db.get(Backtest, backtest_id)
     if found is None:
         raise BacktestNotFound(f"There is no backtest {backtest_id}.")
     return found
 
 
-def delete_backtest(db: Session, backtest_id: int) -> None:
-    row = get_backtest(db, backtest_id)
+def get_backtest(db: Session, backtest_id: int, owner_user_id: int) -> Backtest:
+    """The owner's backtest; someone else's is "not found". The worker uses `_load` instead."""
+    found = _load(db, backtest_id)
+    if found.owner_user_id != owner_user_id:
+        raise BacktestNotFound(f"There is no backtest {backtest_id}.")
+    return found
+
+
+def list_backtests(db: Session, owner_user_id: int) -> list[Backtest]:
+    return list(
+        db.scalars(
+            select(Backtest).where(Backtest.owner_user_id == owner_user_id).order_by(Backtest.id.desc())
+        )
+    )
+
+
+def delete_backtest(db: Session, backtest_id: int, owner_user_id: int) -> None:
+    row = get_backtest(db, backtest_id, owner_user_id)
     if row.status == BacktestStatus.RUNNING:
         raise BacktestConflict("This backtest is running. Delete it once it has finished.")
     db.delete(row)
@@ -94,7 +120,9 @@ def delete_backtest(db: Session, backtest_id: int) -> None:
 
 
 def _failure_text(why: Exception) -> str:
-    if isinstance(why, ParameterError | BacktestError | MarketDataError | TradingError):
+    if isinstance(
+        why, ParameterError | BacktestError | MarketDataError | TradingError | SandboxError | UserCodeError
+    ):
         return getattr(why, "message", None) or str(why)
     logger.exception("Backtest failed")
     return f"The backtest failed unexpectedly ({type(why).__name__}: {why})."
@@ -104,7 +132,7 @@ def run_backtest_job(
     db: Session, backtest_id: int, provider: MarketDataProvider | None = None, *, today: date | None = None
 ) -> None:
     """Run one queued backtest to the end, storing its results (or why it failed) on its row."""
-    row = get_backtest(db, backtest_id)
+    row = _load(db, backtest_id)  # the worker runs every owner's jobs
     provider = provider or get_provider()
     row.status = BacktestStatus.RUNNING
     row.progress = 0

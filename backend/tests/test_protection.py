@@ -17,8 +17,8 @@ from app import clock
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderType, Trade
 from app.trading import engine, hours
-from app.trading.engine import live_context as live
 from app.trading.errors import ProtectionInvalid, TradeNotFound, TradeNotOpen
+from tests.helpers import live
 
 D = Decimal
 

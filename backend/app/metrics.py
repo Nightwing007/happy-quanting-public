@@ -152,8 +152,7 @@ ROE = MetricDef(
     ),
     better="higher",
     below_meaning=(
-        "Profits are small for the shareholders' money invested, or the business is in a poor "
-        "patch."
+        "Profits are small for the shareholders' money invested, or the business is in a poor patch."
     ),
     above_meaning=(
         "The company earns a lot on shareholders' money. A very high figure can also come from "
@@ -343,7 +342,11 @@ def _crypto_metrics(f: Fundamentals) -> list[MetricOut]:
 
     if f.market_cap is not None and f.market_cap > 0:
         add(
-            "market_cap", "Market cap", f.market_cap, "currency", "amount",
+            "market_cap",
+            "Market cap",
+            f.market_cap,
+            "currency",
+            "amount",
             "The price of one coin times the number of coins in circulation: the market's value "
             "of the whole coin.",
             "A bigger market cap usually means a more established, harder-to-move coin; a smaller "
@@ -351,14 +354,22 @@ def _crypto_metrics(f: Fundamentals) -> list[MetricOut]:
         )
     if f.volume_24h is not None and f.volume_24h > 0:
         add(
-            "volume_24h", "24-hour volume", f.volume_24h, "currency", "amount",
+            "volume_24h",
+            "24-hour volume",
+            f.volume_24h,
+            "currency",
+            "amount",
             "The value of the coin traded over the last 24 hours.",
             "High volume next to market cap means easy buying and selling; very low volume means "
             "prices can jump on small orders.",
         )
     if f.circulating_supply is not None and f.circulating_supply > 0:
         add(
-            "circulating_supply", "Circulating supply", f.circulating_supply, "units", "count",
+            "circulating_supply",
+            "Circulating supply",
+            f.circulating_supply,
+            "units",
+            "count",
             "How many coins are in public hands right now.",
             "Compare it with the maximum supply, where one exists: coins not yet released can "
             "dilute holders later.",
@@ -369,7 +380,11 @@ def _crypto_metrics(f: Fundamentals) -> list[MetricOut]:
         # Clamped, since a fresh high or low can land just outside a stale 52-week figure.
         position = min(max((price - low) / (high - low) * 100, Decimal(0)), Decimal(100))
         add(
-            "range_position", "Position in 52-week range", position, "%", "position",
+            "range_position",
+            "Position in 52-week range",
+            position,
+            "%",
+            "position",
             "Where the price sits between the lowest (0%) and highest (100%) price of the past year.",
             "Near 100% means close to the year's peak; near 0% means close to its bottom. It says "
             "where the price has been, not where it is going.",

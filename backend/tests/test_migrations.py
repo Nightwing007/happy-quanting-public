@@ -41,7 +41,7 @@ def test_migrations_match_models(file_engine: Engine) -> None:
         ctx = MigrationContext.configure(conn, opts={"compare_type": True, "render_as_batch": True})
         diffs = compare_metadata(ctx, Base.metadata)
     assert diffs == [], f"models and migrations differ: {diffs}"
-    assert _version(file_engine) == "0008"
+    assert _version(file_engine) == "0011"
 
 
 def test_pre_migration_database_is_stamped_and_upgraded(file_engine: Engine) -> None:
@@ -54,10 +54,10 @@ def test_pre_migration_database_is_stamped_and_upgraded(file_engine: Engine) -> 
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0008"
+    assert _version(file_engine) == "0011"
     # Running again is a no-op, not an error.
     upgrade_database(file_engine)
-    assert _version(file_engine) == "0008"
+    assert _version(file_engine) == "0011"
 
 
 def test_0001_database_with_data_upgrades_to_default_brokers(file_engine: Engine) -> None:
@@ -80,7 +80,7 @@ def test_0001_database_with_data_upgrades_to_default_brokers(file_engine: Engine
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0008"
+    assert _version(file_engine) == "0011"
     with Session(file_engine) as session:
         account = session.query(Account).one()
         assert (account.broker_india, account.broker_international, account.broker_crypto) == (
@@ -276,7 +276,7 @@ def test_0004_adds_empty_protection_columns_and_keeps_existing_trades(file_engin
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0008"
+    assert _version(file_engine) == "0011"
     with Session(file_engine) as session:
         trade = session.query(Trade).one()
         assert (trade.symbol, trade.open_quantity) == ("AAPL", Decimal("10"))
@@ -284,7 +284,7 @@ def test_0004_adds_empty_protection_columns_and_keeps_existing_trades(file_engin
         assert (trade.stop_price, trade.target_price, trade.protection_expires_at) == (None, None, None)
 
 
-def test_0005_makes_every_existing_account_live_with_no_owner(file_engine: Engine) -> None:
+def test_0005_makes_every_existing_account_live(file_engine: Engine) -> None:
     _upgrade_to(file_engine, "0004")
     with file_engine.begin() as conn:
         conn.execute(
@@ -297,7 +297,35 @@ def test_0005_makes_every_existing_account_live_with_no_owner(file_engine: Engin
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0008"
+    assert _version(file_engine) == "0011"
     with Session(file_engine) as session:
         account = session.query(Account).one()
-        assert (account.kind, account.user_id, account.cash) == ("live", None, Decimal("100000"))
+        # 0010 later hands every ownerless account to the demo user (id 1 here).
+        assert (account.kind, account.user_id, account.cash) == ("live", 1, Decimal("100000"))
+
+
+def test_0010_gives_existing_rows_to_the_demo_user(file_engine: Engine) -> None:
+    _upgrade_to(file_engine, "0009")
+    with file_engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO accounts (id, currency, cash, starting_cash, realized_pnl, created_at, "
+                "broker_india, broker_international, broker_crypto, margin_used, kind) VALUES "
+                "(1, 'USD', '100000', '100000', '0', '2026-03-02 04:00:00', 'groww', 'ibkr', 'coindcx', '0', "
+                "'live')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO user_algos (id, name, description, strategy_key, params, created_at) VALUES "
+                "(1, 'a', '', 'sma_cross', '{}', '2026-03-02 04:00:00')"
+            )
+        )
+
+    upgrade_database(file_engine)
+
+    with file_engine.connect() as conn:
+        demo = conn.execute(text("SELECT id, password_hash FROM users WHERE username = 'demo'")).one()
+        assert demo.password_hash == "!"
+        assert conn.execute(text("SELECT user_id FROM accounts")).scalar_one() == demo.id
+        assert conn.execute(text("SELECT owner_user_id FROM user_algos")).scalar_one() == demo.id

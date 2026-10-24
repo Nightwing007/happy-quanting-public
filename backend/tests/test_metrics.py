@@ -214,8 +214,13 @@ def test_crypto_gets_its_four_with_the_52_week_position():
 
 def test_crypto_position_is_clamped_when_price_leaves_the_range():
     f = Fundamentals(
-        symbol="X", sector=None, industry=None, currency="USD",
-        price=Decimal("80000"), fifty_two_week_low=Decimal("40000"), fifty_two_week_high=Decimal("75000"),
+        symbol="X",
+        sector=None,
+        industry=None,
+        currency="USD",
+        price=Decimal("80000"),
+        fifty_two_week_low=Decimal("40000"),
+        fifty_two_week_high=Decimal("75000"),
     )
     pos = _by_key(metrics.build_metrics(f, "crypto", "USD"))["range_position"]
     assert pos.value == Decimal("100")
@@ -239,8 +244,18 @@ def test_endpoint_shape_and_trimmed_strings(client: TestClient):
     assert body["note"].endswith("Yahoo Finance publishes no sector benchmarks.")
     pe = body["metrics"][0]
     assert set(pe) == {
-        "key", "label", "value", "unit", "display_hint", "assessment", "range",
-        "explanation", "better", "meaning", "if_below", "if_above",
+        "key",
+        "label",
+        "value",
+        "unit",
+        "display_hint",
+        "assessment",
+        "range",
+        "explanation",
+        "better",
+        "meaning",
+        "if_below",
+        "if_above",
     }
     assert pe["key"] == "pe" and pe["value"] == "24.8"  # not "24.80"
     assert pe["unit"] == "x" and pe["assessment"] == "typical"
@@ -269,7 +284,10 @@ def test_endpoint_crypto(client: TestClient):
     body = client.get("/api/market/metrics", params={"symbol": "BTC-USD"}).json()
     assert body["kind"] == "crypto"
     assert [m["key"] for m in body["metrics"]] == [
-        "market_cap", "volume_24h", "circulating_supply", "range_position",
+        "market_cap",
+        "volume_24h",
+        "circulating_supply",
+        "range_position",
     ]
     assert body["metrics"][3]["value"] == "57.14"
     assert body["metrics"][0]["assessment"] is None

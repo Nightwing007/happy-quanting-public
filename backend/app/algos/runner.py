@@ -362,7 +362,8 @@ def run_strategy_on(
     the sim and the backtester: neither is special-cased, both move `ctx.now()` and call `step()`.
     """
     instance = strategy() if isinstance(strategy, type) else strategy
-    values = validate_params(type(instance), params or {})
+    # The instance, not its class: a sandboxed strategy keeps its settings per instance.
+    values = validate_params(instance, params or {})  # type: ignore[arg-type]
     names = tuple(dict.fromkeys(s.strip().upper() for s in symbols if s.strip()))
     if not names:
         raise StrategyRunError("Pick at least one symbol to run the algorithm on.")

@@ -1,0 +1,71 @@
+{
+ "_note": "Sample of get_history output (FakeProvider). Intraday time = UTC unix seconds; daily bars use 'YYYY-MM-DD'. Prices are Decimal strings. bar_cache stores the same fields with ts in UTC seconds.",
+ "symbol": "RELIANCE.NS",
+ "interval": "1m",
+ "bars": [
+  {
+   "time": 1772077500,
+   "open": "1192.163401",
+   "high": "1192.738352",
+   "low": "1191.805752",
+   "close": "1192.380638",
+   "volume": 3888
+  },
+  {
+   "time": 1772077560,
+   "open": "1192.380638",
+   "high": "1192.755310",
+   "low": "1192.022924",
+   "close": "1192.397591",
+   "volume": 5224
+  },
+  {
+   "time": 1772077620,
+   "open": "1192.397591",
+   "high": "1192.804468",
+   "low": "1192.039872",
+   "close": "1192.446734",
+   "volume": 8234
+  },
+  {
+   "time": 1772077680,
+   "open": "1192.446734",
+   "high": "1192.804468",
+   "low": "1191.556517",
+   "close": "1191.914091",
+   "volume": 3702
+  },
+  {
+   "time": 1772077740,
+   "open": "1191.914091",
+   "high": "1192.271665",
+   "low": "1191.513872",
+   "close": "1191.871433",
+   "volume": 2990
+  },
+  {
+   "time": 1772077800,
+   "open": "1191.871433",
+   "high": "1192.228994",
+   "low": "1191.310329",
+   "close": "1191.667829",
+   "volume": 2590
+  },
+  {
+   "time": 1772077860,
+   "open": "1191.667829",
+   "high": "1192.947436",
+   "low": "1191.310329",
+   "close": "1192.589659",
+   "volume": 4944
+  },
+  {
+   "time": 1772077920,
+   "open": "1192.589659",
+   "high": "1192.947436",
+   "low": "1192.133223",
+   "close": "1192.490970",
+   "volume": 1648
+  }
+ ]
+}

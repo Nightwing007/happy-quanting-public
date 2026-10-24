@@ -5,7 +5,7 @@ import * as api from "./api";
 import { LIVE_BASE } from "./api";
 import type { OrderFilters, TradeFilters } from "./api";
 import { useTradingBase } from "./trading-scope";
-import type { OrderIn, ProtectionIn, SimControl, SimSessionIn } from "./types";
+import type { BacktestIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, UserAlgoIn } from "./types";
 
 const THIRTY_SECONDS = 30_000;
 
@@ -37,6 +37,10 @@ export const queryKeys = {
   historyLimits: ["history-limits"] as const,
   simSessions: ["sim-sessions"] as const,
   simState: (id: number) => ["sim-state", id] as const,
+  algoLibrary: ["algo-library"] as const,
+  myAlgos: ["my-algos"] as const,
+  backtests: ["backtests"] as const,
+  backtest: (id: number) => ["backtest", id] as const,
 };
 
 export const useHealth = () =>
@@ -46,6 +50,66 @@ export const useHealth = () =>
     refetchInterval: 15_000,
     retry: false,
   });
+
+const ME_KEY = ["me"] as const;
+
+// A 401 here just means "not logged in", so it becomes null rather than an error.
+export const useMe = () =>
+  useQuery({
+    queryKey: ME_KEY,
+    queryFn: async () => {
+      try {
+        return await api.getMe();
+      } catch (e) {
+        if (e instanceof api.ApiError && e.status === 401) return null;
+        throw e;
+      }
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
+// Login, signup and logout empty the cache so one user's data is never shown to the next.
+export const useLogin = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.login,
+    onSuccess: (user) => {
+      qc.clear();
+      qc.setQueryData(ME_KEY, user);
+    },
+  });
+};
+
+export const useSignup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.signup,
+    onSuccess: (user) => {
+      qc.clear();
+      qc.setQueryData(ME_KEY, user);
+    },
+  });
+};
+
+export const useLogout = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.logout,
+    onSuccess: () => {
+      qc.clear();
+      qc.setQueryData(ME_KEY, null);
+    },
+  });
+};
+
+export const useUpdateMe = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMe,
+    onSuccess: (user) => qc.setQueryData(ME_KEY, user),
+  });
+};
 
 // The caller debounces `q`.
 export const useSearch = (q: string) => {
@@ -317,5 +381,63 @@ export function useSimControl(id: number) {
       qc.invalidateQueries({ queryKey: queryKeys.simState(id) });
       invalidateAccount(qc, base);
     },
+  });
+}
+
+export const useAlgoLibrary = () =>
+  useQuery({ queryKey: queryKeys.algoLibrary, queryFn: api.getAlgoLibrary, staleTime: 60 * 60_000 });
+
+export const useMyAlgos = () => useQuery({ queryKey: queryKeys.myAlgos, queryFn: api.listMyAlgos });
+
+export function useCreateMyAlgo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UserAlgoIn) => api.createMyAlgo(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.myAlgos }),
+  });
+}
+
+export function useDeleteMyAlgo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteMyAlgo(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.myAlgos }),
+  });
+}
+
+export function useRunBacktest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BacktestIn) => api.createBacktest(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.backtests }),
+  });
+}
+
+export const useBacktests = () =>
+  useQuery({
+    queryKey: queryKeys.backtests,
+    queryFn: api.listBacktests,
+    // Queued and running ones move along; a finished list needs no polling.
+    refetchInterval: (q) =>
+      q.state.data?.some((b) => b.status === "queued" || b.status === "running") ? 1000 : false,
+  });
+
+// Polls every second until the run is done or has failed.
+export const useBacktest = (id: number | null) =>
+  useQuery({
+    queryKey: queryKeys.backtest(id ?? 0),
+    queryFn: () => api.getBacktest(id!),
+    enabled: id !== null,
+    refetchInterval: (q) => {
+      const status = q.state.data?.status;
+      return status === "done" || status === "failed" ? false : 1000;
+    },
+  });
+
+export function useDeleteBacktest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteBacktest(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.backtests }),
   });
 }

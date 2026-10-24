@@ -17,9 +17,9 @@ from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderStatus, OrderType, Trade
 from app.schemas import ChargeOut
 from app.trading import brokers, engine
-from app.trading.engine import live_context as live
 from app.trading.errors import BrokerNotAvailable, InsufficientFunds, InvalidBroker, UnsupportedMarket
 from app.trading.fees import Fee
+from tests.helpers import live
 
 D = Decimal
 
@@ -172,7 +172,8 @@ def test_a_resting_limit_order_pays_the_maker_rate_and_a_market_order_the_taker_
     )
     assert resting.status == OrderStatus.OPEN
     preview = engine.preview_order(
-        live(db, fake_provider),         symbol="BTC-USD",
+        live(db, fake_provider),
+        symbol="BTC-USD",
         side="buy",
         type="limit",
         quantity=D("0.1"),

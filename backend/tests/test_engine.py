@@ -17,7 +17,6 @@ from app.market_data.base import DataUnavailable
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderStatus, OrderType, Trade, TradeStatus, WatchlistItem
 from app.trading import engine
-from app.trading.engine import live_context as live
 from app.trading.errors import (
     InsufficientFunds,
     InsufficientShares,
@@ -28,6 +27,7 @@ from app.trading.errors import (
     ShortNotOffered,
 )
 from app.trading.money import trim8
+from tests.helpers import live
 
 D = Decimal
 
@@ -52,9 +52,7 @@ def sell(db: Session, provider: FakeProvider, symbol: str, qty: str, **kw) -> Or
 def open_trades(db: Session, symbol: str) -> list[Trade]:
     return list(
         db.scalars(
-            select(Trade)
-            .where(Trade.symbol == symbol, Trade.status == TradeStatus.OPEN)
-            .order_by(Trade.id)
+            select(Trade).where(Trade.symbol == symbol, Trade.status == TradeStatus.OPEN).order_by(Trade.id)
         )
     )
 

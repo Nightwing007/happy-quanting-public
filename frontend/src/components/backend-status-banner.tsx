@@ -3,12 +3,14 @@
 import { TriangleAlertIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { ApiError } from "@/lib/api";
 import { useHealth } from "@/lib/queries";
 
 export function BackendStatusBanner() {
   const { data, isError, error } = useHealth();
 
-  if (isError) {
+  // A 401 means "log in", not "server down"; the redirect to /login handles it.
+  if (isError && !(error instanceof ApiError && error.status === 401)) {
     return (
       <Alert variant="destructive" className="rounded-none border-x-0">
         <TriangleAlertIcon />

@@ -5,7 +5,11 @@
     "setup": "npm install && npm --prefix frontend install && cd backend && py -3 -m venv .venv && .venv\\Scripts\\python -m pip install -r requirements-dev.txt",
     "dev": "concurrently -n api,web -c blue,green \"cd backend && .venv\\Scripts\\python dev.py\" \"npm --prefix frontend run dev\"",
     "test": "cd backend && .venv\\Scripts\\python -m pytest",
-    "lint": "cd backend && .venv\\Scripts\\python -m ruff check . && cd .. && npm --prefix frontend run lint"
+    "lint": "cd backend && .venv\\Scripts\\python -m ruff check . && cd .. && npm --prefix frontend run lint",
+    "test:q": "cd backend && .venv\\Scripts\\python scripts\\qtest.py",
+    "lint:q": "node scripts/quiet.mjs backend\\.venv\\Scripts\\python -m ruff check backend -q && node scripts/quiet.mjs npm --prefix frontend run lint --silent",
+    "check:web": "node scripts/quiet.mjs npx --prefix frontend tsc --noEmit -p frontend",
+    "build:web": "node scripts/quiet.mjs npm --prefix frontend run build --silent"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

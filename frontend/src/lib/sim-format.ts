@@ -19,10 +19,37 @@ export function formatDay(day: string): string {
 export const formatDayRange = (s: Pick<SimSession, "start_date" | "end_date">) =>
   s.start_date === s.end_date ? formatDay(s.start_date) : `${formatDay(s.start_date)} to ${formatDay(s.end_date)}`;
 
+// Intl's short zone names fall back to GMT offsets ("GMT+5:30") for most zones outside the US,
+// so the zones people trade in are named here.
+const ZONE_NAMES: Record<string, string> = {
+  "Asia/Kolkata": "IST",
+  "America/New_York": "ET",
+  "Europe/London": "UK",
+  "Asia/Hong_Kong": "HKT",
+  "Asia/Tokyo": "JST",
+  "Asia/Singapore": "SGT",
+  UTC: "UTC",
+};
+
+/** "IST" for Asia/Kolkata; a zone not listed gets whatever Intl offers. */
+export function zoneShortName(timeZone: string, at: Date = new Date()): string {
+  const mapped = ZONE_NAMES[timeZone];
+  if (mapped) return mapped;
+  try {
+    const part = new Intl.DateTimeFormat("en-GB", { timeZone, timeZoneName: "short" })
+      .formatToParts(at)
+      .find((p) => p.type === "timeZoneName");
+    return part?.value ?? timeZone;
+  } catch {
+    return timeZone;
+  }
+}
+
 /** "Fri 23 Oct, 09:20:00 IST": the replayed moment on the exchange's own clock. */
 export function formatExchangeClock(iso: string, timeZone: string): string {
+  const when = parseApiTime(iso);
   try {
-    return new Intl.DateTimeFormat("en-GB", {
+    const text = new Intl.DateTimeFormat("en-GB", {
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -31,10 +58,10 @@ export function formatExchangeClock(iso: string, timeZone: string): string {
       second: "2-digit",
       hourCycle: "h23",
       timeZone,
-      timeZoneName: "short",
-    }).format(parseApiTime(iso));
+    }).format(when);
+    return `${text} ${zoneShortName(timeZone, when)}`;
   } catch {
-    return parseApiTime(iso).toLocaleString();
+    return when.toLocaleString();
   }
 }
 

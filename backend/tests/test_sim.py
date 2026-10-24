@@ -72,9 +72,11 @@ def make_sim(
     interval: str = "1m",
     speed: int = 60,
 ) -> SimSession:
+    # Owned by whoever owns the first live account: `tester` when a `client` is in play.
     return runner.create_session(
-        db, provider, symbols=list(symbols), interval=interval, start_date=start, end_date=end, speed=speed
-    )
+        db, provider, symbols=list(symbols), interval=interval, start_date=start, end_date=end, speed=speed,
+        owner_user_id=engine.get_account(db).user_id,
+    )  # fmt: skip
 
 
 def play_to(db: Session, sim: SimSession, provider: FakeProvider, at: datetime) -> engine.TradingContext:
@@ -108,7 +110,9 @@ def test_a_target_fires_at_the_market_price_of_the_bar_that_crossed_it(
     ctx = play_to(db, sim, fake_provider, ist(9, 20))
     bought = market_order(ctx, OrderSide.BUY, "100")
     assert (bought.status, bought.fill_price, bought.filled_at) == (
-        OrderStatus.FILLED, D("1191.871433"), ist(9, 20)
+        OrderStatus.FILLED,
+        D("1191.871433"),
+        ist(9, 20),
     )
     # Value 100 x 1191.871433 = 119,187.1433 -> 119,187.14. Charges, each to the paisa:
     #   brokerage    0.1% = 119.19, capped at 20.00                    20.00
@@ -152,7 +156,10 @@ def test_a_target_fires_at_the_market_price_of_the_bar_that_crossed_it(
     payouts = engine.get_payouts(runner.build_context(db, sim, fake_provider))
     [row] = payouts.payouts
     assert (row.closed_how, row.entry_charges_total, row.exit_charges_total, row.realized_pnl) == (
-        "target", D("165.13"), D("171.01"), D("-169.81")
+        "target",
+        D("165.13"),
+        D("171.01"),
+        D("-169.81"),
     )
     # Cash: 1,000,000 - 119,187.14 - 165.13 + 119,353.47 - 171.01 = 999,830.19.
     assert sim.account_id and db.get(Account, sim.account_id).cash == D("999830.19")
@@ -437,7 +444,9 @@ def test_create_validates_the_range_and_makes_an_account(client, db: Session, fa
     live = engine.get_account(db)
     assert (account.kind, account.cash, account.currency) == ("sim", D("1000000"), "INR")
     assert (account.broker_india, account.broker_international, account.broker_crypto) == (
-        live.broker_india, live.broker_international, live.broker_crypto
+        live.broker_india,
+        live.broker_international,
+        live.broker_crypto,
     )
     assert [s["id"] for s in client.get("/api/sim/sessions").json()] == [made["id"]]
 
@@ -470,16 +479,19 @@ def test_control_and_delete(client, db: Session, fake_provider: FakeProvider):
     assert stepped["cursor"].startswith("2026-02-26T03:51:00")
 
     # Trade, then reset: back to the first bar, the starting cash, no orders or trades.
-    assert client.post(
-        f"{base}/orders", json={"symbol": SYMBOL, "side": "buy", "type": "market", "quantity": "1"}
-    ).status_code == 200
+    assert (
+        client.post(
+            f"{base}/orders", json={"symbol": SYMBOL, "side": "buy", "type": "market", "quantity": "1"}
+        ).status_code
+        == 200
+    )
     reset = client.post(f"{base}/control", json={"action": "reset"}).json()
     assert reset["status"] == "ready" and reset["cursor"].startswith("2026-02-26T03:45:00")
     assert client.get(f"{base}/orders").json() == [] and client.get(f"{base}/trades").json() == []
     assert D(client.get(f"{base}/portfolio").json()["cash"]) == D("1000000")
 
     # A finished session can't be started again until it is reset.
-    runner.advance(db, runner.get_session(db, sim_id), 10_000, fake_provider)
+    runner.advance(db, runner.get_session(db, sim_id, engine.get_account(db).user_id), 10_000, fake_provider)
     assert client.post(f"{base}/control", json={"action": "start"}).status_code == 409
 
     account_id = client.get(base).json()["account_id"]

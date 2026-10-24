@@ -190,8 +190,7 @@ _ALL_BROKERS = [
         # Intraday: "0.03% or Rs 20 per executed order, whichever is lower", no depository charge.
         [
             _intraday_brokerage(
-                "0.03", None, "20",
-                f"{_ZERODHA} (equity intraday: 0.03% or Rs 20, whichever is lower)"
+                "0.03", None, "20", f"{_ZERODHA} (equity intraday: 0.03% or Rs 20, whichever is lower)"
             )
         ],
         markets=("NSE", "BSE"),
@@ -210,8 +209,7 @@ _ALL_BROKERS = [
         # Intraday brokerage is the same rule as delivery on Groww's pricing page; no DP charge.
         [
             _intraday_brokerage(
-                "0.1", "5", "20",
-                f"{_GROWW} (Rs 20 or 0.1% per executed order, whichever is lower, min Rs 5)"
+                "0.1", "5", "20", f"{_GROWW} (Rs 20 or 0.1% per executed order, whichever is lower, min Rs 5)"
             )
         ],
         markets=("NSE", "BSE"),
@@ -241,8 +239,7 @@ _ALL_BROKERS = [
         # "Rs 20 per executed order or 0.1% (whichever is lower)", so none is modelled.
         [
             _intraday_brokerage(
-                "0.1", None, "20",
-                f"{_UPSTOX} (Rs 20 or 0.1% per executed order, whichever is lower)"
+                "0.1", None, "20", f"{_UPSTOX} (Rs 20 or 0.1% per executed order, whichever is lower)"
             )
         ],
         markets=("NSE", "BSE"),
@@ -275,8 +272,7 @@ _ALL_BROKERS = [
         # and, in its summary, "flat Rs 20 for intraday". The lower-of rule is modelled.
         [
             _intraday_brokerage(
-                "0.03", None, "20",
-                f"{_DHAN} (Rs 20 or 0.03% per executed order, whichever is lower)"
+                "0.03", None, "20", f"{_DHAN} (Rs 20 or 0.03% per executed order, whichever is lower)"
             )
         ],
         markets=("NSE", "BSE"),

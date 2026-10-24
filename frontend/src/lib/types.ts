@@ -34,7 +34,21 @@ export type SimSession = Schemas["SimSessionOut"];
 export type SimSessionState = Schemas["SimSessionStateOut"];
 export type SimSessionIn = Schemas["SimSessionIn"];
 export type SimControl = Schemas["SimControlIn"];
+export type Algo = Schemas["AlgoOut"];
+export type AlgoParam = Schemas["AlgoParamOut"];
+export type UserAlgo = Schemas["UserAlgoOut"];
+export type UserAlgoIn = Schemas["UserAlgoIn"];
+export type BacktestIn = Schemas["BacktestIn"];
+export type BacktestSummary = Schemas["BacktestSummaryOut"];
+export type BacktestDetail = Schemas["BacktestDetailOut"];
+export type BacktestResults = Schemas["BacktestResultsOut"];
+export type BacktestMetrics = Schemas["BacktestMetricsOut"];
+export type BacktestTrade = Schemas["BacktestTradeOut"];
 export type WatchlistItem = Schemas["WatchlistItemOut"];
+export type User = Schemas["UserOut"];
+export type SignupIn = Schemas["SignupIn"];
+export type LoginIn = Schemas["LoginIn"];
+export type ProfileIn = Schemas["ProfileIn"];
 
 // /api/health is declared as a loose string map in the schema; pin down the real shape.
 export type Health = {

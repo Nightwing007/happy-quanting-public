@@ -9,8 +9,10 @@ a trader sees day t's close at 10:00 UTC, the market is shut until day t+1's 03:
 first price after the decision is that morning's open.
 """
 
+import multiprocessing
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -281,6 +283,22 @@ def test_sma_crossover_fills_at_the_next_days_open(db: Session, sma_world: Fixtu
 
     assert scratch_accounts(db) == []  # nothing left behind
     assert db.scalars(select(Trade)).all() == [] and db.scalars(select(Order)).all() == []
+
+
+@pytest.mark.real_calendar
+@pytest.mark.usefixtures("zero_costs")
+def test_uploaded_source_runs_in_the_sandbox_with_the_same_result(db: Session, sma_world: FixtureProvider):
+    path = Path(__file__).parents[1] / "app" / "algos" / "library" / "sma_crossover.py"
+    args = dict(
+        params=SMA_PARAMS, symbols=[SYMBOL], interval="1d", start=DAYS[0], end=DAYS[-1],
+        starting_cash=D(100000), account_currency="INR", today=TODAY,
+    )  # fmt: skip
+    from_source = run_backtest(db, sma_world, source=path.read_text(encoding="utf-8"), **args)
+    from_class = run_backtest(db, sma_world, strategy_key="sma_crossover", **args)
+    assert from_source.trades == from_class.trades and from_source.trades
+    assert from_source.metrics.final_equity == from_class.metrics.final_equity
+    assert multiprocessing.active_children() == []
+    assert scratch_accounts(db) == []
 
 
 @pytest.mark.real_calendar
@@ -649,3 +667,76 @@ def test_a_restart_fails_runs_it_cut_off_and_sweeps_leftover_accounts(db_session
 
 def test_every_library_algorithm_has_a_backtestable_interval():
     assert {cls.interval for cls in LIBRARY.values()} <= {"1d", "1h"}
+
+
+# --- saved algorithms ("my algorithms") ---------------------------------------------------
+
+
+def test_a_saved_algorithm_is_created_read_changed_and_deleted(client):
+    made = client.post(
+        "/api/algos/mine",
+        json={
+            "name": "  My RSI ",
+            "description": "Buys dips",
+            "strategy": "rsi_reversion",
+            "params": {"oversold": 35},
+        },
+    )
+    assert made.status_code == 200, made.text
+    row = made.json()
+    assert row["name"] == "My RSI" and row["strategy"] == "rsi_reversion" and row["interval"] == "1d"
+    assert row["params"]["oversold"] == 35  # the tuned value
+    assert len(row["params"]) == len(LIBRARY["rsi_reversion"].PARAMETERS)  # and every default beside it
+
+    algo_id = row["id"]
+    assert client.get(f"/api/algos/mine/{algo_id}").json()["name"] == "My RSI"
+    assert [r["id"] for r in client.get("/api/algos/mine").json()] == [algo_id]
+
+    changed = client.put(
+        f"/api/algos/mine/{algo_id}",
+        json={"name": "Renamed", "strategy": "rsi_reversion", "params": {"oversold": 25}},
+    )
+    assert changed.status_code == 200 and changed.json()["params"]["oversold"] == 25
+    assert changed.json()["name"] == "Renamed" and changed.json()["description"] == ""
+
+    assert client.delete(f"/api/algos/mine/{algo_id}").status_code == 204
+    assert client.get(f"/api/algos/mine/{algo_id}").status_code == 404
+    gone = client.put(f"/api/algos/mine/{algo_id}", json={"name": "x", "strategy": "rsi_reversion"})
+    assert gone.status_code == 404
+    assert client.delete(f"/api/algos/mine/{algo_id}").status_code == 404
+    assert client.get("/api/algos/mine").json() == []
+
+
+def test_a_saved_algorithm_with_bad_settings_is_refused_in_the_servers_words(client):
+    bad = client.post(
+        "/api/algos/mine", json={"name": "x", "strategy": "sma_crossover", "params": {"slow_period": 999}}
+    )
+    assert bad.status_code == 400 and "Slow period must be at most 300" in bad.json()["detail"]
+    unknown = client.post("/api/algos/mine", json={"name": "x", "strategy": "nope"})
+    assert unknown.status_code == 400 and "There is no algorithm 'nope'" in unknown.json()["detail"]
+    nameless = client.post("/api/algos/mine", json={"name": "   ", "strategy": "sma_crossover"})
+    assert nameless.status_code == 422
+    assert client.get("/api/algos/mine").json() == []
+
+
+def test_a_backtest_can_start_from_a_saved_algorithm(client, db_session: Session, fake_provider):
+    saved = client.post(
+        "/api/algos/mine", json={"name": "Quick", "strategy": "sma_crossover", "params": {"slow_period": 12}}
+    ).json()
+    body = {k: v for k, v in BODY.items() if k not in ("strategy", "params")}
+
+    made = client.post("/api/backtests", json={**body, "algo_id": saved["id"]})
+    assert made.status_code == 200, made.text
+    assert made.json()["strategy_key"] == "sma_crossover" and made.json()["params"]["slow_period"] == 12
+
+    # Settings sent with the request win over the saved ones.
+    over = client.post("/api/backtests", json={**body, "algo_id": saved["id"], "params": {"slow_period": 15}})
+    assert over.json()["params"]["slow_period"] == 15
+
+    jobs.run_backtest_job(db_session, made.json()["id"], fake_provider, today=TODAY)
+    assert client.get(f"/api/backtests/{made.json()['id']}").json()["status"] == "done"
+
+    missing = client.post("/api/backtests", json={**body, "algo_id": 999})
+    assert missing.status_code == 404 and "no saved algorithm 999" in missing.json()["detail"]
+    neither = client.post("/api/backtests", json=body)
+    assert neither.status_code == 400 and "Say which algorithm" in neither.json()["detail"]

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderType
 from app.trading import engine
-from app.trading.engine import live_context as live
+from tests.helpers import live
 
 D = Decimal
 

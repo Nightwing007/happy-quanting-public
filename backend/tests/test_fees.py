@@ -399,8 +399,15 @@ def test_an_empty_fee_list_means_no_charges():
     free = Broker("b", "B", "crypto", [], markets=("CRYPTO",))
     assert (
         calculate_charges(
-            markets.MARKETS["CRYPTO"], free, "buy", D(1), D("60000"), instrument_type="crypto",
-            instrument_currency="USD", account_currency="USD", fx_rate=D(1),
+            markets.MARKETS["CRYPTO"],
+            free,
+            "buy",
+            D(1),
+            D("60000"),
+            instrument_type="crypto",
+            instrument_currency="USD",
+            account_currency="USD",
+            fx_rate=D(1),
         )  # fmt: skip
         == []
     )

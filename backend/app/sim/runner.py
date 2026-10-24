@@ -23,7 +23,7 @@ from app.market_data.replay import ReplayProvider, SessionBounds
 from app.models import Account, AccountKind, Order, SimSession, SimStatus, Trade
 from app.trading import hours
 from app.trading.context import TradingContext
-from app.trading.engine import ZERO, get_account, reset_account
+from app.trading.engine import ZERO, account_for_user, get_account, reset_account
 from app.trading.markets import Market, market_for
 from app.trading.tick import run_tick
 
@@ -193,8 +193,15 @@ def create_session(
     settings = get_settings()
     now = clock.now()
     draft = SimSession(
-        symbols=symbols, interval=interval, start_date=start_date, end_date=end_date, speed=speed,
-        created_at=now, cursor=now, status=SimStatus.READY, owner_user_id=owner_user_id,
+        symbols=symbols,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        speed=speed,
+        created_at=now,
+        cursor=now,
+        status=SimStatus.READY,
+        owner_user_id=owner_user_id,
     )
     bars, _ = load_bars(db, provider, draft, instruments, settings.base_currency)
     empty = [s for s, series in bars.items() if not series]
@@ -206,7 +213,8 @@ def create_session(
     if empty:
         raise HistoryRangeError(f"No {interval} bars for {', '.join(empty)} in that range.")
 
-    live = get_account(db)
+    # New sim accounts start with the broker choices of the owner's live account.
+    live = account_for_user(db, owner_user_id) if owner_user_id is not None else get_account(db)
     account = Account(
         currency=settings.base_currency,
         cash=settings.starting_cash,
@@ -230,15 +238,21 @@ def create_session(
     return draft
 
 
-def get_session(db: Session, session_id: int) -> SimSession:
+def get_session(db: Session, session_id: int, owner_user_id: int) -> SimSession:
+    """The owner's session; someone else's is "not found", so ids reveal nothing. The driver
+    (which runs every owner's sessions) loads rows itself instead of coming through here."""
     found = db.get(SimSession, session_id)
-    if found is None:
+    if found is None or found.owner_user_id != owner_user_id:
         raise SimNotFound(f"There is no simulation {session_id}.")
     return found
 
 
-def list_sessions(db: Session) -> list[SimSession]:
-    return list(db.scalars(select(SimSession).order_by(SimSession.id.desc())))
+def list_sessions(db: Session, owner_user_id: int) -> list[SimSession]:
+    return list(
+        db.scalars(
+            select(SimSession).where(SimSession.owner_user_id == owner_user_id).order_by(SimSession.id.desc())
+        )
+    )
 
 
 def progress_percent(run: SimRun) -> float:
@@ -248,9 +262,7 @@ def progress_percent(run: SimRun) -> float:
     return round(100 * played / len(run.ends), 1)
 
 
-def advance(
-    db: Session, session: SimSession, n_bars: int, provider: MarketDataProvider | None = None
-) -> int:
+def advance(db: Session, session: SimSession, n_bars: int, provider: MarketDataProvider | None = None) -> int:
     """Move the cursor to the end of the next bar, `n_bars` times, running one tick after each.
     Returns how many steps were taken (fewer than asked when the data ends).
 
@@ -290,8 +302,10 @@ def _next_stop(run: SimRun, cursor: datetime) -> int | None:
     next_end = run.ends[index]
     length = _BAR_SECONDS.get(run.session.interval)
     here = int(cursor.timestamp())
-    if length and next_end - here > length and any(
-        hours.market_status(m, cursor).state == "open" for m in run.markets
+    if (
+        length
+        and next_end - here > length
+        and any(hours.market_status(m, cursor).state == "open" for m in run.markets)
     ):
         return here + length
     return next_end

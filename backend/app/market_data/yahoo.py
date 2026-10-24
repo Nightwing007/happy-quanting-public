@@ -69,7 +69,7 @@ def _number(value) -> Decimal | None:
     """A finite Yahoo number as a clean Decimal, or None for missing, NaN, infinite or non-numeric."""
     try:
         number = _clean(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return None if number is None else to_decimal(number)
 

@@ -21,9 +21,7 @@ from app.trading import brokers, hours, markets
 @pytest.fixture
 def db_session() -> Iterator[Session]:
     # StaticPool keeps one connection, otherwise each checkout gets its own empty :memory: db.
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)()
     try:
@@ -38,15 +36,43 @@ def fake_provider() -> FakeProvider:
     return FakeProvider()
 
 
-@pytest.fixture
-def client(db_session: Session, fake_provider: FakeProvider) -> Iterator[TestClient]:
+PASSWORD = "correct-horse-battery"
+
+
+def _client_for(
+    username: str | None, db_session: Session, fake_provider: FakeProvider
+) -> Iterator[TestClient]:
+    """A TestClient (its own cookie jar) on the shared app and DB, signed up as `username`."""
     app.dependency_overrides[get_db] = lambda: db_session
     # One FakeProvider per test, so a test can set_price on it and see the API reflect that.
     app.dependency_overrides[get_provider] = lambda: fake_provider
     app.dependency_overrides[get_settings] = lambda: Settings(market_data_provider="fake")
     with TestClient(app) as test_client:
+        if username is not None:
+            r = test_client.post("/api/auth/signup", json={"username": username, "password": PASSWORD})
+            assert r.status_code == 200, r.text
         yield test_client
+
+
+@pytest.fixture
+def client(db_session: Session, fake_provider: FakeProvider) -> Iterator[TestClient]:
+    """Logged in as `tester`, so existing API tests run as one user."""
+    yield from _client_for("tester", db_session, fake_provider)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def second_client(
+    client: TestClient, db_session: Session, fake_provider: FakeProvider
+) -> Iterator[TestClient]:
+    """Logged in as `other`: same app and database as `client`, different cookies."""
+    yield from _client_for("other", db_session, fake_provider)
+
+
+@pytest.fixture
+def anon_client(client: TestClient, db_session: Session, fake_provider: FakeProvider) -> Iterator[TestClient]:
+    """Same app and database, nobody logged in."""
+    yield from _client_for(None, db_session, fake_provider)
 
 
 @pytest.fixture(autouse=True)

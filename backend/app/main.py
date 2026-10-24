@@ -17,8 +17,10 @@ from app.algos.api import ParameterError
 from app.algos.backtest import BacktestError
 from app.algos.runner import StrategyRunError
 from app.api import algos, backtests, market, sim, trading, watchlist
+from app.api import auth as auth_api
 from app.api import settings as settings_api
 from app.api.deps import Provider
+from app.auth import AuthError, ensure_demo_password
 from app.config import Settings, get_settings
 from app.db import SessionLocal
 from app.market_data import get_provider
@@ -34,12 +36,13 @@ from app.trading.engine import (
     live_accounts,
     live_context,
 )
-from app.trading.errors import TradingError
+from app.trading.errors import OrderNotFound, TradeNotFound, TradingError
 from app.trading.tick import run_tick
 
 logger = logging.getLogger(__name__)
 
 FILL_INTERVAL_SECONDS = 60
+NOT_FOUND_CODES = {OrderNotFound.code, TradeNotFound.code}
 
 
 def _fill_once() -> None:
@@ -73,8 +76,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Same gate: without migrations there may be no tables (and in tests, no real DB).
         with SessionLocal() as db:
             first_run_setup(db)
+            demo_password = ensure_demo_password(db)
+            if demo_password:
+                # print, not the logger: a password must not land in log files.
+                print(f"\n=====\nDemo login: demo / {demo_password}  (shown once)\n=====", flush=True)
             # BASE_CURRENCY changed since the account was made: convert it (or log and carry on).
-            convert_account_currency(live_context(db, get_provider()), settings.base_currency)
+            for account in live_accounts(db):
+                if account.user_id is not None:
+                    ctx = live_context(db, get_provider(), account.user_id)
+                    convert_account_currency(ctx, settings.base_currency)
     tasks = (
         [asyncio.create_task(_fill_loop()), asyncio.create_task(drive_loop())]
         if settings.background_jobs
@@ -94,6 +104,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Happy Quanting", lifespan=lifespan)
+app.include_router(auth_api.router)
 app.include_router(algos.router)
 app.include_router(market.router)
 app.include_router(trading.router)
@@ -122,10 +133,19 @@ def _trading_error(request: Request, exc: TradingError) -> JSONResponse:
     fields = getattr(exc, "fields", None)
     if fields:
         content["fields"] = fields
-    return JSONResponse(status_code=400, content=content)
+    # A missing order or trade is a 404, and another user's is "missing" too (never a 403).
+    status = 404 if exc.code in NOT_FOUND_CODES else 400
+    return JSONResponse(status_code=status, content=content)
 
 
 app.add_exception_handler(TradingError, _trading_error)
+
+
+def _auth_error(request: Request, exc: AuthError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message, "code": exc.code})
+
+
+app.add_exception_handler(AuthError, _auth_error)
 
 
 def _sim_error(request: Request, exc: SimError) -> JSONResponse:

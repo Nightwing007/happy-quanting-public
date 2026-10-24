@@ -40,6 +40,7 @@ _SEED = [
     ("HKDINR=X", "HKD/INR", "CCY", "currency", "INR", "10.688"),
 ]
 
+
 def _fund(**fields: str | None) -> dict[str, Decimal | None]:
     return {k: None if v is None else Decimal(v) for k, v in fields.items()}
 
@@ -51,33 +52,59 @@ _FUNDAMENTALS: dict[str, tuple[str | None, str | None, dict[str, Decimal | None]
     "AAPL": (
         "Technology",
         "Consumer Electronics",
-        _fund(trailing_pe="24.8", price_to_book="8.45", return_on_equity="45.2",
-              debt_to_equity="1.5", dividend_yield="0.45"),
+        _fund(
+            trailing_pe="24.8",
+            price_to_book="8.45",
+            return_on_equity="45.2",
+            debt_to_equity="1.5",
+            dividend_yield="0.45",
+        ),
     ),
     "RELIANCE.NS": (
         "Energy",
         "Oil & Gas Refining & Marketing",
-        _fund(trailing_pe="24.1", price_to_book="2.1", return_on_equity="9.8",
-              debt_to_equity="0.38", dividend_yield="0.35", market_cap="17000000000000"),
+        _fund(
+            trailing_pe="24.1",
+            price_to_book="2.1",
+            return_on_equity="9.8",
+            debt_to_equity="0.38",
+            dividend_yield="0.35",
+            market_cap="17000000000000",
+        ),
     ),
     "TCS.NS": (
         "Technology",
         "Information Technology Services",
-        _fund(trailing_pe="30", price_to_book="12.4", return_on_equity="51.6",
-              debt_to_equity=None, dividend_yield="1.6"),
+        _fund(
+            trailing_pe="30",
+            price_to_book="12.4",
+            return_on_equity="51.6",
+            debt_to_equity=None,
+            dividend_yield="1.6",
+        ),
     ),
     "HDFCBANK.NS": (
         "Financial Services",
         "Banks - Regional",
-        _fund(trailing_pe="18.2", price_to_book="2.6", return_on_equity="14.1",
-              debt_to_equity="0.9", dividend_yield="1.1"),
+        _fund(
+            trailing_pe="18.2",
+            price_to_book="2.6",
+            return_on_equity="14.1",
+            debt_to_equity="0.9",
+            dividend_yield="1.1",
+        ),
     ),
     # 52-week position: (60000 - 40000) / (75000 - 40000) = 20000 / 35000 = 57.14% of the way up.
     "BTC-USD": (
         None,
         None,
-        _fund(market_cap="1200000000000", volume_24h="35000000000", circulating_supply="19800000",
-              fifty_two_week_low="40000", fifty_two_week_high="75000"),
+        _fund(
+            market_cap="1200000000000",
+            volume_24h="35000000000",
+            circulating_supply="19800000",
+            fifty_two_week_low="40000",
+            fifty_two_week_high="75000",
+        ),
     ),
 }
 
@@ -144,9 +171,7 @@ class FakeProvider:
         if not needle:
             return []
         hits = [
-            i
-            for i in self._instruments.values()
-            if needle in i.symbol.lower() or needle in i.name.lower()
+            i for i in self._instruments.values() if needle in i.symbol.lower() or needle in i.name.lower()
         ]
         return hits[:limit]
 
@@ -183,8 +208,7 @@ class FakeProvider:
             step_days = _INTERVAL_STEP_DAYS.get(interval, 1)
             count = min(max(2, _RANGE_DAYS.get(range_, 30) // step_days), _MAX_BARS)
             times = [
-                (_ANCHOR + timedelta(days=step_days * k)).strftime("%Y-%m-%d")
-                for k in range(1 - count, 1)
+                (_ANCHOR + timedelta(days=step_days * k)).strftime("%Y-%m-%d") for k in range(1 - count, 1)
             ]
 
         # Random walk generated backwards from the current price so the last close matches it.
@@ -217,13 +241,10 @@ class FakeProvider:
             return bars
         if interval not in _INTERVAL_STEP_DAYS:
             raise DataUnavailable(f"The offline provider has no {interval} history.")
-        daily = [
-            self._daily_bar(symbol, day)
-            for day in _days(start, end)
-            if weekends or day.weekday() < 5
-        ]
+        daily = [self._daily_bar(symbol, day) for day in _days(start, end) if weekends or day.weekday() < 5]
         if interval == "1d":
             return daily
+
         # Weekly bars are labelled with their Monday, monthly with the 1st, as Yahoo does.
         def label(bar: Bar) -> str:
             day = date.fromisoformat(str(bar.time))
@@ -314,6 +335,5 @@ def _group(minute_bars: list[Bar], minutes: int) -> list[Bar]:
     # Buckets count from the session open, so a 375-minute NSE day gives 6 full 1h bars and a
     # short last one rather than bars straddling the open.
     return [
-        _merge(minute_bars[i : i + minutes], minute_bars[i].time)
-        for i in range(0, len(minute_bars), minutes)
+        _merge(minute_bars[i : i + minutes], minute_bars[i].time) for i in range(0, len(minute_bars), minutes)
     ]

@@ -19,7 +19,6 @@ from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderStatus, OrderType, Trade
 from app.schemas import OrderLegOut
 from app.trading import engine
-from app.trading.engine import live_context as live
 from app.trading.errors import (
     InsufficientFunds,
     ShortMarketClosed,
@@ -28,6 +27,7 @@ from app.trading.errors import (
     TradeNotFound,
     TradeNotOpen,
 )
+from tests.helpers import live
 
 D = Decimal
 real_calendar = pytest.mark.real_calendar

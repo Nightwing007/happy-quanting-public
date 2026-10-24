@@ -39,9 +39,7 @@ def parse_indicators(spec: str) -> list[tuple[str, int]]:
             continue
         kind, _, raw_period = token.partition(":")
         if kind not in _PANES:
-            raise _bad_request(
-                f"Indicator '{kind}' isn't available. Choose one of: {', '.join(_PANES)}."
-            )
+            raise _bad_request(f"Indicator '{kind}' isn't available. Choose one of: {', '.join(_PANES)}.")
         if raw_period:
             if not raw_period.isdigit():
                 raise _bad_request(

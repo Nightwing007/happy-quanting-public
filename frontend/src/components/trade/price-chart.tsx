@@ -44,7 +44,7 @@ export function indicatorColor(i: IndicatorSeries, index = 0): string {
   return INDICATOR_COLORS[indicatorKey(i)] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
-function themeColors(dark: boolean) {
+export function themeColors(dark: boolean) {
   return dark
     ? { text: "#a1a1aa", grid: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", cross: "#71717a" }
     : { text: "#52525b", grid: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.12)", cross: "#a1a1aa" };

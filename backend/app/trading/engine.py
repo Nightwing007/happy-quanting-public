@@ -33,6 +33,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.auth import DEMO_USERNAME
 from app.config import get_settings
 from app.market_data import get_quotes
 from app.market_data.base import TRADABLE_TYPES, MarketDataError, MarketDataProvider, Quote
@@ -51,6 +52,7 @@ from app.models import (
     TradeDirection,
     TradeProduct,
     TradeStatus,
+    User,
     WatchlistItem,
 )
 from app.schemas import ChargeOut, OrderLegOut, PayoutOut, PayoutsOut, PayoutTotalsOut
@@ -105,6 +107,21 @@ def first_run_setup(db: Session) -> None:
     """Create the live account and starter watchlist if there is none yet. Idempotent."""
     if db.scalar(select(Account.id).where(Account.kind == AccountKind.LIVE).limit(1)) is not None:
         return
+    # The first account belongs to the demo user (migration 0010 makes it; a bare test DB doesn't,
+    # so make it here with an unusable password).
+    demo = db.scalar(select(User).where(User.username == DEMO_USERNAME))
+    if demo is None:
+        demo = User(
+            username=DEMO_USERNAME, display_name="Demo", password_hash="!", is_creator=False,
+            created_at=clock.now(),
+        )  # fmt: skip
+        db.add(demo)
+        db.flush()
+    create_live_account(db, user_id=demo.id)
+
+
+def create_live_account(db: Session, user_id: int | None) -> Account:
+    """A live account with the starting cash, default brokers and starter watchlist; commits."""
     settings = get_settings()
     now = clock.now()
     account = Account(
@@ -115,12 +132,14 @@ def first_run_setup(db: Session) -> None:
         margin_used=ZERO,
         created_at=now,
         kind=AccountKind.LIVE,
+        user_id=user_id,
     )
     db.add(account)
     db.flush()
     for symbol, name in STARTER_WATCHLIST:
         db.add(WatchlistItem(account_id=account.id, symbol=symbol, name=name, created_at=now))
     db.commit()
+    return account
 
 
 def _live_account(db: Session) -> Account | None:
@@ -143,10 +162,21 @@ def live_accounts(db: Session) -> list[Account]:
     return list(db.scalars(select(Account).where(Account.kind == AccountKind.LIVE).order_by(Account.id)))
 
 
-def live_context(db: Session, provider: MarketDataProvider) -> TradingContext:
-    """A context for the live account on the real clock. The clock is looked up on every call,
-    through the module, so a test that replaces `clock.now` is obeyed."""
-    return TradingContext(db, get_account(db), provider, lambda: clock.now())
+def account_for_user(db: Session, user_id: int) -> Account:
+    """The user's live account, made (with the starter watchlist) if they have none yet."""
+    account = db.scalar(
+        select(Account)
+        .where(Account.kind == AccountKind.LIVE, Account.user_id == user_id)
+        .order_by(Account.id)
+        .limit(1)
+    )
+    return account if account is not None else create_live_account(db, user_id=user_id)
+
+
+def live_context(db: Session, provider: MarketDataProvider, user_id: int) -> TradingContext:
+    """A context for the user's live account on the real clock. The clock is looked up on every
+    call, through the module, so a test that replaces `clock.now` is obeyed."""
+    return TradingContext(db, account_for_user(db, user_id), provider, lambda: clock.now())
 
 
 def reset_account(ctx: TradingContext) -> Account:
