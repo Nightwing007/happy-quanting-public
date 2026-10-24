@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import JSON, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import JSON, BigInteger, Date, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base, DecimalString, UTCDateTime
@@ -75,6 +75,13 @@ class LegKind(StrEnum):
     OPEN_LONG = "open_long"
 
 
+class AccountKind(StrEnum):
+    LIVE = "live"  # the person's own paper account; the only kind the background loop works on
+    SIM = "sim"
+    BACKTEST = "backtest"
+    ALGO = "algo"  # an account an algorithm trades in
+
+
 class Account(Base):
     __tablename__ = "accounts"
 
@@ -86,6 +93,9 @@ class Account(Base):
     # Cash blocked by open shorts. Available cash is `cash - margin_used`; it cannot go below zero.
     margin_used: Mapped[Decimal] = mapped_column(DecimalString, default=Decimal(0))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    kind: Mapped[str] = mapped_column(String, default=AccountKind.LIVE)  # AccountKind
+    # The owner, once there are users. No foreign key yet: the users table does not exist.
+    user_id: Mapped[int | None] = mapped_column(nullable=True)
     # The broker chosen for each segment; see app/trading/brokers.py for the codes.
     broker_india: Mapped[str] = mapped_column(String, default="groww")
     broker_international: Mapped[str] = mapped_column(String, default="ibkr")
@@ -203,4 +213,105 @@ class WatchlistItem(Base):
     )
     symbol: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class BarCache(Base):
+    """One fetched historical bar. `ts` is UTC unix seconds for every interval (a daily bar sits
+    at its date's UTC midnight), so bars of any market and interval compare the same way."""
+
+    __tablename__ = "bar_cache"
+    __table_args__ = (UniqueConstraint("symbol", "interval", "ts", name="uq_bar_cache_symbol_interval_ts"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String)
+    interval: Mapped[str] = mapped_column(String)
+    ts: Mapped[int] = mapped_column(BigInteger)
+    open: Mapped[Decimal] = mapped_column(DecimalString)
+    high: Mapped[Decimal] = mapped_column(DecimalString)
+    low: Mapped[Decimal] = mapped_column(DecimalString)
+    close: Mapped[Decimal] = mapped_column(DecimalString)
+    volume: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class HistorySpan(Base):
+    """A run of calendar days (both ends inclusive) already asked of the provider for a symbol and
+    interval. Days inside it with no bars are weekends and holidays, so they are not asked again."""
+
+    __tablename__ = "history_spans"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol", "interval", "start_date", name="uq_history_spans_symbol_interval_start_date"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String)
+    interval: Mapped[str] = mapped_column(String)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+
+
+class SimStatus(StrEnum):
+    READY = "ready"  # made, cursor at the first bar, nothing played yet
+    RUNNING = "running"  # the driver is advancing it at `speed` bars a second
+    PAUSED = "paused"
+    FINISHED = "finished"  # the cursor is at the end of the last bar
+
+
+class SimSession(Base):
+    """A past stretch of days played back through the real engine on an account of its own."""
+
+    __tablename__ = "sim_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # The owner, once there are users (same as Account.user_id: no foreign key yet).
+    owner_user_id: Mapped[int | None] = mapped_column(nullable=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id", name="fk_sim_sessions_account_id_accounts")
+    )
+    symbols: Mapped[list] = mapped_column(JSON)
+    interval: Mapped[str] = mapped_column(String, default="1m")
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    speed: Mapped[int] = mapped_column(default=60)  # bars per second while running, 1-200
+    # The replayed "now": the end of the last bar played. It starts at the first bar's start,
+    # when no bar has finished yet.
+    cursor: Mapped[datetime] = mapped_column(UTCDateTime)
+    status: Mapped[str] = mapped_column(String, default=SimStatus.READY)  # SimStatus
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class BacktestStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
+class Backtest(Base):
+    """A strategy run over a past date range, and what came of it.
+
+    The scratch account the run traded in is deleted once `results` are stored, so the table
+    holds the findings and nothing else piles up.
+    """
+
+    __tablename__ = "backtests"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # The owner, once there are users (same as Account.user_id: no foreign key yet).
+    owner_user_id: Mapped[int | None] = mapped_column(nullable=True)
+    strategy_key: Mapped[str] = mapped_column(String)
+    params: Mapped[dict] = mapped_column(JSON)  # as given, decimals as strings
+    symbols: Mapped[list] = mapped_column(JSON)
+    interval: Mapped[str] = mapped_column(String)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    starting_cash: Mapped[Decimal] = mapped_column(DecimalString)
+    account_currency: Mapped[str] = mapped_column(String(3))
+    brokers: Mapped[dict] = mapped_column(JSON)  # {"india": "groww", ...}
+    status: Mapped[str] = mapped_column(String, default=BacktestStatus.QUEUED)  # BacktestStatus
+    progress: Mapped[int] = mapped_column(default=0)  # percent, 0-100
+    error: Mapped[str | None] = mapped_column(String, nullable=True)
+    results: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # BacktestResultsOut
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)

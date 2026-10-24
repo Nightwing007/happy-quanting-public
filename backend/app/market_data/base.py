@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 from typing import Protocol
 
@@ -108,4 +109,11 @@ class MarketDataProvider(Protocol):
 
     def get_bars(self, symbol: str, interval: str, range_: str) -> list[Bar]: ...
 
-    def get_fundamentals(self, symbol: str) -> Fundamentals: ...
+    def get_history(self, symbol: str, interval: str, start: date, end: date) -> list[Bar]:
+        """Bars for the calendar days start..end, both inclusive; [] when the market never traded.
+
+        Unlike `get_bars`, an intraday `Bar.time` here is true UTC unix seconds (the cache and the
+        replay compare times across markets, so they must not be shifted into exchange-local
+        clock time). Daily and longer bars keep "YYYY-MM-DD".
+        """
+        ...

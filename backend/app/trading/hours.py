@@ -7,7 +7,7 @@ whole year because a holiday list ran out would be worse than the rare order on 
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime, time, timedelta
 from functools import cache
 from typing import Literal
 from zoneinfo import ZoneInfo
@@ -55,6 +55,25 @@ def _maybe(fn, *args) -> pd.Timestamp | None:
         return fn(*args)
     except ValueError:  # the calendar's out-of-bounds errors all subclass it
         return None  # asked about a moment beyond the calendar's end
+
+
+def session_bounds(market: Market, day: date) -> tuple[datetime, datetime] | None:
+    """(open, close) as UTC datetimes of the session the exchange held on its local date `day`,
+    or None when it held none (weekend, holiday, or a date beyond the calendar).
+
+    Crypto trades round the clock: its day runs from 00:00 UTC to 24:00 UTC, with the close put
+    one second early so that it comes strictly before the next day's open. The replay tells two
+    prices apart by the moment they existed, and a close stamped exactly on the next open would
+    be indistinguishable from it.
+    """
+    if market.calendar == ALWAYS_OPEN:
+        start = datetime.combine(day, time(0), tzinfo=UTC)
+        return start, start + timedelta(days=1, seconds=-1)
+    cal = _calendar(market.calendar)
+    session = pd.Timestamp(day)
+    if session < cal.first_session or session > cal.last_session or not cal.is_session(session):
+        return None
+    return cal.session_open(session).to_pydatetime(), cal.session_close(session).to_pydatetime()
 
 
 def market_status(market: Market, at: datetime | None = None) -> MarketStatus:

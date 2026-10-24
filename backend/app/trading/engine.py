@@ -3,6 +3,12 @@
 Unit of work: every public function here that writes commits before it returns, and rolls
 back on failure, so callers (routes, the background task) never commit.
 
+Every public function takes a `TradingContext`: the session, the one account it acts on, the
+price provider and the clock. Every query filters by `ctx.account.id` and every time comes from
+`ctx.now()`, so a sim, a backtest and a live account can trade side by side without seeing each
+other. Only the account bootstrap (`first_run_setup`, `get_account`, `live_context`) works from
+a bare session, because there is no account to build a context from yet.
+
 An order is turned into legs by `_plan`: a sell closes your open longs (oldest first) and only
 the rest becomes a short; a buy closes your open shorts first and only the rest becomes a long;
 an exit names the trade to close. Each leg is charged under its own product. An order placed
@@ -19,7 +25,7 @@ realized + unrealized is exactly total value less starting cash, to the paisa, w
 
 import logging
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -33,6 +39,7 @@ from app.market_data.base import TRADABLE_TYPES, MarketDataError, MarketDataProv
 from app.market_data.fx import get_fx_rate
 from app.models import (
     Account,
+    AccountKind,
     ClosedHow,
     LegKind,
     Order,
@@ -52,6 +59,7 @@ from . import brokers as broker_data
 from . import hours
 from . import markets as market_data
 from .brokers import Broker
+from .context import TradingContext
 from .errors import (
     BrokerNotAvailable,
     InsufficientFunds,
@@ -94,8 +102,8 @@ STARTER_WATCHLIST = [
 
 
 def first_run_setup(db: Session) -> None:
-    """Create the account and starter watchlist if there is no account yet. Idempotent."""
-    if db.scalar(select(Account.id).limit(1)) is not None:
+    """Create the live account and starter watchlist if there is none yet. Idempotent."""
+    if db.scalar(select(Account.id).where(Account.kind == AccountKind.LIVE).limit(1)) is not None:
         return
     settings = get_settings()
     now = clock.now()
@@ -106,6 +114,7 @@ def first_run_setup(db: Session) -> None:
         realized_pnl=ZERO,
         margin_used=ZERO,
         created_at=now,
+        kind=AccountKind.LIVE,
     )
     db.add(account)
     db.flush()
@@ -114,18 +123,35 @@ def first_run_setup(db: Session) -> None:
     db.commit()
 
 
+def _live_account(db: Session) -> Account | None:
+    return db.scalar(select(Account).where(Account.kind == AccountKind.LIVE).order_by(Account.id).limit(1))
+
+
 def get_account(db: Session) -> Account:
-    account = db.scalar(select(Account).order_by(Account.id).limit(1))
+    """The live account (the one the app's own screens show), made on first use."""
+    account = _live_account(db)
     if account is None:
         first_run_setup(db)
-        account = db.scalar(select(Account).order_by(Account.id).limit(1))
+        account = _live_account(db)
     assert account is not None
     return account
 
 
-def reset_account(db: Session) -> Account:
+def live_accounts(db: Session) -> list[Account]:
+    """Every live account, which is what the background loop works through. Sim, backtest and
+    algo accounts are driven by whoever owns them, on their own clocks."""
+    return list(db.scalars(select(Account).where(Account.kind == AccountKind.LIVE).order_by(Account.id)))
+
+
+def live_context(db: Session, provider: MarketDataProvider) -> TradingContext:
+    """A context for the live account on the real clock. The clock is looked up on every call,
+    through the module, so a test that replaces `clock.now` is obeyed."""
+    return TradingContext(db, get_account(db), provider, lambda: clock.now())
+
+
+def reset_account(ctx: TradingContext) -> Account:
     """Wipe orders and trades and restore the starting cash. The watchlist is kept."""
-    account = get_account(db)
+    db, account = ctx.db, ctx.account
     db.execute(delete(Order).where(Order.account_id == account.id))
     db.execute(delete(Trade).where(Trade.account_id == account.id))
     account.cash = account.starting_cash
@@ -139,7 +165,7 @@ def reset_account(db: Session) -> Account:
 _LEG_MONEY = ("value", "charges_total", "entry_charges", "cash_change", "margin_change", "realized_pnl")
 
 
-def convert_account_currency(db: Session, provider: MarketDataProvider, to_currency: str) -> bool:
+def convert_account_currency(ctx: TradingContext, to_currency: str) -> bool:
     """Re-denominate the whole account in `to_currency` at the current FX rate. Returns whether it
     converted. Does nothing if the account is already in that currency, or if the rate is
     unavailable (logged; the app still starts and the account is left as it was).
@@ -148,12 +174,12 @@ def convert_account_currency(db: Session, provider: MarketDataProvider, to_curre
     cash, realized P&L, each order's amounts, charge lines and legs, each trade's values. Figures
     in the instrument's own currency (prices, native charge amounts, average cost) do not change.
     """
-    account = get_account(db)
+    db, account = ctx.db, ctx.account
     old = account.currency
     if old == to_currency:
         return False
     try:
-        rate = _fx_to_account(provider, old, to_currency)
+        rate = _fx_to_account(ctx.provider, old, to_currency)
     except MarketDataError as exc:
         logger.warning(
             "Account is in %s but BASE_CURRENCY is %s, and the %s to %s rate is unavailable (%s). "
@@ -204,9 +230,7 @@ def convert_account_currency(db: Session, provider: MarketDataProvider, to_curre
             trade.entry_fx_rate = (
                 Decimal(1) if trade.currency == to_currency else trim8(trade.entry_fx_rate * rate)
             )
-        account.margin_used = sum(
-            (t.margin_blocked for t in trades if t.status == TradeStatus.OPEN), ZERO
-        )
+        account.margin_used = sum((t.margin_blocked for t in trades if t.status == TradeStatus.OPEN), ZERO)
         account.currency = to_currency
         db.commit()
     except Exception:
@@ -221,7 +245,7 @@ def convert_account_currency(db: Session, provider: MarketDataProvider, to_curre
     return True
 
 
-def update_brokers(db: Session, choices: dict[str, str | None]) -> Account:
+def update_brokers(ctx: TradingContext, choices: dict[str, str | None]) -> Account:
     """Set the broker for each segment named in `choices` (segment -> broker code). Checks every
     choice before changing any, so a bad one leaves the account as it was."""
     chosen = {segment: code for segment, code in choices.items() if code is not None}
@@ -234,10 +258,10 @@ def update_brokers(db: Session, choices: dict[str, str | None]) -> Account:
             options = ", ".join(b.code for b in broker_data.brokers_for_segment(segment))
             label = broker_data.SEGMENT_LABELS[segment]
             raise InvalidBroker(f"'{code}' isn't a broker for {label}. Choose one of: {options}.")
-    account = get_account(db)
+    account = ctx.account
     for segment, code in chosen.items():
         setattr(account, f"broker_{segment}", code)
-    db.commit()
+    ctx.db.commit()
     return account
 
 
@@ -279,25 +303,25 @@ class Plan:
     note: str = ""
 
 
-def _open_trades(db: Session, account: Account, symbol: str, direction: str | None = None) -> list[Trade]:
+def _open_trades(ctx: TradingContext, symbol: str, direction: str | None = None) -> list[Trade]:
     """Open trades of `symbol`, oldest first."""
     query = select(Trade).where(
-        Trade.account_id == account.id, Trade.symbol == symbol, Trade.status == TradeStatus.OPEN
+        Trade.account_id == ctx.account.id, Trade.symbol == symbol, Trade.status == TradeStatus.OPEN
     )
     if direction is not None:
         query = query.where(Trade.direction == direction)
-    return list(db.scalars(query.order_by(Trade.opened_at, Trade.id)))
+    return list(ctx.db.scalars(query.order_by(Trade.opened_at, Trade.id)))
 
 
-def _promised(db: Session, account: Account, symbol: str) -> Decimal:
+def _promised(ctx: TradingContext, symbol: str) -> Decimal:
     """Shares promised to open sell orders for `symbol`. Summed in Python: quantities are TEXT
     in SQLite, so SQL SUM would turn them into floats."""
     return sum(
         (
             o.quantity
-            for o in db.scalars(
+            for o in ctx.db.scalars(
                 select(Order).where(
-                    Order.account_id == account.id,
+                    Order.account_id == ctx.account.id,
                     Order.symbol == symbol,
                     Order.side == OrderSide.SELL,
                     Order.status == OrderStatus.OPEN,
@@ -321,7 +345,9 @@ def _close_legs(trades: list[Trade], quantity: Decimal, kind: str) -> list[LegPl
     return legs
 
 
-def _short_leg(market: Market, request: OrderRequest, short_quantity: Decimal, held: Decimal) -> LegPlan:
+def _short_leg(
+    ctx: TradingContext, market: Market, request: OrderRequest, short_quantity: Decimal, held: Decimal
+) -> LegPlan:
     """The leg that opens a short for the part of a sell that closes nothing, or the reason it
     can't. The error type is decided here, with its sentence, so no caller reads words."""
     rule = market.short_rule
@@ -339,32 +365,31 @@ def _short_leg(market: Market, request: OrderRequest, short_quantity: Decimal, h
             raise ShortQuantityInvalid(
                 f"You can only short whole {market.name} shares — nobody lends a fraction of a share."
             )
-        raise ShortQuantityInvalid(
-            f"Shorts on {market.name} trade in steps of {rule.min_shortable_step:f}."
-        )
+        raise ShortQuantityInvalid(f"Shorts on {market.name} trade in steps of {rule.min_shortable_step:f}.")
     if rule.style == "intraday":
-        status = hours.market_status(market)
-        if not hours.is_open(market):
+        now = ctx.now()
+        status = hours.market_status(market, now)
+        if not hours.is_open(market, now):
             raise ShortMarketClosed(
                 f"An intraday short can't be placed while {market.name} is closed, because brokers "
-                f"take no after-market order for one. {hours.status_label(market, status)}."
+                f"take no after-market order for one. {hours.status_label(market, status, now)}."
             )
     product = TradeProduct.INTRADAY if rule.style == "intraday" else TradeProduct.MARGIN
     return LegPlan(LegKind.OPEN_SHORT, short_quantity, product)
 
 
-def _get_open_trade(db: Session, account: Account, trade_id: int) -> Trade:
-    trade = db.get(Trade, trade_id)
-    if trade is None or trade.account_id != account.id:
+def _get_open_trade(ctx: TradingContext, trade_id: int) -> Trade:
+    trade = ctx.db.get(Trade, trade_id)
+    if trade is None or trade.account_id != ctx.account.id:
         raise TradeNotFound(f"There is no trade with id {trade_id}.")
     if trade.status != TradeStatus.OPEN:
         raise TradeNotOpen(f"Trade {trade_id} is already closed, so there is nothing to exit.")
     return trade
 
 
-def _plan_exit(db: Session, account: Account, request: OrderRequest, market: Market) -> Plan:
+def _plan_exit(ctx: TradingContext, request: OrderRequest, market: Market) -> Plan:
     assert request.exit_trade_id is not None
-    trade = _get_open_trade(db, account, request.exit_trade_id)
+    trade = _get_open_trade(ctx, request.exit_trade_id)
     kind = LegKind.CLOSE_LONG if trade.direction == TradeDirection.LONG else LegKind.CLOSE_SHORT
     quantity = request.quantity
     # A square-off, stop-loss or target always closes the very trade it belongs to, even where
@@ -376,7 +401,7 @@ def _plan_exit(db: Session, account: Account, request: OrderRequest, market: Mar
                 f"so you can't exit {quantity:f} of it."
             )
         return Plan(request, market, [LegPlan(kind, quantity, trade.product, trade)])
-    pool = _open_trades(db, account, trade.symbol, trade.direction)
+    pool = _open_trades(ctx, trade.symbol, trade.direction)
     available = sum((t.open_quantity for t in pool), ZERO)
     if quantity > available:
         raise InvalidOrder(f"You hold only {available:f} {trade.symbol}, so you can't exit {quantity:f}.")
@@ -387,7 +412,7 @@ def _plan_exit(db: Session, account: Account, request: OrderRequest, market: Mar
     return Plan(request, market, _close_legs(pool, quantity, kind), fifo=True, note=note)
 
 
-def _plan(db: Session, account: Account, request: OrderRequest, quote: Quote) -> Plan:
+def _plan(ctx: TradingContext, request: OrderRequest, quote: Quote) -> Plan:
     """Turn an order into legs, or raise the TradingError that says why it can't be.
 
     A sell closes open longs first, oldest first, and only the rest becomes a short. A buy
@@ -395,17 +420,17 @@ def _plan(db: Session, account: Account, request: OrderRequest, quote: Quote) ->
     """
     market = market_data.market_for(request.symbol, quote.type)
     if request.exit_trade_id is not None:
-        return _plan_exit(db, account, request, market)
+        return _plan_exit(ctx, request, market)
     quantity = request.quantity
     if request.side == OrderSide.SELL:
-        longs = _open_trades(db, account, request.symbol, TradeDirection.LONG)
+        longs = _open_trades(ctx, request.symbol, TradeDirection.LONG)
         held = sum((t.open_quantity for t in longs), ZERO)
         close_quantity = min(quantity, max(held - request.promised, ZERO))
         legs = _close_legs(longs, close_quantity, LegKind.CLOSE_LONG)
         if quantity > close_quantity:
-            legs.append(_short_leg(market, request, trim8(quantity - close_quantity), held))
+            legs.append(_short_leg(ctx, market, request, trim8(quantity - close_quantity), held))
     else:
-        shorts = _open_trades(db, account, request.symbol, TradeDirection.SHORT)
+        shorts = _open_trades(ctx, request.symbol, TradeDirection.SHORT)
         close_quantity = min(quantity, sum((t.open_quantity for t in shorts), ZERO))
         legs = _close_legs(shorts, close_quantity, LegKind.CLOSE_SHORT)
         if quantity > close_quantity:
@@ -549,8 +574,7 @@ def _merge_charges(legs: list[LegCost]) -> list[Charge]:
 
 
 def plan_cost(
-    provider: MarketDataProvider,
-    account: Account,
+    ctx: TradingContext,
     plan: Plan,
     quote: Quote,
     *,
@@ -571,9 +595,10 @@ def plan_cost(
     moment it is placed, takes liquidity.
     """
     market = plan.market
+    account = ctx.account
     broker = _broker_for(account, market)
     price = trim8(price)
-    fx = _fx_to_account(provider, quote.currency, account.currency)
+    fx = _fx_to_account(ctx.provider, quote.currency, account.currency)
     maker = order_type == OrderType.LIMIT and resting
 
     groups: dict[tuple[str, str], list[int]] = {}
@@ -753,9 +778,9 @@ def _check_quantity_step(market: Market, quantity: Decimal) -> None:
         raise InvalidOrder(_step_message(market))
 
 
-def _fillable(market: Market, quote: Quote) -> bool:
+def _fillable(ctx: TradingContext, market: Market, quote: Quote) -> bool:
     """Open, and priced by a quote from this session (see `hours.can_fill`)."""
-    return hours.can_fill(market, quote.as_of)
+    return hours.can_fill(market, quote.as_of, ctx.now())
 
 
 def _fx_to_account(provider: MarketDataProvider, instrument_ccy: str, account_ccy: str) -> Decimal:
@@ -781,8 +806,7 @@ def _checked_quote(provider: MarketDataProvider, symbol: str) -> Quote:
 
 
 def _request(
-    db: Session,
-    account: Account,
+    ctx: TradingContext,
     *,
     symbol: str,
     side: str,
@@ -790,13 +814,12 @@ def _request(
     exit_trade_id: int | None,
 ) -> OrderRequest:
     # Only a plain sell competes with other open sells for the same shares.
-    promised = _promised(db, account, symbol) if side == OrderSide.SELL and exit_trade_id is None else ZERO
+    promised = _promised(ctx, symbol) if side == OrderSide.SELL and exit_trade_id is None else ZERO
     return OrderRequest(symbol, side, quantity, exit_trade_id, OrderOrigin.USER, promised)
 
 
 def preview_order(
-    db: Session,
-    provider: MarketDataProvider,
+    ctx: TradingContext,
     *,
     symbol: str,
     side: str,
@@ -810,19 +833,17 @@ def preview_order(
     none, say) with the same sentence."""
     _validate_shape(side, type, quantity, limit_price)
     symbol = symbol.strip().upper()
-    account = get_account(db)
-    quote = _checked_quote(provider, symbol)
+    quote = _checked_quote(ctx.provider, symbol)
     quantity = trim8(quantity)
     _check_quantity_step(market_data.market_for(symbol, quote.type), quantity)
-    request = _request(db, account, symbol=symbol, side=side, quantity=quantity, exit_trade_id=None)
-    plan = _plan(db, account, request, quote)
+    request = _request(ctx, symbol=symbol, side=side, quantity=quantity, exit_trade_id=None)
+    plan = _plan(ctx, request, quote)
     price, resting = _pricing(side, type, limit_price, quote)
-    return plan_cost(provider, account, plan, quote, price=price, order_type=type, resting=resting)
+    return plan_cost(ctx, plan, quote, price=price, order_type=type, resting=resting)
 
 
 def place_order(
-    db: Session,
-    provider: MarketDataProvider,
+    ctx: TradingContext,
     *,
     symbol: str,
     side: str,
@@ -833,51 +854,43 @@ def place_order(
     """Validate, create the order, and fill it at once if it can be. Raises TradingError
     (writing nothing) when the order is not acceptable."""
     return _submit(
-        db, provider, symbol=symbol, side=side, type_=type, quantity=quantity,
+        ctx, symbol=symbol, side=side, type_=type, quantity=quantity,
         limit_price=limit_price, exit_trade_id=None,
     )  # fmt: skip
 
 
 def _exit_arguments(
-    db: Session, account: Account, trade_id: int, quantity: Decimal | None
+    ctx: TradingContext, trade_id: int, quantity: Decimal | None
 ) -> tuple[Trade, str, Decimal]:
-    trade = _get_open_trade(db, account, trade_id)
+    trade = _get_open_trade(ctx, trade_id)
     side = OrderSide.SELL if trade.direction == TradeDirection.LONG else OrderSide.BUY
     return trade, side, trim8(quantity) if quantity is not None else trade.open_quantity
 
 
-def exit_trade(
-    db: Session, provider: MarketDataProvider, trade_id: int, quantity: Decimal | None = None
-) -> Order:
+def exit_trade(ctx: TradingContext, trade_id: int, quantity: Decimal | None = None) -> Order:
     """Close `quantity` of a trade (all of its open part by default) at the market. Where the
     market pools holdings the oldest lots are what actually close; see `preview_exit`."""
-    trade, side, quantity = _exit_arguments(db, get_account(db), trade_id, quantity)
+    trade, side, quantity = _exit_arguments(ctx, trade_id, quantity)
     return _submit(
-        db, provider, symbol=trade.symbol, side=side, type_=OrderType.MARKET, quantity=quantity,
+        ctx, symbol=trade.symbol, side=side, type_=OrderType.MARKET, quantity=quantity,
         limit_price=None, exit_trade_id=trade.id, origin=OrderOrigin.EXIT,
     )  # fmt: skip
 
 
-def preview_exit(
-    db: Session, provider: MarketDataProvider, trade_id: int, quantity: Decimal | None = None
-) -> PlanCost:
+def preview_exit(ctx: TradingContext, trade_id: int, quantity: Decimal | None = None) -> PlanCost:
     """The payout of `exit_trade` before you commit: the same plan and the same costing."""
-    account = get_account(db)
-    trade, side, quantity = _exit_arguments(db, account, trade_id, quantity)
+    trade, side, quantity = _exit_arguments(ctx, trade_id, quantity)
     _validate_shape(side, OrderType.MARKET, quantity, None)
-    quote = _checked_quote(provider, trade.symbol)
+    quote = _checked_quote(ctx.provider, trade.symbol)
     _check_quantity_step(market_data.market_for(trade.symbol, quote.type), quantity)
     request = OrderRequest(trade.symbol, side, quantity, trade.id)
-    plan = _plan(db, account, request, quote)
+    plan = _plan(ctx, request, quote)
     price, resting = _pricing(side, OrderType.MARKET, None, quote)
-    return plan_cost(
-        provider, account, plan, quote, price=price, order_type=OrderType.MARKET, resting=resting
-    )
+    return plan_cost(ctx, plan, quote, price=price, order_type=OrderType.MARKET, resting=resting)
 
 
 def _submit(
-    db: Session,
-    provider: MarketDataProvider,
+    ctx: TradingContext,
     *,
     symbol: str,
     side: str,
@@ -889,19 +902,19 @@ def _submit(
 ) -> Order:
     _validate_shape(side, type_, quantity, limit_price)
     symbol = symbol.strip().upper()
-    account = get_account(db)
-    quote = _checked_quote(provider, symbol)
+    db, account = ctx.db, ctx.account
+    quote = _checked_quote(ctx.provider, symbol)
 
     quantity = trim8(quantity)
     _check_quantity_step(market_data.market_for(symbol, quote.type), quantity)
-    request = _request(db, account, symbol=symbol, side=side, quantity=quantity, exit_trade_id=exit_trade_id)
-    plan = _plan(db, account, request, quote)
+    request = _request(ctx, symbol=symbol, side=side, quantity=quantity, exit_trade_id=exit_trade_id)
+    plan = _plan(ctx, request, quote)
 
     # Costed here as well as at the fill so that an order the broker can't take is refused up
     # front, even one that will only rest in the book.
     price, resting = _pricing(side, type_, limit_price, quote)
-    cost = plan_cost(provider, account, plan, quote, price=price, order_type=type_, resting=resting)
-    fills_now = _reachable(side, type_, limit_price, quote.price) and _fillable(plan.market, quote)
+    cost = plan_cost(ctx, plan, quote, price=price, order_type=type_, resting=resting)
+    fills_now = _reachable(side, type_, limit_price, quote.price) and _fillable(ctx, plan.market, quote)
     if not fills_now:
         # An order that waits (a limit not yet reached, or any order while the market is closed)
         # does not reserve cash: it is checked here against the estimated cost, charges and
@@ -924,32 +937,32 @@ def _submit(
         origin=origin,
         cash_change=ZERO,
         legs=[],
-        created_at=clock.now(),
+        created_at=ctx.now(),
     )
     # The order joins the session only after a successful fill (or when it stays open), so a
     # market order that is refused leaves nothing behind.
     if fills_now:
-        _fill(db, provider, account, order, quote, resting=False, promised=request.promised)
+        _fill(ctx, order, quote, resting=False, promised=request.promised)
     db.add(order)
     db.commit()
     return order
 
 
-def cancel_order(db: Session, order_id: int) -> Order:
-    order = db.get(Order, order_id)
-    if order is None:
+def cancel_order(ctx: TradingContext, order_id: int) -> Order:
+    order = ctx.db.get(Order, order_id)
+    if order is None or order.account_id != ctx.account.id:
         raise OrderNotFound(f"There is no order with id {order_id}.")
     if order.status != OrderStatus.OPEN:
         raise OrderNotOpen(f"Order {order_id} is already {order.status}, so it can't be cancelled.")
     order.status = OrderStatus.CANCELLED
-    db.commit()
+    ctx.db.commit()
     return order
 
 
-def fill_open_orders(db: Session, provider: MarketDataProvider) -> int:
+def fill_open_orders(ctx: TradingContext) -> int:
     """Fill open orders that can: limit orders whose price has been reached, and orders that
     waited for the market to open. Returns how many filled."""
-    account = get_account(db)
+    db, account, provider = ctx.db, ctx.account, ctx.provider
     open_orders = db.scalars(
         select(Order)
         .where(Order.account_id == account.id, Order.status == OrderStatus.OPEN)
@@ -964,12 +977,12 @@ def fill_open_orders(db: Session, provider: MarketDataProvider) -> int:
         if not _reachable(order.side, order.type, order.limit_price, quote.price):
             continue
         try:
-            if not _fillable(market_data.market_for(order.symbol, quote.type), quote):
+            if not _fillable(ctx, market_data.market_for(order.symbol, quote.type), quote):
                 continue  # closed, or the quote is still yesterday's: wait for the next tick
         except TradingError:
             continue
         try:
-            _fill(db, provider, account, order, quote, resting=True)
+            _fill(ctx, order, quote, resting=True)
             filled += 1
         except TradingError as exc:
             order.status = OrderStatus.REJECTED
@@ -1017,9 +1030,7 @@ def _closed_how(order: Order) -> str:
 
 
 def _fill(
-    db: Session,
-    provider: MarketDataProvider,
-    account: Account,
+    ctx: TradingContext,
     order: Order,
     quote: Quote,
     *,
@@ -1030,16 +1041,17 @@ def _fill(
     """Fill `order` at the quote's price. Plans and costs it again against the books as they are
     now, checks everything first; only when every guard has passed does it touch the account,
     the trades or the order."""
+    db, account = ctx.db, ctx.account
     # A limit order fills at the current price, not at the limit: the limit is only the worst
     # price the trader accepts, and the market being at or better than it is how limit orders work.
     price = trim8(quote.price)
     request = OrderRequest(order.symbol, order.side, order.quantity, order.trade_id, order.origin, promised)
-    plan = _plan(db, account, request, quote)
-    cost = plan_cost(provider, account, plan, quote, price=price, order_type=order.type, resting=resting)
+    plan = _plan(ctx, request, quote)
+    cost = plan_cost(ctx, plan, quote, price=price, order_type=order.type, resting=resting)
     _require_funds(account, cost)
 
     # All guards passed: mutate.
-    now = clock.now()
+    now = ctx.now()
     db.add(order)
     db.flush()  # the order needs its id before the trades it opens can point back at it
     closed_how = _closed_how(order)
@@ -1120,7 +1132,7 @@ def _fill(
 # --- shorts: financing and square-off -----------------------------------------------------
 
 
-def accrue_financing(db: Session, provider: MarketDataProvider) -> int:
+def accrue_financing(ctx: TradingContext) -> int:
     """Charge borrow (US, a flat yearly rate, daily) or funding (crypto, per eight-hour period)
     on open shorts for the periods completed since each was last charged. Returns how many
     trades were charged.
@@ -1129,9 +1141,8 @@ def accrue_financing(db: Session, provider: MarketDataProvider) -> int:
     charge comes out of cash and out of realized P&L together (and the trade's own), which is
     what keeps realized + unrealized equal to total P&L.
     """
-    del provider  # no price is needed; the signature matches the other background steps
-    account = get_account(db)
-    now = clock.now()
+    db, account = ctx.db, ctx.account
+    now = ctx.now()
     shorts = db.scalars(
         select(Trade)
         .where(
@@ -1166,15 +1177,15 @@ def accrue_financing(db: Session, provider: MarketDataProvider) -> int:
     return charged
 
 
-def _square_off_note(market: Market, leftover: bool) -> str:
+def _square_off_note(market: Market, leftover: bool, now: datetime) -> str:
     # In the exchange's own clock: "15:20 IST", never "09:50 UTC".
-    status = hours.market_status(market)
-    local = clock.now().astimezone(ZoneInfo(status.timezone))
+    status = hours.market_status(market, now)
+    local = now.astimezone(ZoneInfo(status.timezone))
     note = f"Squared off at {local:%H:%M} {local:%Z}"
     return note + (", left open from an earlier session." if leftover else ".")
 
 
-def square_off_due(db: Session, provider: MarketDataProvider) -> list[Order]:
+def square_off_due(ctx: TradingContext) -> list[Order]:
     """Buy back Indian intraday shorts that must not stay open: those that reach
     `square_off_minutes_before_close` before the close, and straight away any left over from an
     earlier session (at the first fresh quote once the market is open again). Returns the
@@ -1183,8 +1194,8 @@ def square_off_due(db: Session, provider: MarketDataProvider) -> list[Order]:
     A cover the account can't pay for is skipped and tried again next tick, so cash still never
     goes below zero.
     """
-    account = get_account(db)
-    now = clock.now()
+    db, account, provider = ctx.db, ctx.account, ctx.provider
+    now = ctx.now()
     trades = db.scalars(
         select(Trade)
         .where(
@@ -1200,7 +1211,7 @@ def square_off_due(db: Session, provider: MarketDataProvider) -> list[Order]:
         rule = market.short_rule if market else None
         if market is None or rule is None or rule.square_off_minutes_before_close is None:
             continue
-        status = hours.market_status(market)
+        status = hours.market_status(market, now)
         if status.state != "open":
             continue
         leftover = status.session_open is not None and trade.opened_at < status.session_open
@@ -1213,7 +1224,7 @@ def square_off_due(db: Session, provider: MarketDataProvider) -> list[Order]:
             quote = provider.get_quote(trade.symbol)
         except MarketDataError:
             continue
-        if not hours.can_fill(market, quote.as_of):
+        if not hours.can_fill(market, quote.as_of, now):
             continue  # still yesterday's price; wait for a fresh one
         side = OrderSide.SELL if trade.direction == TradeDirection.LONG else OrderSide.BUY
         order = Order(
@@ -1234,7 +1245,7 @@ def square_off_due(db: Session, provider: MarketDataProvider) -> list[Order]:
             created_at=now,
         )
         try:
-            _fill(db, provider, account, order, quote, resting=False, note=_square_off_note(market, leftover))
+            _fill(ctx, order, quote, resting=False, note=_square_off_note(market, leftover, now))
         except (TradingError, MarketDataError) as exc:
             db.rollback()
             logger.warning("Could not square off trade %d (%s): %s", trade.id, trade.symbol, exc)
@@ -1278,6 +1289,11 @@ def _price_text(price: Decimal, currency: str) -> str:
     return f"{sign}{text}" if sign else f"{text} {currency}"
 
 
+def protection_price_step(market: Market) -> Decimal:
+    """The finest a stop-loss or target price may be quoted on this market."""
+    return Decimal("0.00000001") if market.segment == "crypto" else Decimal("0.01")
+
+
 def _protection_problems(
     trade: Trade, market: Market, current: Decimal, stop: Decimal | None, target: Decimal | None
 ) -> dict[str, str]:
@@ -1288,7 +1304,7 @@ def _protection_problems(
     of the same current price already makes that impossible, so such a check could never fire.
     """
     long = trade.direction == TradeDirection.LONG
-    step = Decimal("0.00000001") if market.segment == "crypto" else Decimal("0.01")
+    step = protection_price_step(market)
     now_text = _price_text(current, trade.currency)
     problems: dict[str, str] = {}
     for field, label, price in (("stop_price", "stop-loss", stop), ("target_price", "target", target)):
@@ -1321,13 +1337,11 @@ def _protection_problems(
     return problems
 
 
-def _protection_outcome(
-    db: Session, provider: MarketDataProvider, account: Account, trade: Trade, quote: Quote, price: Decimal
-) -> ProtectionOutcome:
+def _protection_outcome(ctx: TradingContext, trade: Trade, quote: Quote, price: Decimal) -> ProtectionOutcome:
     side = OrderSide.SELL if trade.direction == TradeDirection.LONG else OrderSide.BUY
     request = OrderRequest(trade.symbol, side, trade.open_quantity, trade.id, OrderOrigin.STOP_LOSS)
-    plan = _plan(db, account, request, quote)
-    cost = plan_cost(provider, account, plan, quote, price=price, order_type=OrderType.MARKET)
+    plan = _plan(ctx, request, quote)
+    cost = plan_cost(ctx, plan, quote, price=price, order_type=OrderType.MARKET)
     return ProtectionOutcome(
         price=cost.price,
         exit_value=cost.value_account,
@@ -1337,9 +1351,9 @@ def _protection_outcome(
     )
 
 
-def _open_trade_for_protection(db: Session, account: Account, trade_id: int) -> Trade:
-    trade = db.get(Trade, trade_id)
-    if trade is None or trade.account_id != account.id:
+def _open_trade_for_protection(ctx: TradingContext, trade_id: int) -> Trade:
+    trade = ctx.db.get(Trade, trade_id)
+    if trade is None or trade.account_id != ctx.account.id:
         raise TradeNotFound(f"There is no trade with id {trade_id}.")
     if trade.status != TradeStatus.OPEN:
         raise TradeNotOpen(f"Trade {trade_id} is already closed, so it can't have a stop-loss or target.")
@@ -1347,39 +1361,35 @@ def _open_trade_for_protection(db: Session, account: Account, trade_id: int) -> 
 
 
 def preview_protection(
-    db: Session,
-    provider: MarketDataProvider,
+    ctx: TradingContext,
     trade_id: int,
     stop_price: Decimal | None,
     target_price: Decimal | None,
 ) -> ProtectionPreview:
     """What `set_protection` would say and what each price would leave you with. Saves nothing."""
-    account = get_account(db)
-    trade = _open_trade_for_protection(db, account, trade_id)
-    quote = _checked_quote(provider, trade.symbol)
+    trade = _open_trade_for_protection(ctx, trade_id)
+    quote = _checked_quote(ctx.provider, trade.symbol)
     market = market_data.market_for(trade.symbol, quote.type)
     errors = _protection_problems(trade, market, quote.price, stop_price, target_price)
     outcomes: dict[str, ProtectionOutcome | None] = {"stop_price": None, "target_price": None}
     for field, price in (("stop_price", stop_price), ("target_price", target_price)):
         if price is not None and field not in errors:
-            outcomes[field] = _protection_outcome(db, provider, account, trade, quote, price)
+            outcomes[field] = _protection_outcome(ctx, trade, quote, price)
     return ProtectionPreview(
         trim8(quote.price), quote.currency, errors, outcomes["stop_price"], outcomes["target_price"]
     )
 
 
 def set_protection(
-    db: Session,
-    provider: MarketDataProvider,
+    ctx: TradingContext,
     trade_id: int,
     stop_price: Decimal | None,
     target_price: Decimal | None,
 ) -> TradeView:
     """Set (or, with None, clear) a trade's stop-loss and target, each checked against the
     current price. Both None clears protection. A year's expiry, like a GTT."""
-    account = get_account(db)
-    trade = _open_trade_for_protection(db, account, trade_id)
-    quote = _checked_quote(provider, trade.symbol)
+    trade = _open_trade_for_protection(ctx, trade_id)
+    quote = _checked_quote(ctx.provider, trade.symbol)
     market = market_data.market_for(trade.symbol, quote.type)
     problems = _protection_problems(trade, market, quote.price, stop_price, target_price)
     if problems:
@@ -1389,9 +1399,9 @@ def set_protection(
     if stop_price is None and target_price is None:
         trade.protection_expires_at = None
     else:
-        trade.protection_expires_at = clock.now() + timedelta(days=PROTECTION_DAYS)
-    db.commit()
-    return get_trade_view(db, provider, trade.id)
+        trade.protection_expires_at = ctx.now() + timedelta(days=PROTECTION_DAYS)
+    ctx.db.commit()
+    return get_trade_view(ctx, trade.id)
 
 
 def _protection_fires(trade: Trade, price: Decimal) -> str | None:
@@ -1406,7 +1416,7 @@ def _protection_fires(trade: Trade, price: Decimal) -> str | None:
     return None
 
 
-def trigger_protected_trades(db: Session, provider: MarketDataProvider) -> int:
+def trigger_protected_trades(ctx: TradingContext) -> int:
     """Close, at the market, every open trade whose stop-loss or target the price has reached.
     Returns how many closed.
 
@@ -1417,8 +1427,8 @@ def trigger_protected_trades(db: Session, provider: MarketDataProvider) -> int:
     so one firing ends the other. A trade that can't be closed now (no cash to cover a short, say)
     is tried again next tick, and one failing never stops the others.
     """
-    account = get_account(db)
-    now = clock.now()
+    db, account, provider = ctx.db, ctx.account, ctx.provider
+    now = ctx.now()
     trades = db.scalars(
         select(Trade)
         .where(
@@ -1441,7 +1451,7 @@ def trigger_protected_trades(db: Session, provider: MarketDataProvider) -> int:
             quote = provider.get_quote(trade.symbol)
         except MarketDataError:
             continue
-        if not hours.can_fill(market, quote.as_of):
+        if not hours.can_fill(market, quote.as_of, now):
             continue  # closed, or still yesterday's price: wait for a fresh one
         origin = _protection_fires(trade, quote.price)
         if origin is None:
@@ -1475,7 +1485,7 @@ def trigger_protected_trades(db: Session, provider: MarketDataProvider) -> int:
             created_at=now,
         )
         try:
-            _fill(db, provider, account, order, quote, resting=False, note=note)
+            _fill(ctx, order, quote, resting=False, note=note)
             db.commit()
         except Exception as exc:  # noqa: BLE001 - one trade failing must not stop the others
             db.rollback()
@@ -1559,11 +1569,11 @@ class Portfolio:
     trades: list[TradeView]
 
 
-def _charges_paid(db: Session, account: Account) -> ChargesPaid:
+def _charges_paid(ctx: TradingContext) -> ChargesPaid:
     """What filled orders have cost, by category. Summed in Python: the amounts are JSON text."""
     by_category = dict.fromkeys(CATEGORIES, ZERO)
-    filled = db.scalars(
-        select(Order).where(Order.account_id == account.id, Order.status == OrderStatus.FILLED)
+    filled = ctx.db.scalars(
+        select(Order).where(Order.account_id == ctx.account.id, Order.status == OrderStatus.FILLED)
     )
     for order in filled:
         for charge in order.charges:
@@ -1571,12 +1581,16 @@ def _charges_paid(db: Session, account: Account) -> ChargesPaid:
     return ChargesPaid(sum(by_category.values(), ZERO), by_category)
 
 
-def _entry_charges_paid(db: Session, trades: list[Trade]) -> dict[int, Decimal]:
+def _entry_charges_paid(ctx: TradingContext, trades: list[Trade]) -> dict[int, Decimal]:
     """What each trade paid to get in, read from the legs of the order that opened it: that
     record never shrinks, unlike the trade's own `entry_charges`. A trade carried over from the
     old positions table has no such record, so it reports what it holds (nothing was recorded)."""
     order_ids = {t.opened_by_order_id for t in trades if t.opened_by_order_id is not None}
-    found = db.scalars(select(Order).where(Order.id.in_(list(order_ids)))) if order_ids else []
+    found = (
+        ctx.db.scalars(select(Order).where(Order.account_id == ctx.account.id, Order.id.in_(list(order_ids))))
+        if order_ids
+        else []
+    )
     orders = {o.id: o for o in found}
     paid: dict[int, Decimal] = {}
     for trade in trades:
@@ -1618,9 +1632,7 @@ def _value_trade(trade: Trade, quote: Quote | None, fx: Decimal | None) -> Trade
     return view
 
 
-def _attach_outcomes(
-    db: Session, provider: MarketDataProvider, account: Account, view: TradeView, quote: Quote | None
-) -> None:
+def _attach_outcomes(ctx: TradingContext, view: TradeView, quote: Quote | None) -> None:
     """What each of the trade's prices would leave you with. Left empty if it can't be worked
     out right now (no price, or the broker no longer offers the market)."""
     trade = view.trade
@@ -1630,8 +1642,8 @@ def _attach_outcomes(
         if price is None:
             continue
         try:
-            setattr(view, name, _protection_outcome(db, provider, account, trade, quote, price))
-        except (TradingError, MarketDataError):
+            setattr(view, name, _protection_outcome(ctx, trade, quote, price))
+        except TradingError, MarketDataError:
             pass
 
 
@@ -1665,13 +1677,13 @@ def _break_even(
             entry_value=sum((t.entry_value for t in trades), ZERO),
             entry_charges=sum((t.entry_charges for t in trades), ZERO), **common,
         )  # fmt: skip
-    except (TradingError, ValueError):
+    except TradingError, ValueError:
         return None
 
 
-def get_portfolio(db: Session, provider: MarketDataProvider) -> Portfolio:
-    account = get_account(db)
-    trades = _open_trades_of_account(db, account)
+def get_portfolio(ctx: TradingContext) -> Portfolio:
+    db, account, provider = ctx.db, ctx.account, ctx.provider
+    trades = _open_trades_of_account(ctx)
     quotes = get_quotes(provider, [t.symbol for t in trades])
 
     fx_cache: dict[str, Decimal | None] = {}
@@ -1684,13 +1696,13 @@ def get_portfolio(db: Session, provider: MarketDataProvider) -> Portfolio:
                 fx_cache[currency] = None
         return fx_cache[currency]
 
-    paid = _entry_charges_paid(db, trades)
+    paid = _entry_charges_paid(ctx, trades)
     views: list[TradeView] = []
     for t in trades:
         quote = quotes.get(t.symbol)
         view = _value_trade(t, quote, fx_for(t.currency) if quote else None)
         view.entry_charges_paid = paid[t.id]
-        _attach_outcomes(db, provider, account, view, quote)
+        _attach_outcomes(ctx, view, quote)
         views.append(view)
 
     holdings: list[HoldingView] = []
@@ -1764,25 +1776,24 @@ def get_portfolio(db: Session, provider: MarketDataProvider) -> Portfolio:
         unrealized_pnl=unrealized_total,
         total_pnl=total_value - account.starting_cash,
         financing_paid=financing,
-        charges_paid=_charges_paid(db, account),
+        charges_paid=_charges_paid(ctx),
         holdings=holdings,
         trades=views,
     )
 
 
-def _open_trades_of_account(db: Session, account: Account) -> list[Trade]:
+def _open_trades_of_account(ctx: TradingContext) -> list[Trade]:
     return list(
-        db.scalars(
+        ctx.db.scalars(
             select(Trade)
-            .where(Trade.account_id == account.id, Trade.status == TradeStatus.OPEN)
+            .where(Trade.account_id == ctx.account.id, Trade.status == TradeStatus.OPEN)
             .order_by(Trade.opened_at, Trade.id)
         )
     )
 
 
 def list_trades(
-    db: Session,
-    provider: MarketDataProvider,
+    ctx: TradingContext,
     *,
     status: str | None = None,
     symbol: str | None = None,
@@ -1790,28 +1801,25 @@ def list_trades(
 ) -> list[TradeView]:
     """Trades, newest first. Open ones carry live figures; closed ones report what they paid
     from the order records, so entry charges never read zero."""
-    account = get_account(db)
-    query = select(Trade).where(Trade.account_id == account.id)
+    query = select(Trade).where(Trade.account_id == ctx.account.id)
     if status is not None:
         query = query.where(Trade.status == status)
     if symbol is not None:
         query = query.where(Trade.symbol == symbol)
-    trades = list(db.scalars(query.order_by(Trade.id.desc()).limit(limit)))
-    return _views_of(db, provider, account, trades)
+    trades = list(ctx.db.scalars(query.order_by(Trade.id.desc()).limit(limit)))
+    return _views_of(ctx, trades)
 
 
-def get_trade_view(db: Session, provider: MarketDataProvider, trade_id: int) -> TradeView:
-    account = get_account(db)
-    trade = db.get(Trade, trade_id)
-    if trade is None or trade.account_id != account.id:
+def get_trade_view(ctx: TradingContext, trade_id: int) -> TradeView:
+    trade = ctx.db.get(Trade, trade_id)
+    if trade is None or trade.account_id != ctx.account.id:
         raise TradeNotFound(f"There is no trade with id {trade_id}.")
-    return _views_of(db, provider, account, [trade])[0]
+    return _views_of(ctx, [trade])[0]
 
 
-def _views_of(
-    db: Session, provider: MarketDataProvider, account: Account, trades: list[Trade]
-) -> list[TradeView]:
-    paid = _entry_charges_paid(db, trades)
+def _views_of(ctx: TradingContext, trades: list[Trade]) -> list[TradeView]:
+    provider, account = ctx.provider, ctx.account
+    paid = _entry_charges_paid(ctx, trades)
     quotes = get_quotes(provider, [t.symbol for t in trades if t.status == TradeStatus.OPEN])
     fx_cache: dict[str, Decimal | None] = {}
     views: list[TradeView] = []
@@ -1824,7 +1832,7 @@ def _views_of(
                 except MarketDataError:
                     fx_cache[t.currency] = None
             view = _value_trade(t, quote, fx_cache.get(t.currency) if quote else None)
-            _attach_outcomes(db, provider, account, view, quote)
+            _attach_outcomes(ctx, view, quote)
         else:
             view = TradeView(t, ZERO, _lot_exits(t))
         view.entry_charges_paid = paid[t.id]
@@ -1853,7 +1861,7 @@ def _sum_lines(lines: list[ChargeOut]) -> list[ChargeOut]:
     return list(merged.values())
 
 
-def get_payouts(db: Session, *, limit: int = 500) -> PayoutsOut:
+def get_payouts(ctx: TradingContext, *, limit: int = 500) -> PayoutsOut:
     """Every closed trade with what it brought in and what it paid at both ends, line by line.
 
     The lines are read from the legs of the filled orders (an immutable record), not from the
@@ -1861,7 +1869,7 @@ def get_payouts(db: Session, *, limit: int = 500) -> PayoutsOut:
     zero entry charges. A trade carried over from the old positions table has no opening order,
     so its entry lines are empty and its entry value is rebuilt from its quantity and price.
     """
-    account = get_account(db)
+    db, account = ctx.db, ctx.account
     closed = list(
         db.scalars(
             select(Trade)

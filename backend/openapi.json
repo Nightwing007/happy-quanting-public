@@ -5,6 +5,31 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/algos/library": {
+      "get": {
+        "tags": [
+          "algos"
+        ],
+        "summary": "List Library",
+        "operationId": "list_library_api_algos_library_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlgoOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Library Api Algos Library Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/market/search": {
       "get": {
         "tags": [
@@ -138,6 +163,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/history-limits": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "History Limits Route",
+        "operationId": "history_limits_route_api_market_history_limits_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryLimitsOut"
                 }
               }
             }
@@ -818,6 +864,1039 @@
         }
       }
     },
+    "/api/sim/sessions": {
+      "get": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_api_sim_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SimSessionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Sessions Api Sim Sessions Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Create Session",
+        "operationId": "create_session_api_sim_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimSessionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimSessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Get State",
+        "operationId": "get_state_api_sim_sessions__session_id__get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "bars_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 0,
+              "default": 1000,
+              "title": "Bars Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimSessionStateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Delete Session",
+        "operationId": "delete_session_api_sim_sessions__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/control": {
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Control",
+        "operationId": "control_api_sim_sessions__session_id__control_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimControlIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimSessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/portfolio": {
+      "get": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Portfolio",
+        "operationId": "portfolio_api_sim_sessions__session_id__portfolio_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/orders": {
+      "get": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "List Orders",
+        "operationId": "list_orders_api_sim_sessions__session_id__orders_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/OrderStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderOut"
+                  },
+                  "title": "Response List Orders Api Sim Sessions  Session Id  Orders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Create Order",
+        "operationId": "create_order_api_sim_sessions__session_id__orders_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/orders/preview": {
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Preview Order",
+        "operationId": "preview_order_api_sim_sessions__session_id__orders_preview_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/orders/{order_id}": {
+      "delete": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Cancel Order",
+        "operationId": "cancel_order_api_sim_sessions__session_id__orders__order_id__delete",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/trades": {
+      "get": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "List Trades",
+        "operationId": "list_trades_api_sim_sessions__session_id__trades_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TradeStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TradeOut"
+                  },
+                  "title": "Response List Trades Api Sim Sessions  Session Id  Trades Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/payouts": {
+      "get": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Payouts",
+        "operationId": "payouts_api_sim_sessions__session_id__payouts_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/exit": {
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Exit Trade",
+        "operationId": "exit_trade_api_sim_sessions__session_id__trades__trade_id__exit_post",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ExitIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/exit/preview": {
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Preview Exit",
+        "operationId": "preview_exit_api_sim_sessions__session_id__trades__trade_id__exit_preview_post",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ExitIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/protection/preview": {
+      "post": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Preview Protection",
+        "operationId": "preview_protection_api_sim_sessions__session_id__trades__trade_id__protection_preview_post",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtectionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtectionPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/protection": {
+      "put": {
+        "tags": [
+          "sim"
+        ],
+        "summary": "Set Protection",
+        "operationId": "set_protection_api_sim_sessions__session_id__trades__trade_id__protection_put",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtectionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backtests": {
+      "get": {
+        "tags": [
+          "backtests"
+        ],
+        "summary": "List Backtests",
+        "operationId": "list_backtests_api_backtests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BacktestSummaryOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Backtests Api Backtests Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backtests"
+        ],
+        "summary": "Create Backtest",
+        "operationId": "create_backtest_api_backtests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacktestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backtests/{backtest_id}": {
+      "get": {
+        "tags": [
+          "backtests"
+        ],
+        "summary": "Get Backtest",
+        "operationId": "get_backtest_api_backtests__backtest_id__get",
+        "parameters": [
+          {
+            "name": "backtest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Backtest Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "backtests"
+        ],
+        "summary": "Delete Backtest",
+        "operationId": "delete_backtest_api_backtests__backtest_id__delete",
+        "parameters": [
+          {
+            "name": "backtest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Backtest Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/settings": {
       "get": {
         "tags": [
@@ -1029,6 +2108,1151 @@
   },
   "components": {
     "schemas": {
+      "AlgoOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "warmup_bars": {
+            "type": "integer",
+            "title": "Warmup Bars"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/AlgoParamOut"
+            },
+            "type": "array",
+            "title": "Parameters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "description",
+          "markets",
+          "interval",
+          "warmup_bars",
+          "parameters"
+        ],
+        "title": "AlgoOut"
+      },
+      "AlgoParamOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "int",
+              "decimal",
+              "choice",
+              "bool"
+            ],
+            "title": "Kind"
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "title": "Default"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "choices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Choices"
+          },
+          "help": {
+            "type": "string",
+            "title": "Help"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "kind",
+          "default",
+          "min",
+          "max",
+          "choices",
+          "help"
+        ],
+        "title": "AlgoParamOut",
+        "description": "One setting of a predefined algorithm. Decimals are strings, like every money-like value."
+      },
+      "BacktestBrokersIn": {
+        "properties": {
+          "india": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "India"
+          },
+          "international": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "International"
+          },
+          "crypto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crypto"
+          }
+        },
+        "type": "object",
+        "title": "BacktestBrokersIn",
+        "description": "Broker per segment; a segment left out uses the live account's choice."
+      },
+      "BacktestBuyHoldOut": {
+        "properties": {
+          "purchases": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestPurchaseOut"
+            },
+            "type": "array",
+            "title": "Purchases"
+          },
+          "final_equity": {
+            "type": "string",
+            "title": "Final Equity"
+          },
+          "total_return_pct": {
+            "type": "string",
+            "title": "Total Return Pct"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "max_drawdown_pct": {
+            "type": "string",
+            "title": "Max Drawdown Pct"
+          },
+          "total_charges": {
+            "type": "string",
+            "title": "Total Charges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purchases",
+          "final_equity",
+          "total_return_pct",
+          "cagr_pct",
+          "max_drawdown_pct",
+          "total_charges"
+        ],
+        "title": "BacktestBuyHoldOut",
+        "description": "The same symbols bought at equal weight at the first fillable price, with real charges,\nand held to the end."
+      },
+      "BacktestDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "strategy_key": {
+            "type": "string",
+            "title": "Strategy Key"
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "starting_cash": {
+            "type": "string",
+            "title": "Starting Cash"
+          },
+          "account_currency": {
+            "type": "string",
+            "title": "Account Currency"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BacktestResultsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "strategy_key",
+          "params",
+          "symbols",
+          "interval",
+          "start_date",
+          "end_date",
+          "starting_cash",
+          "account_currency",
+          "status",
+          "progress",
+          "error",
+          "created_at",
+          "results"
+        ],
+        "title": "BacktestDetailOut"
+      },
+      "BacktestDrawdownOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "strategy_pct": {
+            "type": "string",
+            "title": "Strategy Pct"
+          },
+          "buy_hold_pct": {
+            "type": "string",
+            "title": "Buy Hold Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "strategy_pct",
+          "buy_hold_pct"
+        ],
+        "title": "BacktestDrawdownOut"
+      },
+      "BacktestIn": {
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "title": "Strategy",
+            "description": "Key of a predefined algorithm, from /api/algos/library"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Params"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Symbols"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "starting_cash": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starting Cash",
+            "description": "Default: STARTING_CASH"
+          },
+          "brokers": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BacktestBrokersIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy",
+          "symbols",
+          "interval",
+          "start_date",
+          "end_date"
+        ],
+        "title": "BacktestIn"
+      },
+      "BacktestInstrumentOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "currency",
+          "market"
+        ],
+        "title": "BacktestInstrumentOut"
+      },
+      "BacktestLogOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "text"
+        ],
+        "title": "BacktestLogOut"
+      },
+      "BacktestMetricsOut": {
+        "properties": {
+          "starting_cash": {
+            "type": "string",
+            "title": "Starting Cash"
+          },
+          "final_equity": {
+            "type": "string",
+            "title": "Final Equity"
+          },
+          "total_return_pct": {
+            "type": "string",
+            "title": "Total Return Pct"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "cagr_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Note"
+          },
+          "max_drawdown_pct": {
+            "type": "string",
+            "title": "Max Drawdown Pct"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "sharpe_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe Note"
+          },
+          "trades_closed": {
+            "type": "integer",
+            "title": "Trades Closed"
+          },
+          "trades_open": {
+            "type": "integer",
+            "title": "Trades Open"
+          },
+          "win_rate_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Rate Pct"
+          },
+          "average_win": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Win"
+          },
+          "average_loss": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Loss"
+          },
+          "profit_factor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profit Factor"
+          },
+          "total_charges": {
+            "type": "string",
+            "title": "Total Charges"
+          },
+          "charges_by_category": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Charges By Category"
+          },
+          "gross_profit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Profit"
+          },
+          "charges_pct_of_gross_profit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charges Pct Of Gross Profit"
+          },
+          "financing_paid": {
+            "type": "string",
+            "title": "Financing Paid"
+          },
+          "exposure_pct": {
+            "type": "string",
+            "title": "Exposure Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starting_cash",
+          "final_equity",
+          "total_return_pct",
+          "cagr_pct",
+          "cagr_note",
+          "max_drawdown_pct",
+          "sharpe",
+          "sharpe_note",
+          "trades_closed",
+          "trades_open",
+          "win_rate_pct",
+          "average_win",
+          "average_loss",
+          "profit_factor",
+          "total_charges",
+          "charges_by_category",
+          "gross_profit",
+          "charges_pct_of_gross_profit",
+          "financing_paid",
+          "exposure_pct"
+        ],
+        "title": "BacktestMetricsOut",
+        "description": "Every figure is a string or null. Percentages are plain numbers (\"12.34\" is 12.34%)."
+      },
+      "BacktestPointOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "equity": {
+            "type": "string",
+            "title": "Equity"
+          },
+          "cash": {
+            "type": "string",
+            "title": "Cash"
+          },
+          "positions": {
+            "type": "string",
+            "title": "Positions"
+          },
+          "buy_hold_equity": {
+            "type": "string",
+            "title": "Buy Hold Equity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "equity",
+          "cash",
+          "positions",
+          "buy_hold_equity"
+        ],
+        "title": "BacktestPointOut",
+        "description": "The account at the close of one bar (one day, for daily bars). All account currency."
+      },
+      "BacktestPurchaseOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "price": {
+            "type": "string",
+            "title": "Price"
+          },
+          "charges": {
+            "type": "string",
+            "title": "Charges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "at",
+          "quantity",
+          "price",
+          "charges"
+        ],
+        "title": "BacktestPurchaseOut"
+      },
+      "BacktestResultsOut": {
+        "properties": {
+          "strategy_key": {
+            "type": "string",
+            "title": "Strategy Key"
+          },
+          "strategy_name": {
+            "type": "string",
+            "title": "Strategy Name"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Params"
+          },
+          "account_currency": {
+            "type": "string",
+            "title": "Account Currency"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestInstrumentOut"
+            },
+            "type": "array",
+            "title": "Instruments"
+          },
+          "bars": {
+            "type": "integer",
+            "title": "Bars"
+          },
+          "warmup_bars": {
+            "type": "integer",
+            "title": "Warmup Bars"
+          },
+          "first_bar": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Bar"
+          },
+          "last_bar": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Bar"
+          },
+          "curve_stride": {
+            "type": "integer",
+            "title": "Curve Stride"
+          },
+          "equity_curve": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestPointOut"
+            },
+            "type": "array",
+            "title": "Equity Curve"
+          },
+          "drawdown": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestDrawdownOut"
+            },
+            "type": "array",
+            "title": "Drawdown"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestTradeOut"
+            },
+            "type": "array",
+            "title": "Trades"
+          },
+          "orders": {
+            "items": {
+              "$ref": "#/components/schemas/OrderOut"
+            },
+            "type": "array",
+            "title": "Orders"
+          },
+          "logs": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestLogOut"
+            },
+            "type": "array",
+            "title": "Logs"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/BacktestMetricsOut"
+          },
+          "buy_and_hold": {
+            "$ref": "#/components/schemas/BacktestBuyHoldOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_key",
+          "strategy_name",
+          "params",
+          "account_currency",
+          "interval",
+          "instruments",
+          "bars",
+          "warmup_bars",
+          "first_bar",
+          "last_bar",
+          "curve_stride",
+          "equity_curve",
+          "drawdown",
+          "trades",
+          "orders",
+          "logs",
+          "errors",
+          "notes",
+          "metrics",
+          "buy_and_hold"
+        ],
+        "title": "BacktestResultsOut"
+      },
+      "BacktestSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "strategy_key": {
+            "type": "string",
+            "title": "Strategy Key"
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "starting_cash": {
+            "type": "string",
+            "title": "Starting Cash"
+          },
+          "account_currency": {
+            "type": "string",
+            "title": "Account Currency"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "strategy_key",
+          "params",
+          "symbols",
+          "interval",
+          "start_date",
+          "end_date",
+          "starting_cash",
+          "account_currency",
+          "status",
+          "progress",
+          "error",
+          "created_at"
+        ],
+        "title": "BacktestSummaryOut"
+      },
+      "BacktestTradeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Direction"
+          },
+          "product": {
+            "type": "string",
+            "title": "Product"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "entry_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Entry At"
+          },
+          "entry_price": {
+            "type": "string",
+            "title": "Entry Price"
+          },
+          "exit_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit At"
+          },
+          "exit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Price"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "closed_how": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed How"
+          },
+          "entry_charges": {
+            "type": "string",
+            "title": "Entry Charges"
+          },
+          "exit_charges": {
+            "type": "string",
+            "title": "Exit Charges"
+          },
+          "charges_total": {
+            "type": "string",
+            "title": "Charges Total"
+          },
+          "charges_by_category": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Charges By Category"
+          },
+          "financing": {
+            "type": "string",
+            "title": "Financing"
+          },
+          "gross_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Pnl"
+          },
+          "realized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realized Pnl"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pnl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "currency",
+          "direction",
+          "product",
+          "quantity",
+          "entry_at",
+          "entry_price",
+          "exit_at",
+          "exit_price",
+          "status",
+          "closed_how",
+          "entry_charges",
+          "exit_charges",
+          "charges_total",
+          "charges_by_category",
+          "financing",
+          "gross_pnl",
+          "realized_pnl",
+          "unrealized_pnl"
+        ],
+        "title": "BacktestTradeOut"
+      },
       "BarOut": {
         "properties": {
           "time": {
@@ -1276,6 +3500,54 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HistoryLimitOut": {
+        "properties": {
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "earliest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interval",
+          "earliest"
+        ],
+        "title": "HistoryLimitOut"
+      },
+      "HistoryLimitsOut": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "limits": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryLimitOut"
+            },
+            "type": "array",
+            "title": "Limits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "limits"
+        ],
+        "title": "HistoryLimitsOut"
       },
       "HoldingOut": {
         "properties": {
@@ -2960,6 +5232,299 @@
         ],
         "title": "ShortRuleOut",
         "description": "How shorting works on a market, for the ticket to explain it. Absent where it isn't offered."
+      },
+      "SimControlIn": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "pause",
+              "step",
+              "reset"
+            ],
+            "title": "Action"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps",
+            "description": "Bars to play, for `step`"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 200.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed",
+            "description": "New speed, bars per second"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "SimControlIn"
+      },
+      "SimExchangeTimeOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "local_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Local Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "timezone",
+          "local_time"
+        ],
+        "title": "SimExchangeTimeOut"
+      },
+      "SimSessionIn": {
+        "properties": {
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Symbols"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval",
+            "default": "1m"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "speed": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Speed",
+            "description": "Bars per second while running",
+            "default": 60
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbols",
+          "start_date",
+          "end_date"
+        ],
+        "title": "SimSessionIn"
+      },
+      "SimSessionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "speed": {
+            "type": "integer",
+            "title": "Speed"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "running",
+              "paused",
+              "finished"
+            ],
+            "title": "Status"
+          },
+          "cursor": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Cursor"
+          },
+          "exchange_times": {
+            "items": {
+              "$ref": "#/components/schemas/SimExchangeTimeOut"
+            },
+            "type": "array",
+            "title": "Exchange Times"
+          },
+          "progress_percent": {
+            "type": "number",
+            "title": "Progress Percent"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "symbols",
+          "interval",
+          "start_date",
+          "end_date",
+          "speed",
+          "status",
+          "cursor",
+          "exchange_times",
+          "progress_percent",
+          "created_at"
+        ],
+        "title": "SimSessionOut"
+      },
+      "SimSessionStateOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "speed": {
+            "type": "integer",
+            "title": "Speed"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "running",
+              "paused",
+              "finished"
+            ],
+            "title": "Status"
+          },
+          "cursor": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Cursor"
+          },
+          "exchange_times": {
+            "items": {
+              "$ref": "#/components/schemas/SimExchangeTimeOut"
+            },
+            "type": "array",
+            "title": "Exchange Times"
+          },
+          "progress_percent": {
+            "type": "number",
+            "title": "Progress Percent"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "bars": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/BarOut"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Bars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "symbols",
+          "interval",
+          "start_date",
+          "end_date",
+          "speed",
+          "status",
+          "cursor",
+          "exchange_times",
+          "progress_percent",
+          "created_at",
+          "bars"
+        ],
+        "title": "SimSessionStateOut"
       },
       "TradeOut": {
         "properties": {

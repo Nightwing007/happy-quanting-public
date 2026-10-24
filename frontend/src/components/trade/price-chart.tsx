@@ -59,11 +59,13 @@ type Props = {
   intraday: boolean;
   markers?: ChartMarker[];
   priceLines?: ChartPriceLine[];
+  /** Bars only ever grow at the end (a replay): append them instead of reloading and re-fitting. */
+  incremental?: boolean;
   onHover?: (bar: HoverBar | null) => void;
   className?: string;
 };
 
-export function PriceChart({ bars, indicators, intraday, markers, priceLines, onHover, className }: Props) {
+export function PriceChart({ bars, indicators, intraday, markers, priceLines, incremental, onHover, className }: Props) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
 
@@ -76,6 +78,7 @@ export function PriceChart({ bars, indicators, intraday, markers, priceLines, on
   const userLinesRef = useRef<IPriceLine[]>([]);
   // The prices of the lines the autoscale must keep in view; read by the candle series' provider.
   const linePricesRef = useRef<number[]>([]);
+  const shownBarsRef = useRef<Bar[]>([]);
   const hoverRef = useRef(onHover);
   useEffect(() => {
     hoverRef.current = onHover;
@@ -156,6 +159,7 @@ export function PriceChart({ bars, indicators, intraday, markers, priceLines, on
       volumeRef.current = null;
       markersRef.current = null;
       indicatorMap.clear();
+      shownBarsRef.current = [];
       userLinesRef.current = [];
     };
   }, []);
@@ -184,27 +188,39 @@ export function PriceChart({ bars, indicators, intraday, markers, priceLines, on
     const candles = candleRef.current;
     const volume = volumeRef.current;
     if (!candles || !volume) return;
-    candles.setData(
-      bars.map((b) => ({
-        time: asTime(b.time),
-        open: toNumber(b.open),
-        high: toNumber(b.high),
-        low: toNumber(b.low),
-        close: toNumber(b.close),
-      })),
-    );
-    volume.setData(
-      bars.map((b) => ({
-        time: asTime(b.time),
-        value: toNumber(b.volume),
-        color: toNumber(b.close) >= toNumber(b.open) ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)",
-      })),
-    );
+    const candle = (b: Bar) => ({
+      time: asTime(b.time),
+      open: toNumber(b.open),
+      high: toNumber(b.high),
+      low: toNumber(b.low),
+      close: toNumber(b.close),
+    });
+    const vol = (b: Bar) => ({
+      time: asTime(b.time),
+      value: toNumber(b.volume),
+      color: toNumber(b.close) >= toNumber(b.open) ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)",
+    });
+    const shown = shownBarsRef.current;
+    const prevLast = shown.length ? shown[shown.length - 1] : null;
+    const from = incremental && prevLast ? bars.findIndex((b) => b.time === prevLast.time) : -1;
+    shownBarsRef.current = bars;
+    if (from >= 0) {
+      // Re-sending the last shown bar covers one that was still forming; the rest are new.
+      for (const b of bars.slice(from)) {
+        candles.update(candle(b));
+        volume.update(vol(b));
+      }
+      // The first bars of a replay would otherwise stay as wide as the first single bar was.
+      if (bars.length <= 120) chartRef.current?.timeScale().fitContent();
+      return;
+    }
+    candles.setData(bars.map(candle));
+    volume.setData(bars.map(vol));
     const last = bars.length ? toNumber(bars[bars.length - 1].close) : 0;
     const precision = priceDecimals(last);
     candles.applyOptions({ priceFormat: { type: "price", precision, minMove: 1 / 10 ** precision } });
     chartRef.current?.timeScale().fitContent();
-  }, [bars]);
+  }, [bars, incremental]);
 
   // Indicators: add/remove series as the selection changes, refresh data otherwise.
   useEffect(() => {

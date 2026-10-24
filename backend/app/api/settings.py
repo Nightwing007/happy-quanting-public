@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.deps import DbSession
+from app.api.deps import LiveContext
 from app.schemas import BrokerOut, MarketRefOut, SegmentBrokersOut, SettingsIn, SettingsOut
 from app.trading import engine
 from app.trading.brokers import SEGMENT_LABELS, SEGMENTS, brokers_for_segment
@@ -18,14 +18,14 @@ def _settings_out(account) -> SettingsOut:
 
 
 @router.get("/settings", response_model=SettingsOut)
-def read_settings(db: DbSession):
-    return _settings_out(engine.get_account(db))
+def read_settings(ctx: LiveContext):
+    return _settings_out(ctx.account)
 
 
 @router.put("/settings", response_model=SettingsOut)
-def update_settings(body: SettingsIn, db: DbSession):
+def update_settings(body: SettingsIn, ctx: LiveContext):
     account = engine.update_brokers(
-        db,
+        ctx,
         {
             "india": body.broker_india,
             "international": body.broker_international,

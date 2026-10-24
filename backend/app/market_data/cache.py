@@ -1,5 +1,6 @@
 import threading
 from collections.abc import Callable
+from datetime import date
 from decimal import Decimal
 
 from cachetools import TTLCache
@@ -46,6 +47,10 @@ class CachedProvider:
     def get_bars(self, symbol: str, interval: str, range_: str) -> list[Bar]:
         key = (symbol, interval, range_)
         return self._cached(self._bars, key, lambda: self._inner.get_bars(symbol, interval, range_))
+
+    def get_history(self, symbol: str, interval: str, start: date, end: date) -> list[Bar]:
+        # Not cached here: history.py keeps its own durable cache and decides what to fetch.
+        return self._inner.get_history(symbol, interval, start, end)
 
     def get_fundamentals(self, symbol: str) -> Fundamentals:
         return self._cached(self._fundamentals, symbol, lambda: self._inner.get_fundamentals(symbol))

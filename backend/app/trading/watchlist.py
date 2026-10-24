@@ -1,49 +1,46 @@
 """Watchlist operations. Like the engine, writes commit before returning."""
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from app import clock
 from app.market_data import get_quotes
-from app.market_data.base import MarketDataProvider, Quote
+from app.market_data.base import Quote
 from app.models import WatchlistItem
-from app.trading.engine import get_account
+from app.trading.context import TradingContext
 
 
-def list_items(db: Session, provider: MarketDataProvider) -> list[tuple[WatchlistItem, Quote | None]]:
-    account = get_account(db)
-    items = db.scalars(
-        select(WatchlistItem).where(WatchlistItem.account_id == account.id).order_by(WatchlistItem.id)
+def list_items(ctx: TradingContext) -> list[tuple[WatchlistItem, Quote | None]]:
+    items = ctx.db.scalars(
+        select(WatchlistItem).where(WatchlistItem.account_id == ctx.account.id).order_by(WatchlistItem.id)
     ).all()
-    quotes = get_quotes(provider, [i.symbol for i in items])
+    quotes = get_quotes(ctx.provider, [i.symbol for i in items])
     return [(i, quotes.get(i.symbol)) for i in items]
 
 
-def add_item(db: Session, provider: MarketDataProvider, symbol: str) -> tuple[WatchlistItem, Quote]:
+def add_item(ctx: TradingContext, symbol: str) -> tuple[WatchlistItem, Quote]:
     """Add `symbol`, or return the existing item. Raises SymbolNotFound for an unknown symbol."""
-    account = get_account(db)
-    quote = provider.get_quote(symbol)  # also validates the symbol
-    item = db.scalar(
+    quote = ctx.provider.get_quote(symbol)  # also validates the symbol
+    item = ctx.db.scalar(
         select(WatchlistItem).where(
-            WatchlistItem.account_id == account.id, WatchlistItem.symbol == quote.symbol
+            WatchlistItem.account_id == ctx.account.id, WatchlistItem.symbol == quote.symbol
         )
     )
     if item is None:
         item = WatchlistItem(
-            account_id=account.id, symbol=quote.symbol, name=quote.name, created_at=clock.now()
+            account_id=ctx.account.id, symbol=quote.symbol, name=quote.name, created_at=ctx.now()
         )
-        db.add(item)
-        db.commit()
+        ctx.db.add(item)
+        ctx.db.commit()
     return item, quote
 
 
-def remove_item(db: Session, symbol: str) -> bool:
-    account = get_account(db)
-    item = db.scalar(
-        select(WatchlistItem).where(WatchlistItem.account_id == account.id, WatchlistItem.symbol == symbol)
+def remove_item(ctx: TradingContext, symbol: str) -> bool:
+    item = ctx.db.scalar(
+        select(WatchlistItem).where(
+            WatchlistItem.account_id == ctx.account.id, WatchlistItem.symbol == symbol
+        )
     )
     if item is None:
         return False
-    db.delete(item)
-    db.commit()
+    ctx.db.delete(item)
+    ctx.db.commit()
     return True

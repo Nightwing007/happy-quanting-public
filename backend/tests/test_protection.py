@@ -17,6 +17,7 @@ from app import clock
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderType, Trade
 from app.trading import engine, hours
+from app.trading.engine import live_context as live
 from app.trading.errors import ProtectionInvalid, TradeNotFound, TradeNotOpen
 
 D = Decimal
@@ -24,13 +25,13 @@ D = Decimal
 
 def buy(db: Session, provider: FakeProvider, symbol: str, qty: str) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side=OrderSide.BUY, type=OrderType.MARKET, quantity=D(qty)
+        live(db, provider), symbol=symbol, side=OrderSide.BUY, type=OrderType.MARKET, quantity=D(qty)
     )
 
 
 def sell(db: Session, provider: FakeProvider, symbol: str, qty: str) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side=OrderSide.SELL, type=OrderType.MARKET, quantity=D(qty)
+        live(db, provider), symbol=symbol, side=OrderSide.SELL, type=OrderType.MARKET, quantity=D(qty)
     )
 
 
@@ -51,16 +52,16 @@ def all_orders(db: Session) -> list[Order]:
 
 def protect(db, provider, trade: Trade, stop: str | None, target: str | None):
     return engine.set_protection(
-        db, provider, trade.id, D(stop) if stop else None, D(target) if target else None
+        live(db, provider), trade.id, D(stop) if stop else None, D(target) if target else None
     )
 
 
 def fire(db: Session, provider: FakeProvider) -> int:
-    return engine.trigger_protected_trades(db, provider)
+    return engine.trigger_protected_trades(live(db, provider))
 
 
 def assert_books_balance(db: Session, provider: FakeProvider) -> None:
-    pf = engine.get_portfolio(db, provider)
+    pf = engine.get_portfolio(live(db, provider))
     assert pf.realized_pnl + pf.unrealized_pnl == pf.total_pnl
     assert pf.available_cash == pf.cash - pf.margin_used
     assert pf.available_cash >= 0
@@ -296,7 +297,7 @@ def test_a_partial_exit_leaves_protection_on_what_remains_and_it_closes_all_of_i
     db: Session, fake_provider: FakeProvider, long_reliance: Trade
 ):
     protect(db, fake_provider, long_reliance, "1200", None)
-    engine.exit_trade(db, fake_provider, long_reliance.id, D("4"))
+    engine.exit_trade(live(db, fake_provider), long_reliance.id, D("4"))
     assert long_reliance.open_quantity == D("6")
     fake_provider.set_price("RELIANCE.NS", D("1100"))
     assert fire(db, fake_provider) == 1
@@ -380,8 +381,8 @@ def test_closed_and_unknown_trades_are_refused(
     db: Session, fake_provider: FakeProvider, long_reliance: Trade
 ):
     with pytest.raises(TradeNotFound):
-        engine.set_protection(db, fake_provider, 999, D("1200"), None)
-    engine.exit_trade(db, fake_provider, long_reliance.id)
+        engine.set_protection(live(db, fake_provider), 999, D("1200"), None)
+    engine.exit_trade(live(db, fake_provider), long_reliance.id)
     with pytest.raises(TradeNotOpen):
         protect(db, fake_provider, long_reliance, "1200", None)
 
@@ -436,13 +437,13 @@ def test_outcomes_equal_what_the_actual_exit_produces(
 def test_outcomes_are_absent_without_a_price_and_on_closed_trades(
     db: Session, fake_provider: FakeProvider, long_reliance: Trade
 ):
-    [view] = engine.list_trades(db, fake_provider)
+    [view] = engine.list_trades(live(db, fake_provider))
     assert (view.stop_outcome, view.target_outcome) == (None, None)
     protect(db, fake_provider, long_reliance, "1200", None)
-    [view] = engine.list_trades(db, fake_provider)
+    [view] = engine.list_trades(live(db, fake_provider))
     assert view.stop_outcome is not None and view.target_outcome is None
-    engine.exit_trade(db, fake_provider, long_reliance.id)
-    [view] = engine.list_trades(db, fake_provider)
+    engine.exit_trade(live(db, fake_provider), long_reliance.id)
+    [view] = engine.list_trades(live(db, fake_provider))
     assert (view.stop_price, view.stop_outcome) == (None, None)  # closing cleared it
 
 
@@ -492,11 +493,10 @@ def test_protection_endpoints(
 
 
 def test_the_background_loop_runs_it_before_square_off():
-    from app import main
+    from app.trading.tick import TICK_STEPS
 
-    source = main._fill_once.__code__.co_consts
-    names = [c for c in source if isinstance(c, str) and c.startswith(("Firing", "Squaring"))]
-    assert names == ["Firing stop-losses and targets", "Squaring off intraday shorts"]
+    names = [name for name, _ in TICK_STEPS]
+    assert names.index("Firing stop-losses and targets") < names.index("Squaring off intraday shorts")
 
 
 def test_protection_never_uses_the_wall_clock(db: Session, fake_provider: FakeProvider, long_reliance: Trade):

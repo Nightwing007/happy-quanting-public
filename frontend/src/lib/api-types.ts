@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/algos/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Library */
+        get: operations["list_library_api_algos_library_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/market/search": {
         parameters: {
             query?: never;
@@ -47,6 +64,23 @@ export interface paths {
         };
         /** Metrics */
         get: operations["metrics_api_market_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/market/history-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History Limits Route */
+        get: operations["history_limits_route_api_market_history_limits_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -260,6 +294,266 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sim/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_api_sim_sessions_get"];
+        put?: never;
+        /** Create Session */
+        post: operations["create_session_api_sim_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get State */
+        get: operations["get_state_api_sim_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Session */
+        delete: operations["delete_session_api_sim_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Control */
+        post: operations["control_api_sim_sessions__session_id__control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Portfolio */
+        get: operations["portfolio_api_sim_sessions__session_id__portfolio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Orders */
+        get: operations["list_orders_api_sim_sessions__session_id__orders_get"];
+        put?: never;
+        /** Create Order */
+        post: operations["create_order_api_sim_sessions__session_id__orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/orders/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Order */
+        post: operations["preview_order_api_sim_sessions__session_id__orders_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel Order */
+        delete: operations["cancel_order_api_sim_sessions__session_id__orders__order_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/trades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Trades */
+        get: operations["list_trades_api_sim_sessions__session_id__trades_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payouts */
+        get: operations["payouts_api_sim_sessions__session_id__payouts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/exit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exit Trade */
+        post: operations["exit_trade_api_sim_sessions__session_id__trades__trade_id__exit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/exit/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Exit */
+        post: operations["preview_exit_api_sim_sessions__session_id__trades__trade_id__exit_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/protection/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Protection */
+        post: operations["preview_protection_api_sim_sessions__session_id__trades__trade_id__protection_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/sessions/{session_id}/trades/{trade_id}/protection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Protection */
+        put: operations["set_protection_api_sim_sessions__session_id__trades__trade_id__protection_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backtests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Backtests */
+        get: operations["list_backtests_api_backtests_get"];
+        put?: never;
+        /** Create Backtest */
+        post: operations["create_backtest_api_backtests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backtests/{backtest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Backtest */
+        get: operations["get_backtest_api_backtests__backtest_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Backtest */
+        delete: operations["delete_backtest_api_backtests__backtest_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -335,6 +629,419 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AlgoOut */
+        AlgoOut: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Markets */
+            markets: string[];
+            /** Interval */
+            interval: string;
+            /** Warmup Bars */
+            warmup_bars: number;
+            /** Parameters */
+            parameters: components["schemas"]["AlgoParamOut"][];
+        };
+        /**
+         * AlgoParamOut
+         * @description One setting of a predefined algorithm. Decimals are strings, like every money-like value.
+         */
+        AlgoParamOut: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "int" | "decimal" | "choice" | "bool";
+            /** Default */
+            default: string | number | boolean;
+            /** Min */
+            min: string | number | null;
+            /** Max */
+            max: string | number | null;
+            /** Choices */
+            choices: string[];
+            /** Help */
+            help: string;
+        };
+        /**
+         * BacktestBrokersIn
+         * @description Broker per segment; a segment left out uses the live account's choice.
+         */
+        BacktestBrokersIn: {
+            /** India */
+            india?: string | null;
+            /** International */
+            international?: string | null;
+            /** Crypto */
+            crypto?: string | null;
+        };
+        /**
+         * BacktestBuyHoldOut
+         * @description The same symbols bought at equal weight at the first fillable price, with real charges,
+         *     and held to the end.
+         */
+        BacktestBuyHoldOut: {
+            /** Purchases */
+            purchases: components["schemas"]["BacktestPurchaseOut"][];
+            /** Final Equity */
+            final_equity: string;
+            /** Total Return Pct */
+            total_return_pct: string;
+            /** Cagr Pct */
+            cagr_pct: string | null;
+            /** Max Drawdown Pct */
+            max_drawdown_pct: string;
+            /** Total Charges */
+            total_charges: string;
+        };
+        /** BacktestDetailOut */
+        BacktestDetailOut: {
+            /** Id */
+            id: number;
+            /** Strategy Key */
+            strategy_key: string;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Symbols */
+            symbols: string[];
+            /** Interval */
+            interval: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Starting Cash */
+            starting_cash: string;
+            /** Account Currency */
+            account_currency: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed";
+            /** Progress */
+            progress: number;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            results: components["schemas"]["BacktestResultsOut"] | null;
+        };
+        /** BacktestDrawdownOut */
+        BacktestDrawdownOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Strategy Pct */
+            strategy_pct: string;
+            /** Buy Hold Pct */
+            buy_hold_pct: string;
+        };
+        /** BacktestIn */
+        BacktestIn: {
+            /**
+             * Strategy
+             * @description Key of a predefined algorithm, from /api/algos/library
+             */
+            strategy: string;
+            /** Params */
+            params?: {
+                [key: string]: string | number | boolean;
+            };
+            /** Symbols */
+            symbols: string[];
+            /** Interval */
+            interval: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /**
+             * Starting Cash
+             * @description Default: STARTING_CASH
+             */
+            starting_cash?: number | string | null;
+            brokers?: components["schemas"]["BacktestBrokersIn"] | null;
+        };
+        /** BacktestInstrumentOut */
+        BacktestInstrumentOut: {
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Currency */
+            currency: string;
+            /** Market */
+            market: string;
+        };
+        /** BacktestLogOut */
+        BacktestLogOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * BacktestMetricsOut
+         * @description Every figure is a string or null. Percentages are plain numbers ("12.34" is 12.34%).
+         */
+        BacktestMetricsOut: {
+            /** Starting Cash */
+            starting_cash: string;
+            /** Final Equity */
+            final_equity: string;
+            /** Total Return Pct */
+            total_return_pct: string;
+            /** Cagr Pct */
+            cagr_pct: string | null;
+            /** Cagr Note */
+            cagr_note: string | null;
+            /** Max Drawdown Pct */
+            max_drawdown_pct: string;
+            /** Sharpe */
+            sharpe: string | null;
+            /** Sharpe Note */
+            sharpe_note: string | null;
+            /** Trades Closed */
+            trades_closed: number;
+            /** Trades Open */
+            trades_open: number;
+            /** Win Rate Pct */
+            win_rate_pct: string | null;
+            /** Average Win */
+            average_win: string | null;
+            /** Average Loss */
+            average_loss: string | null;
+            /** Profit Factor */
+            profit_factor: string | null;
+            /** Total Charges */
+            total_charges: string;
+            /** Charges By Category */
+            charges_by_category: {
+                [key: string]: string;
+            };
+            /** Gross Profit */
+            gross_profit: string | null;
+            /** Charges Pct Of Gross Profit */
+            charges_pct_of_gross_profit: string | null;
+            /** Financing Paid */
+            financing_paid: string;
+            /** Exposure Pct */
+            exposure_pct: string;
+        };
+        /**
+         * BacktestPointOut
+         * @description The account at the close of one bar (one day, for daily bars). All account currency.
+         */
+        BacktestPointOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Equity */
+            equity: string;
+            /** Cash */
+            cash: string;
+            /** Positions */
+            positions: string;
+            /** Buy Hold Equity */
+            buy_hold_equity: string;
+        };
+        /** BacktestPurchaseOut */
+        BacktestPurchaseOut: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Quantity */
+            quantity: string;
+            /** Price */
+            price: string;
+            /** Charges */
+            charges: string;
+        };
+        /** BacktestResultsOut */
+        BacktestResultsOut: {
+            /** Strategy Key */
+            strategy_key: string;
+            /** Strategy Name */
+            strategy_name: string;
+            /** Params */
+            params: {
+                [key: string]: string | number | boolean;
+            };
+            /** Account Currency */
+            account_currency: string;
+            /** Interval */
+            interval: string;
+            /** Instruments */
+            instruments: components["schemas"]["BacktestInstrumentOut"][];
+            /** Bars */
+            bars: number;
+            /** Warmup Bars */
+            warmup_bars: number;
+            /**
+             * First Bar
+             * Format: date-time
+             */
+            first_bar: string;
+            /**
+             * Last Bar
+             * Format: date-time
+             */
+            last_bar: string;
+            /** Curve Stride */
+            curve_stride: number;
+            /** Equity Curve */
+            equity_curve: components["schemas"]["BacktestPointOut"][];
+            /** Drawdown */
+            drawdown: components["schemas"]["BacktestDrawdownOut"][];
+            /** Trades */
+            trades: components["schemas"]["BacktestTradeOut"][];
+            /** Orders */
+            orders: components["schemas"]["OrderOut"][];
+            /** Logs */
+            logs: components["schemas"]["BacktestLogOut"][];
+            /** Errors */
+            errors: string[];
+            /** Notes */
+            notes: string[];
+            metrics: components["schemas"]["BacktestMetricsOut"];
+            buy_and_hold: components["schemas"]["BacktestBuyHoldOut"];
+        };
+        /** BacktestSummaryOut */
+        BacktestSummaryOut: {
+            /** Id */
+            id: number;
+            /** Strategy Key */
+            strategy_key: string;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Symbols */
+            symbols: string[];
+            /** Interval */
+            interval: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Starting Cash */
+            starting_cash: string;
+            /** Account Currency */
+            account_currency: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed";
+            /** Progress */
+            progress: number;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** BacktestTradeOut */
+        BacktestTradeOut: {
+            /** Id */
+            id: number;
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "long" | "short";
+            /** Product */
+            product: string;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Entry At
+             * Format: date-time
+             */
+            entry_at: string;
+            /** Entry Price */
+            entry_price: string;
+            /** Exit At */
+            exit_at: string | null;
+            /** Exit Price */
+            exit_price: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /** Closed How */
+            closed_how: string | null;
+            /** Entry Charges */
+            entry_charges: string;
+            /** Exit Charges */
+            exit_charges: string;
+            /** Charges Total */
+            charges_total: string;
+            /** Charges By Category */
+            charges_by_category: {
+                [key: string]: string;
+            };
+            /** Financing */
+            financing: string;
+            /** Gross Pnl */
+            gross_pnl: string | null;
+            /** Realized Pnl */
+            realized_pnl: string | null;
+            /** Unrealized Pnl */
+            unrealized_pnl: string | null;
+        };
         /** BarOut */
         BarOut: {
             /** Time */
@@ -428,6 +1135,23 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HistoryLimitOut */
+        HistoryLimitOut: {
+            /** Interval */
+            interval: string;
+            /** Earliest */
+            earliest: string | null;
+        };
+        /** HistoryLimitsOut */
+        HistoryLimitsOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Limits */
+            limits: components["schemas"]["HistoryLimitOut"][];
         };
         /**
          * HoldingOut
@@ -1017,6 +1741,150 @@ export interface components {
             /** Min Shortable Step */
             min_shortable_step: string;
         };
+        /** SimControlIn */
+        SimControlIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "start" | "pause" | "step" | "reset";
+            /**
+             * Steps
+             * @description Bars to play, for `step`
+             */
+            steps?: number | null;
+            /**
+             * Speed
+             * @description New speed, bars per second
+             */
+            speed?: number | null;
+        };
+        /** SimExchangeTimeOut */
+        SimExchangeTimeOut: {
+            /** Symbol */
+            symbol: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Local Time
+             * Format: date-time
+             */
+            local_time: string;
+        };
+        /** SimSessionIn */
+        SimSessionIn: {
+            /** Symbols */
+            symbols: string[];
+            /**
+             * Interval
+             * @default 1m
+             */
+            interval: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /**
+             * Speed
+             * @description Bars per second while running
+             * @default 60
+             */
+            speed: number;
+        };
+        /** SimSessionOut */
+        SimSessionOut: {
+            /** Id */
+            id: number;
+            /** Account Id */
+            account_id: number;
+            /** Symbols */
+            symbols: string[];
+            /** Interval */
+            interval: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Speed */
+            speed: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "running" | "paused" | "finished";
+            /**
+             * Cursor
+             * Format: date-time
+             */
+            cursor: string;
+            /** Exchange Times */
+            exchange_times: components["schemas"]["SimExchangeTimeOut"][];
+            /** Progress Percent */
+            progress_percent: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** SimSessionStateOut */
+        SimSessionStateOut: {
+            /** Id */
+            id: number;
+            /** Account Id */
+            account_id: number;
+            /** Symbols */
+            symbols: string[];
+            /** Interval */
+            interval: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Speed */
+            speed: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "running" | "paused" | "finished";
+            /**
+             * Cursor
+             * Format: date-time
+             */
+            cursor: string;
+            /** Exchange Times */
+            exchange_times: components["schemas"]["SimExchangeTimeOut"][];
+            /** Progress Percent */
+            progress_percent: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Bars */
+            bars: {
+                [key: string]: components["schemas"]["BarOut"][];
+            };
+        };
         /** TradeOut */
         TradeOut: {
             /** Id */
@@ -1167,6 +2035,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_library_api_algos_library_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlgoOut"][];
+                };
+            };
+        };
+    };
     search_api_market_search_get: {
         parameters: {
             query: {
@@ -1258,6 +2146,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_limits_route_api_market_history_limits_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryLimitsOut"];
                 };
             };
         };
@@ -1659,6 +2567,649 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TradeOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_sim_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimSessionOut"][];
+                };
+            };
+        };
+    };
+    create_session_api_sim_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimSessionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimSessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_state_api_sim_sessions__session_id__get: {
+        parameters: {
+            query?: {
+                bars_limit?: number;
+            };
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimSessionStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_session_api_sim_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_api_sim_sessions__session_id__control_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimControlIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimSessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portfolio_api_sim_sessions__session_id__portfolio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_orders_api_sim_sessions__session_id__orders_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["OrderStatus"] | null;
+                symbol?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_order_api_sim_sessions__session_id__orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_order_api_sim_sessions__session_id__orders_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_order_api_sim_sessions__session_id__orders__order_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_trades_api_sim_sessions__session_id__trades_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["TradeStatus"] | null;
+                symbol?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    payouts_api_sim_sessions__session_id__payouts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exit_trade_api_sim_sessions__session_id__trades__trade_id__exit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trade_id: number;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExitIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_exit_api_sim_sessions__session_id__trades__trade_id__exit_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trade_id: number;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExitIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_protection_api_sim_sessions__session_id__trades__trade_id__protection_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trade_id: number;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProtectionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectionPreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_protection_api_sim_sessions__session_id__trades__trade_id__protection_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trade_id: number;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProtectionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_backtests_api_backtests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestSummaryOut"][];
+                };
+            };
+        };
+    };
+    create_backtest_api_backtests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BacktestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_backtest_api_backtests__backtest_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                backtest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_backtest_api_backtests__backtest_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                backtest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

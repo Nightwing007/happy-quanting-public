@@ -21,6 +21,7 @@ from app.market_data.base import DataUnavailable
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderStatus, OrderType, Trade
 from app.trading import engine, hours, markets
+from app.trading.engine import live_context as live
 from app.trading.errors import InsufficientFunds, InvalidOrder
 
 D = Decimal
@@ -35,7 +36,7 @@ def at(monkeypatch: pytest.MonkeyPatch, *args: int) -> datetime:
 
 def buy(db: Session, provider: FakeProvider, symbol: str, qty: str, **kw) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side="buy", type=kw.pop("type", OrderType.MARKET),
+        live(db, provider), symbol=symbol, side="buy", type=kw.pop("type", OrderType.MARKET),
         quantity=D(qty), **kw,
     )  # fmt: skip
 
@@ -73,14 +74,14 @@ def test_saturday_an_nse_order_waits_then_fills_monday_at_the_open(
     order = buy(db, fake_provider, "RELIANCE.NS", "10")
     assert order.status == OrderStatus.OPEN  # a market order, accepted and waiting
     assert engine.get_account(db).cash == D("100000")  # nothing spent yet
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
 
     # Monday 2026-03-09 09:14 IST (03:44 UTC): still a minute before the open.
     at(monkeypatch, 2026, 3, 9, 3, 44)
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
     # Monday 09:15 IST (03:45 UTC): open, and the fake stamps its quote with the clock.
     at(monkeypatch, 2026, 3, 9, 3, 45)
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
     db.refresh(order)
     assert order.status == OrderStatus.FILLED
     # 10 x 1250 = 12500 INR; the account is USD, so 12500 x 0.011976 = 149.70 (zero costs)
@@ -100,7 +101,7 @@ def test_a_holiday_waits(
     assert order.status == OrderStatus.OPEN
     # Tuesday 2026-01-27 09:15 IST = 03:45 UTC
     at(monkeypatch, 2026, 1, 27, 3, 45)
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
 
 
 @real_calendar
@@ -128,10 +129,10 @@ def test_us_order_after_the_close_waits_and_fills_next_morning(
     assert order.status == OrderStatus.OPEN
     # Tuesday 2026-03-03 09:29 EST (14:29 UTC): not yet.
     at(monkeypatch, 2026, 3, 3, 14, 29)
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
     # 09:30 EST (14:30 UTC): the open.
     at(monkeypatch, 2026, 3, 3, 14, 30)
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
     db.refresh(order)
     assert (order.status, order.amount) == (OrderStatus.FILLED, D("2300.00"))  # 10 x 230
 
@@ -147,9 +148,9 @@ def test_a_stale_quote_does_not_fill_even_when_the_market_is_open(
     fake_provider.set_as_of("RELIANCE.NS", friday)
     order = buy(db, fake_provider, "RELIANCE.NS", "1")
     assert order.status == OrderStatus.OPEN
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
     fake_provider.set_as_of("RELIANCE.NS", int(now.timestamp()))
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
 
 
 @real_calendar
@@ -287,7 +288,7 @@ def test_convert_account_currency(
 ):
     # A USD account with real charges: buy 10 AAPL and 2 RELIANCE.NS, then sell 4 AAPL.
     first = buy(db, fake_provider, "AAPL", "10")
-    engine.place_order(db, fake_provider, symbol="AAPL", side="sell", type="market", quantity=D("4"))
+    engine.place_order(live(db, fake_provider), symbol="AAPL", side="sell", type="market", quantity=D("4"))
     buy(db, fake_provider, "RELIANCE.NS", "2")
     account = engine.get_account(db)
     cash, pnl = account.cash, account.realized_pnl
@@ -300,7 +301,7 @@ def test_convert_account_currency(
     assert pnl != 0 and len(before[first_id][3]) >= 1
 
     with caplog.at_level(logging.INFO, logger="app.trading.engine"):
-        assert engine.convert_account_currency(db, fake_provider, "INR") is True
+        assert engine.convert_account_currency(live(db, fake_provider), "INR") is True
     # 98,587.94 x 83.5 = 8,232,092.99 (cash after the three trades and their charges)
     assert "Converted account from USD to INR at 83.50: cash 98,587.94 → 8,232,092.99" in caplog.text
 
@@ -323,7 +324,7 @@ def test_convert_account_currency(
     assert reliance.fx_rate == D(1)  # rupee shares in a rupee account
     for trade in db.scalars(select(Trade)):
         assert trade.cost_basis == inr(basis[trade.symbol])
-    assert engine.convert_account_currency(db, fake_provider, "INR") is False  # already done
+    assert engine.convert_account_currency(live(db, fake_provider), "INR") is False  # already done
 
 
 def test_convert_account_currency_leaves_the_account_alone_without_a_rate(
@@ -337,7 +338,7 @@ def test_convert_account_currency_leaves_the_account_alone_without_a_rate(
 
     monkeypatch.setattr(fake_provider, "get_quote", no_rate)
     with caplog.at_level(logging.WARNING, logger="app.trading.engine"):
-        assert engine.convert_account_currency(db, fake_provider, "INR") is False
+        assert engine.convert_account_currency(live(db, fake_provider), "INR") is False
     assert "Leaving the account unchanged" in caplog.text
     account = engine.get_account(db)
     assert (account.currency, account.cash) == ("USD", cash)

@@ -4,10 +4,13 @@ from fastapi import APIRouter, HTTPException, Query
 from app import indicators as ind
 from app.api.deps import Provider, SymbolParam, clean_symbol
 from app.market_data.base import ALLOWED_RANGES, Fundamentals
+from app.market_data.history import history_limits, today_utc
 from app.metrics import build_metrics
 from app.schemas import (
     BarOut,
     BarsOut,
+    HistoryLimitOut,
+    HistoryLimitsOut,
     IndicatorPoint,
     IndicatorSeriesOut,
     InstrumentOut,
@@ -79,6 +82,15 @@ def metrics(provider: Provider, symbol: SymbolParam):
     if fundamentals is None:
         fundamentals = Fundamentals(symbol=symbol, sector=None, industry=None, currency=quote.currency)
     return build_metrics(fundamentals, kind, quote.currency)
+
+
+@router.get("/history-limits", response_model=HistoryLimitsOut)
+def history_limits_route():
+    today = today_utc()
+    return HistoryLimitsOut(
+        today=today,
+        limits=[HistoryLimitOut(interval=i, earliest=e) for i, e in history_limits(today)],
+    )
 
 
 @router.get("/bars", response_model=BarsOut)

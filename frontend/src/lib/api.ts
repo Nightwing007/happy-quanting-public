@@ -2,6 +2,7 @@ import type {
   Bars,
   BrokerGroup,
   Health,
+  HistoryLimits,
   Instrument,
   Metrics,
   Order,
@@ -14,6 +15,10 @@ import type {
   Quote,
   Settings,
   SettingsIn,
+  SimControl,
+  SimSession,
+  SimSessionIn,
+  SimSessionState,
   Trade,
   WatchlistItem,
 } from "./types";
@@ -89,6 +94,10 @@ function qs(params: Record<string, string | number | null | undefined>): string 
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
+/** Where the trading routes live. The live account is /api; a simulation is /api/sim/sessions/{id}. */
+export const LIVE_BASE = "/api";
+export const simBase = (id: number) => `/api/sim/sessions/${id}`;
+
 export const getHealth = () => request<Health>("/api/health");
 
 export const searchInstruments = (q: string) =>
@@ -102,51 +111,53 @@ export const getBars = (symbol: string, interval: string, range: string, indicat
 export const getMetrics = (symbol: string) =>
   request<Metrics>(`/api/market/metrics${qs({ symbol })}`);
 
-export const getPortfolio = () => request<Portfolio>("/api/portfolio");
+export const getPortfolio = (base = LIVE_BASE) => request<Portfolio>(`${base}/portfolio`);
 
 export const resetPortfolio = () => request<Portfolio>("/api/portfolio/reset", { method: "POST" });
 
 export type OrderFilters = { status?: string; symbol?: string; limit?: number };
 
-export const getOrders = (filters: OrderFilters = {}) => request<Order[]>(`/api/orders${qs(filters)}`);
+export const getOrders = (filters: OrderFilters = {}, base = LIVE_BASE) =>
+  request<Order[]>(`${base}/orders${qs(filters)}`);
 
-export const placeOrder = (body: OrderIn) =>
-  request<Order>("/api/orders", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+export const placeOrder = (body: OrderIn, base = LIVE_BASE) =>
+  request<Order>(`${base}/orders`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
 
-export const previewOrder = (body: OrderIn) =>
-  request<OrderPreview>("/api/orders/preview", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+export const previewOrder = (body: OrderIn, base = LIVE_BASE) =>
+  request<OrderPreview>(`${base}/orders/preview`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
 
-export const getPayouts = () => request<Payouts>("/api/payouts");
+export const getPayouts = (base = LIVE_BASE) => request<Payouts>(`${base}/payouts`);
 
 export type TradeFilters = { status?: string; symbol?: string; limit?: number };
 
-export const getTrades = (filters: TradeFilters = {}) => request<Trade[]>(`/api/trades${qs(filters)}`);
+export const getTrades = (filters: TradeFilters = {}, base = LIVE_BASE) =>
+  request<Trade[]>(`${base}/trades${qs(filters)}`);
 
 // `quantity` omitted means the whole open part.
-export const exitTrade = ({ id, quantity }: { id: number; quantity?: string }) =>
-  request<Order>(`/api/trades/${id}/exit`, {
+export const exitTrade = ({ id, quantity }: { id: number; quantity?: string }, base = LIVE_BASE) =>
+  request<Order>(`${base}/trades/${id}/exit`, {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify({ quantity: quantity ?? null }),
   });
 
-export const previewExit = (id: number, quantity?: string) =>
-  request<OrderPreview>(`/api/trades/${id}/exit/preview`, {
+export const previewExit = (id: number, quantity?: string, base = LIVE_BASE) =>
+  request<OrderPreview>(`${base}/trades/${id}/exit/preview`, {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify({ quantity: quantity ?? null }),
   });
 
 // Null clears that price. The preview checks the prices and shows what each would leave you with; saves nothing.
-export const previewProtection = (id: number, body: ProtectionIn) =>
-  request<ProtectionPreview>(`/api/trades/${id}/protection/preview`, {
+export const previewProtection = (id: number, body: ProtectionIn, base = LIVE_BASE) =>
+  request<ProtectionPreview>(`${base}/trades/${id}/protection/preview`, {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   });
 
-export const setProtection = ({ id, ...body }: { id: number } & ProtectionIn) =>
-  request<Trade>(`/api/trades/${id}/protection`, {
+export const setProtection = ({ id, ...body }: { id: number } & ProtectionIn, base = LIVE_BASE) =>
+  request<Trade>(`${base}/trades/${id}/protection`, {
     method: "PUT",
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
@@ -159,7 +170,8 @@ export const updateSettings = (body: SettingsIn) =>
 
 export const getBrokers = () => request<BrokerGroup[]>("/api/brokers");
 
-export const cancelOrder = (id: number) => request<Order>(`/api/orders/${id}`, { method: "DELETE" });
+export const cancelOrder = (id: number, base = LIVE_BASE) =>
+  request<Order>(`${base}/orders/${id}`, { method: "DELETE" });
 
 export const getWatchlist = () => request<WatchlistItem[]>("/api/watchlist");
 
@@ -172,3 +184,22 @@ export const addToWatchlist = (symbol: string) =>
 
 export const removeFromWatchlist = (symbol: string) =>
   request<void>(`/api/watchlist${qs({ symbol })}`, { method: "DELETE" });
+
+export const getHistoryLimits = () => request<HistoryLimits>("/api/market/history-limits");
+
+export const listSimSessions = () => request<SimSession[]>("/api/sim/sessions");
+
+export const createSimSession = (body: SimSessionIn) =>
+  request<SimSession>("/api/sim/sessions", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const getSimSession = (id: number, barsLimit = 1000) =>
+  request<SimSessionState>(`/api/sim/sessions/${id}${qs({ bars_limit: barsLimit })}`);
+
+export const controlSimSession = ({ id, ...body }: { id: number } & SimControl) =>
+  request<SimSession>(`/api/sim/sessions/${id}/control`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+
+export const deleteSimSession = (id: number) => request<void>(`/api/sim/sessions/${id}`, { method: "DELETE" });

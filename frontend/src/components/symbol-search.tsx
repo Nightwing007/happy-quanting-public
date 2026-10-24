@@ -15,16 +15,26 @@ import {
 } from "@/components/ui/command";
 import { useSearch } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const DEBOUNCE_MS = 250;
 
-export function SymbolSearch() {
+type Props = {
+  /** Picks a symbol for the caller instead of opening its trade page; also drops the Ctrl+K shortcut. */
+  onSelect?: (symbol: string) => void;
+  /** Button content when `onSelect` is set. */
+  label?: React.ReactNode;
+  className?: string;
+};
+
+export function SymbolSearch({ onSelect, label, className }: Props = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [debounced, setDebounced] = useState("");
 
   useEffect(() => {
+    if (onSelect) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -33,7 +43,7 @@ export function SymbolSearch() {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [onSelect]);
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(text), DEBOUNCE_MS);
@@ -61,7 +71,8 @@ export function SymbolSearch() {
 
   function go(symbol: string) {
     handleOpenChange(false);
-    router.push(`/trade?symbol=${encodeURIComponent(symbol)}`);
+    if (onSelect) onSelect(symbol);
+    else router.push(`/trade?symbol=${encodeURIComponent(symbol)}`);
   }
 
   return (
@@ -71,11 +82,17 @@ export function SymbolSearch() {
         size="sm"
         onClick={() => setOpen(true)}
         aria-label="Search symbols"
-        className="shrink-0 gap-2 text-muted-foreground"
+        className={cn("shrink-0 gap-2 text-muted-foreground", className)}
       >
         <SearchIcon />
-        <span className="hidden sm:inline">Search</span>
-        <kbd className="hidden rounded border bg-muted px-1.5 font-mono text-[10px] sm:inline">Ctrl K</kbd>
+        {onSelect ? (
+          label
+        ) : (
+          <>
+            <span className="hidden sm:inline">Search</span>
+            <kbd className="hidden rounded border bg-muted px-1.5 font-mono text-[10px] sm:inline">Ctrl K</kbd>
+          </>
+        )}
       </Button>
 
       <CommandDialog

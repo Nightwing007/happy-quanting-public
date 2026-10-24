@@ -3,7 +3,7 @@ import math
 import pandas as pd
 import pytest
 
-from app.indicators import ema, rsi, sma
+from app.indicators import atr, bollinger, ema, highest, lowest, rsi, sma
 
 
 def test_sma_window_3():
@@ -34,3 +34,35 @@ def test_rsi_mixed_series_wilder():
     assert result[1] == 100
     assert result[2] == pytest.approx(50)
     assert result[3] == pytest.approx(100 - 100 / 6)
+
+
+def test_atr_wilder():
+    # high 10,12,13  low 8,9,10  close 9,11,12.
+    # True ranges: bar0 = 10-8 = 2 (no previous close); bar1 = max(12-9, |12-9|, |9-9|) = 3;
+    # bar2 = max(13-10, |13-11|, |10-11|) = 3.
+    # Period 2: first ATR (bar1) = (2+3)/2 = 2.5; next = (2.5*1 + 3)/2 = 2.75.
+    result = atr(pd.Series([10, 12, 13]), pd.Series([8, 9, 10]), pd.Series([9, 11, 12]), 2)
+    assert math.isnan(result[0])
+    assert list(result[1:]) == [2.5, 2.75]
+
+
+def test_atr_gap_uses_previous_close():
+    # A gap up: bar1 low 20 is far above the previous close 10, so TR = |high - prev close| = 12,
+    # not the bar's own range of 2. Period 1 -> ATR is the true range itself.
+    result = atr(pd.Series([11, 22]), pd.Series([9, 20]), pd.Series([10, 21]), 1)
+    assert list(result) == [2, 12]
+
+
+def test_bollinger_population_deviation():
+    # 2,4,4,4,5,5,7,9: mean 5, squared gaps 9+1+1+1+0+0+4+16 = 32, /8 = 4, deviation 2 exactly.
+    mid, upper, lower = bollinger(pd.Series([2, 4, 4, 4, 5, 5, 7, 9]), 8, 1.5)
+    assert math.isnan(mid[6]) and math.isnan(upper[6])
+    assert (mid[7], upper[7], lower[7]) == (5, 8, 2)  # 5 +/- 1.5 * 2
+
+
+def test_highest_and_lowest_rolling():
+    # Windows of 3 over 1,3,2,5,4: (1,3,2) (3,2,5) (2,5,4) -> highs 3,5,5 and lows 1,2,2.
+    s = pd.Series([1, 3, 2, 5, 4])
+    assert list(highest(s, 3)[2:]) == [3, 5, 5]
+    assert list(lowest(s, 3)[2:]) == [1, 2, 2]
+    assert math.isnan(highest(s, 3)[1])

@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import logging
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -10,47 +11,47 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api import market, trading, watchlist
+from app import clock
+from app.algos import jobs as backtest_jobs
+from app.algos.api import ParameterError
+from app.algos.backtest import BacktestError
+from app.algos.runner import StrategyRunError
+from app.api import algos, backtests, market, sim, trading, watchlist
 from app.api import settings as settings_api
 from app.api.deps import Provider
 from app.config import Settings, get_settings
 from app.db import SessionLocal
 from app.market_data import get_provider
 from app.market_data.base import DataUnavailable, MarketDataError, SymbolNotFound
+from app.market_data.history import HistoryRangeError
 from app.migrate import upgrade_database
+from app.sim.driver import drive_loop
+from app.sim.runner import SimError
+from app.trading.context import TradingContext
 from app.trading.engine import (
-    accrue_financing,
     convert_account_currency,
-    fill_open_orders,
     first_run_setup,
-    square_off_due,
-    trigger_protected_trades,
+    live_accounts,
+    live_context,
 )
 from app.trading.errors import TradingError
+from app.trading.tick import run_tick
 
 logger = logging.getLogger(__name__)
 
 FILL_INTERVAL_SECONDS = 60
 
 
-def _run_step(name: str, step) -> None:
-    # Each step gets its own session and its own failure handling, so a bad tick in one (say,
-    # a quote that won't load) never stops the others. Sessions are not thread-safe, hence one here.
+def _fill_once() -> None:
+    # Runs in a worker thread, so it opens its own session (sessions are not thread-safe).
+    # Live accounts only: a sim or backtest account is driven by its own run, on its own clock.
     try:
         with SessionLocal() as db:
-            result = step(db, get_provider())
-        if result:
-            logger.info("%s: %s", name, result if isinstance(result, int) else len(result))
-    except Exception:  # noqa: BLE001 - one failing step must not stop the rest
-        logger.exception("%s failed; will retry", name)
-
-
-def _fill_once() -> None:
-    # Runs in a worker thread.
-    _run_step("Filling open orders", fill_open_orders)
-    _run_step("Firing stop-losses and targets", trigger_protected_trades)
-    _run_step("Squaring off intraday shorts", square_off_due)
-    _run_step("Charging borrow and funding", accrue_financing)
+            provider = get_provider()
+            for account in live_accounts(db):
+                run_tick(TradingContext(db, account, provider, lambda: clock.now()))
+    except Exception:  # noqa: BLE001 - the loop must survive any single failure
+        logger.exception("Background tick failed; will retry")
 
 
 async def _fill_loop() -> None:
@@ -73,20 +74,32 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         with SessionLocal() as db:
             first_run_setup(db)
             # BASE_CURRENCY changed since the account was made: convert it (or log and carry on).
-            convert_account_currency(db, get_provider(), settings.base_currency)
-    task = asyncio.create_task(_fill_loop()) if settings.background_jobs else None
+            convert_account_currency(live_context(db, get_provider()), settings.base_currency)
+    tasks = (
+        [asyncio.create_task(_fill_loop()), asyncio.create_task(drive_loop())]
+        if settings.background_jobs
+        else []
+    )
+    worker = backtest_jobs.start_worker() if settings.background_jobs else None
     try:
         yield
     finally:
-        if task is not None:
+        if worker is not None:
+            backtest_jobs.stop_worker(*worker)
+        for task in tasks:
             task.cancel()
+        for task in tasks:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
 
 
 app = FastAPI(title="Happy Quanting", lifespan=lifespan)
+app.include_router(algos.router)
 app.include_router(market.router)
 app.include_router(trading.router)
+app.include_router(sim.router)
+app.include_router(sim.trading_router)
+app.include_router(backtests.router)
 app.include_router(settings_api.router)
 app.include_router(watchlist.router)
 
@@ -98,6 +111,7 @@ def _market_error(status_code: int):
     return handler
 
 
+app.add_exception_handler(HistoryRangeError, _market_error(400))
 app.add_exception_handler(SymbolNotFound, _market_error(404))
 app.add_exception_handler(DataUnavailable, _market_error(503))
 app.add_exception_handler(MarketDataError, _market_error(502))
@@ -114,11 +128,34 @@ def _trading_error(request: Request, exc: TradingError) -> JSONResponse:
 app.add_exception_handler(TradingError, _trading_error)
 
 
+def _sim_error(request: Request, exc: SimError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+
+app.add_exception_handler(SimError, _sim_error)
+
+
+def _backtest_error(request: Request, exc: BacktestError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+
+app.add_exception_handler(BacktestError, _backtest_error)
+
+
+def _bad_settings(request: Request, exc: ParameterError | StrategyRunError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+app.add_exception_handler(ParameterError, _bad_settings)
+app.add_exception_handler(StrategyRunError, _bad_settings)
+
+
 async def _validation_error(request: Request, exc: RequestValidationError):
     # Pydantic's list of error dicts is for developers. For an order the person typed, give one
     # readable sentence; every other route keeps the default shape.
     errors = exc.errors()
-    path = request.url.path
+    # A sim's trading routes are the live ones under a prefix, so they get the same wording.
+    path = re.sub(r"^/api/sim/sessions/\d+", "/api", request.url.path)
     order_like = path in ("/api/orders", "/api/orders/preview") or (
         path.startswith("/api/trades/") and path.endswith(("/exit", "/exit/preview"))
     )

@@ -29,6 +29,11 @@ export type Metric = Schemas["MetricOut"];
 export type ProtectionIn = Schemas["ProtectionIn"];
 export type ProtectionOutcome = Schemas["ProtectionOutcomeOut"];
 export type ProtectionPreview = Schemas["ProtectionPreviewOut"];
+export type HistoryLimits = Schemas["HistoryLimitsOut"];
+export type SimSession = Schemas["SimSessionOut"];
+export type SimSessionState = Schemas["SimSessionStateOut"];
+export type SimSessionIn = Schemas["SimSessionIn"];
+export type SimControl = Schemas["SimControlIn"];
 export type WatchlistItem = Schemas["WatchlistItemOut"];
 
 // /api/health is declared as a loose string map in the schema; pin down the real shape.

@@ -17,6 +17,7 @@ from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderStatus, OrderType, Trade
 from app.schemas import ChargeOut
 from app.trading import brokers, engine
+from app.trading.engine import live_context as live
 from app.trading.errors import BrokerNotAvailable, InsufficientFunds, InvalidBroker, UnsupportedMarket
 from app.trading.fees import Fee
 
@@ -25,7 +26,7 @@ D = Decimal
 
 def place(db: Session, provider: FakeProvider, side: str, symbol: str, qty: str, **kw) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side=side, type=kw.pop("type", OrderType.MARKET),
+        live(db, provider), symbol=symbol, side=side, type=kw.pop("type", OrderType.MARKET),
         quantity=D(qty), **kw,
     )  # fmt: skip
 
@@ -171,9 +172,7 @@ def test_a_resting_limit_order_pays_the_maker_rate_and_a_market_order_the_taker_
     )
     assert resting.status == OrderStatus.OPEN
     preview = engine.preview_order(
-        db,
-        fake_provider,
-        symbol="BTC-USD",
+        live(db, fake_provider),         symbol="BTC-USD",
         side="buy",
         type="limit",
         quantity=D("0.1"),
@@ -189,7 +188,7 @@ def test_a_resting_limit_order_pays_the_maker_rate_and_a_market_order_the_taker_
 
     # The resting order fills later at the then-current price, still as a maker.
     fake_provider.set_price("BTC-USD", D("49000"))
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
     # 0.1 x 49000 = 4900; maker 0.1% = 4.90
     assert resting.status == OrderStatus.FILLED
     assert resting.charges_total == D("4.90")
@@ -208,7 +207,7 @@ def test_preview_and_fill_agree_field_by_field(db: Session, fake_provider: FakeP
     for side, qty in ((OrderSide.BUY, "10"), (OrderSide.SELL, "4")):
         before = engine.get_account(db).cash
         preview = engine.preview_order(
-            db, fake_provider, symbol="RELIANCE.NS", side=side, type="market", quantity=D(qty)
+            live(db, fake_provider), symbol="RELIANCE.NS", side=side, type="market", quantity=D(qty)
         )
         order = place(db, fake_provider, side, "RELIANCE.NS", qty)
         assert [ChargeOut.model_validate(c).model_dump(mode="json") for c in preview.charges] == order.charges
@@ -222,7 +221,7 @@ def test_preview_and_fill_agree_field_by_field(db: Session, fake_provider: FakeP
 def test_a_broker_that_does_not_offer_the_market_is_refused_with_a_sentence(
     db: Session, fake_provider: FakeProvider
 ):
-    engine.update_brokers(db, {"international": "vested"})
+    engine.update_brokers(live(db, FakeProvider()), {"international": "vested"})
     with pytest.raises(BrokerNotAvailable) as exc:
         place(db, fake_provider, OrderSide.BUY, "VOD.L", "10")
     assert exc.value.message == (
@@ -230,13 +229,15 @@ def test_a_broker_that_does_not_offer_the_market_is_refused_with_a_sentence(
     )
     # Preview refuses the same way, and nothing was written.
     with pytest.raises(BrokerNotAvailable):
-        engine.preview_order(db, fake_provider, symbol="VOD.L", side="buy", type="market", quantity=D(1))
+        engine.preview_order(
+            live(db, fake_provider), symbol="VOD.L", side="buy", type="market", quantity=D(1)
+        )
     assert db.scalars(select(Order)).all() == []
     # A resting limit order is refused up front too, rather than rejected later.
     with pytest.raises(BrokerNotAvailable):
         place(db, fake_provider, OrderSide.BUY, "VOD.L", "10", type=OrderType.LIMIT, limit_price=D("0.5"))
     # And Indian brokers offer only Indian markets
-    engine.update_brokers(db, {"india": "zerodha"})
+    engine.update_brokers(live(db, FakeProvider()), {"india": "zerodha"})
     assert place(db, fake_provider, OrderSide.BUY, "RELIANCE.NS", "1").status == OrderStatus.FILLED
 
 
@@ -244,16 +245,18 @@ def test_unknown_exchange_suffix_is_refused(db: Session, fake_provider: FakeProv
     fake_provider._instruments["FOO.ZZ"] = Instrument("FOO.ZZ", "Foo", "ZZX", "equity", "USD")
     fake_provider._price["FOO.ZZ"] = fake_provider._previous["FOO.ZZ"] = D("10")
     with pytest.raises(UnsupportedMarket):
-        engine.preview_order(db, fake_provider, symbol="FOO.ZZ", side="buy", type="market", quantity=D(1))
+        engine.preview_order(
+            live(db, fake_provider), symbol="FOO.ZZ", side="buy", type="market", quantity=D(1)
+        )
 
 
 def test_update_brokers_validates_the_segment_and_changes_nothing_on_error(db: Session):
     with pytest.raises(InvalidBroker) as exc:
-        engine.update_brokers(db, {"international": "vested", "india": "ibkr"})
+        engine.update_brokers(live(db, FakeProvider()), {"international": "vested", "india": "ibkr"})
     assert "'ibkr' isn't a broker for Indian stocks" in exc.value.message
     assert "zerodha" in exc.value.message
     with pytest.raises(InvalidBroker):
-        engine.update_brokers(db, {"crypto": "nonexistent"})
+        engine.update_brokers(live(db, FakeProvider()), {"crypto": "nonexistent"})
     account = engine.get_account(db)
     # the valid half of the failed request was not applied
     assert (account.broker_india, account.broker_international, account.broker_crypto) == (
@@ -261,20 +264,20 @@ def test_update_brokers_validates_the_segment_and_changes_nothing_on_error(db: S
         "ibkr",
         "coindcx",
     )
-    engine.update_brokers(db, {"crypto": "binance", "india": None})
+    engine.update_brokers(live(db, FakeProvider()), {"crypto": "binance", "india": None})
     assert engine.get_account(db).broker_crypto == "binance"
 
 
 def test_break_even_price_closes_at_zero_and_one_tick_lower_loses(db: Session, fake_provider: FakeProvider):
     inr_account(db)
     place(db, fake_provider, OrderSide.BUY, "RELIANCE.NS", "10")
-    (view,) = engine.get_portfolio(db, fake_provider).holdings
+    (view,) = engine.get_portfolio(live(db, fake_provider)).holdings
     be = view.break_even_price
     # Cost 12529.59; exit charges are ~0.222% plus Rs 23.60, so about 1258.11 (see test_fees)
     assert D("1258.05") < be < D("1258.15")
 
     def realized_selling_at(exit_price: Decimal) -> Decimal:
-        engine.reset_account(db)
+        engine.reset_account(live(db, FakeProvider()))
         fake_provider.set_price("RELIANCE.NS", D("1250"))
         place(db, fake_provider, OrderSide.BUY, "RELIANCE.NS", "10")
         fake_provider.set_price("RELIANCE.NS", exit_price)
@@ -289,7 +292,7 @@ def test_portfolio_totals_charges_by_category_and_keeps_the_identity(
 ):
     inr_account(db)
     place(db, fake_provider, OrderSide.BUY, "RELIANCE.NS", "10")
-    paid = engine.get_portfolio(db, fake_provider).charges_paid
+    paid = engine.get_portfolio(live(db, fake_provider)).charges_paid
     # buy: brokerage 12.50; tax = STT 12.50 + stamp 1.88 = 14.38; exchange 0.38;
     #      regulatory 0.01; GST 2.32; total 29.59
     assert paid.by_category == {
@@ -309,7 +312,7 @@ def test_portfolio_totals_charges_by_category_and_keeps_the_identity(
     # SEBI 0.0052 = 0.01, DP 20.00, GST 18% x (5.20 + 0.16 + 0.01 + 20.00) = 18% x 25.37 = 4.5666 = 4.57
     # -> 5.20 + 5.20 + 0.16 + 0.01 + 20.00 + 4.57 = 35.14
     assert sell.charges_total == D("35.14")
-    pf = engine.get_portfolio(db, fake_provider)
+    pf = engine.get_portfolio(live(db, fake_provider))
     # Whatever the sell cost, realized + unrealized is still exactly the change in wealth.
     assert pf.realized_pnl + pf.unrealized_pnl == pf.total_pnl
     assert pf.total_pnl == pf.total_value - pf.starting_cash

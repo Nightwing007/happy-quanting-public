@@ -3,6 +3,7 @@
 import math
 import time
 import warnings
+from datetime import date, timedelta
 from decimal import Decimal
 
 import yfinance as yf
@@ -136,6 +137,27 @@ def _looks_missing(exc: Exception) -> bool:
     return "no data found" in text or "delisted" in text or "not found" in text
 
 
+def _bars_from_frame(frame, interval: str, currency: str, *, shift_to_local: bool) -> list[Bar]:
+    daily = interval in _DAILY_PLUS
+    bars: list[Bar] = []
+    for index, row in frame.iterrows():
+        values = [_clean(row[col]) for col in ("Open", "High", "Low", "Close")]
+        if any(v is None for v in values):
+            continue
+        if daily:
+            bar_time: str | int = index.strftime("%Y-%m-%d")
+        elif shift_to_local:
+            # The chart library treats times as UTC, so shifting by the exchange's UTC
+            # offset makes the time axis show exchange-local clock time.
+            bar_time = int(index.timestamp()) + int(index.utcoffset().total_seconds())
+        else:
+            bar_time = int(index.timestamp())  # history keeps true UTC; see get_history in base.py
+        o, h, low, c = (normalize_price(to_decimal(v), currency)[0] for v in values)
+        volume = _clean(row.get("Volume")) or 0
+        bars.append(Bar(time=bar_time, open=o, high=h, low=low, close=c, volume=int(volume)))
+    return bars
+
+
 class YahooProvider:
     name = "yahoo"
 
@@ -211,24 +233,30 @@ class YahooProvider:
         if frame is None or frame.empty:
             raise SymbolNotFound(symbol)
 
-        daily = interval in _DAILY_PLUS
-        bars: list[Bar] = []
-        for index, row in frame.iterrows():
-            values = [_clean(row[col]) for col in ("Open", "High", "Low", "Close")]
-            if any(v is None for v in values):
-                continue
-            if daily:
-                bar_time: str | int = index.strftime("%Y-%m-%d")
-            else:
-                # The chart library treats times as UTC, so shifting by the exchange's UTC
-                # offset makes the time axis show exchange-local clock time.
-                bar_time = int(index.timestamp()) + int(index.utcoffset().total_seconds())
-            o, h, low, c = (normalize_price(to_decimal(v), currency)[0] for v in values)
-            volume = _clean(row.get("Volume")) or 0
-            bars.append(Bar(time=bar_time, open=o, high=h, low=low, close=c, volume=int(volume)))
+        bars = _bars_from_frame(frame, interval, currency, shift_to_local=True)
         if not bars:
             raise SymbolNotFound(symbol)
         return bars
+
+    def get_history(self, symbol: str, interval: str, start: date, end: date) -> list[Bar]:
+        try:
+            ticker = yf.Ticker(symbol)
+            # Yahoo's `end` is exclusive; ours is the last day wanted.
+            frame = ticker.history(
+                start=start.isoformat(),
+                end=(end + timedelta(days=1)).isoformat(),
+                interval=interval,
+                auto_adjust=False,
+            )
+            currency = ticker.fast_info["currency"] or ""
+        except Exception as exc:
+            if _looks_missing(exc):
+                raise SymbolNotFound(symbol) from exc
+            raise DataUnavailable() from exc
+        # An empty frame is a weekend or a holiday, not an error: the caller records the span.
+        if frame is None or frame.empty:
+            return []
+        return _bars_from_frame(frame, interval, currency, shift_to_local=False)
 
     def get_fundamentals(self, symbol: str) -> Fundamentals:
         try:

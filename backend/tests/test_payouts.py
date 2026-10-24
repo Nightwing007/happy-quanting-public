@@ -14,13 +14,14 @@ from sqlalchemy.orm import Session
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderType
 from app.trading import engine
+from app.trading.engine import live_context as live
 
 D = Decimal
 
 
 def place(db: Session, provider: FakeProvider, symbol: str, side: str, qty: str) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side=OrderSide(side), type=OrderType.MARKET, quantity=D(qty)
+        live(db, provider), symbol=symbol, side=OrderSide(side), type=OrderType.MARKET, quantity=D(qty)
     )
 
 
@@ -47,7 +48,7 @@ def test_a_long_that_gained(db: Session, fake_provider: FakeProvider):
     place(db, fake_provider, "AAPL", "buy", "2")  # 2 x 230 = 460 in
     fake_provider.set_price("AAPL", D("250"))
     place(db, fake_provider, "AAPL", "sell", "2")  # 2 x 250 = 500 out, no charges
-    report = engine.get_payouts(db)
+    report = engine.get_payouts(live(db, FakeProvider()))
     [p] = report.payouts
     assert (p.entry_value, p.exit_value, p.brought_in) == (D("460"), D("500"), D("500"))
     assert p.realized_pnl == D("40")  # 500 - 460
@@ -113,7 +114,7 @@ def test_a_fired_stop_loss_is_badged_and_limit_trims_the_list_not_the_totals(
     client.post("/api/trades/1/exit")
     client.put("/api/trades/2/protection", json={"stop_price": "59000"})
     fake_provider.set_price("BTC-USD", D("58000"))
-    assert engine.trigger_protected_trades(db, fake_provider) == 1
+    assert engine.trigger_protected_trades(live(db, fake_provider)) == 1
     payouts = client.get("/api/payouts").json()["payouts"]
     assert [(p["trade_id"], p["closed_how"]) for p in payouts] == [(2, "stop_loss"), (1, "exit")]
     assert D(payouts[0]["exit_value"]) == D("29000")  # 0.5 x 58000: fires at the market, not at the 59000 set

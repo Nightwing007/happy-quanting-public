@@ -17,6 +17,7 @@ from app.market_data.base import DataUnavailable
 from app.market_data.fake import FakeProvider
 from app.models import Order, OrderSide, OrderStatus, OrderType, Trade, TradeStatus, WatchlistItem
 from app.trading import engine
+from app.trading.engine import live_context as live
 from app.trading.errors import (
     InsufficientFunds,
     InsufficientShares,
@@ -36,14 +37,14 @@ pytestmark = pytest.mark.usefixtures("zero_costs")
 
 def buy(db: Session, provider: FakeProvider, symbol: str, qty: str, **kw) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side=OrderSide.BUY, type=kw.pop("type", OrderType.MARKET),
+        live(db, provider), symbol=symbol, side=OrderSide.BUY, type=kw.pop("type", OrderType.MARKET),
         quantity=D(qty), **kw,
     )  # fmt: skip
 
 
 def sell(db: Session, provider: FakeProvider, symbol: str, qty: str, **kw) -> Order:
     return engine.place_order(
-        db, provider, symbol=symbol, side=OrderSide.SELL, type=kw.pop("type", OrderType.MARKET),
+        live(db, provider), symbol=symbol, side=OrderSide.SELL, type=kw.pop("type", OrderType.MARKET),
         quantity=D(qty), **kw,
     )  # fmt: skip
 
@@ -185,10 +186,10 @@ def test_index_and_currency_are_not_tradable(db: Session, fake_provider: FakePro
 def test_limit_buy_waits_then_fills_at_current_price(db: Session, fake_provider: FakeProvider):
     order = buy(db, fake_provider, "AAPL", "10", type=OrderType.LIMIT, limit_price=D("200"))
     assert order.status == OrderStatus.OPEN  # 230 > 200
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
     assert engine.get_account(db).cash == D("100000")
     fake_provider.set_price("AAPL", D("195"))
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
     # fills at 195, not the 200 limit: 10 x 195 = 1950; cash 98050
     assert order.status == OrderStatus.FILLED
     assert order.fill_price == D("195")
@@ -201,7 +202,7 @@ def test_limit_sell_waits_then_fills(db: Session, fake_provider: FakeProvider):
     order = sell(db, fake_provider, "AAPL", "10", type=OrderType.LIMIT, limit_price=D("250"))
     assert order.status == OrderStatus.OPEN  # 230 < 250
     fake_provider.set_price("AAPL", D("260"))
-    assert engine.fill_open_orders(db, fake_provider) == 1
+    assert engine.fill_open_orders(live(db, fake_provider)) == 1
     # 10 x 260 = 2600; cost 2300; realized 300; cash 100000 - 2300 + 2600 = 100300
     assert order.fill_price == D("260")
     assert order.realized_pnl == D("300.00")
@@ -217,20 +218,20 @@ def test_marketable_limit_fills_immediately(db: Session, fake_provider: FakeProv
 
 def test_cancel_order(db: Session, fake_provider: FakeProvider):
     order = buy(db, fake_provider, "AAPL", "10", type=OrderType.LIMIT, limit_price=D("200"))
-    assert engine.cancel_order(db, order.id).status == OrderStatus.CANCELLED
+    assert engine.cancel_order(live(db, FakeProvider()), order.id).status == OrderStatus.CANCELLED
     with pytest.raises(OrderNotOpen):
-        engine.cancel_order(db, order.id)
+        engine.cancel_order(live(db, FakeProvider()), order.id)
     with pytest.raises(OrderNotFound):
-        engine.cancel_order(db, 999)
+        engine.cancel_order(live(db, FakeProvider()), 999)
     fake_provider.set_price("AAPL", D("150"))
-    assert engine.fill_open_orders(db, fake_provider) == 0  # a cancelled order never fills
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0  # a cancelled order never fills
 
 
 def test_reset_restores_starting_cash(db: Session, fake_provider: FakeProvider):
     buy(db, fake_provider, "AAPL", "10")
     fake_provider.set_price("AAPL", D("300"))
     sell(db, fake_provider, "AAPL", "5")
-    engine.reset_account(db)
+    engine.reset_account(live(db, FakeProvider()))
     account = engine.get_account(db)
     assert account.cash == D("100000")
     assert account.realized_pnl == D("0")
@@ -268,7 +269,7 @@ def test_limit_order_unaffordable_at_fill_time_is_rejected(db: Session, fake_pro
     before = snapshot(db)
     fake_provider.set_price("AAPL", D("190"))
     # Fill would cost 400 x 190 = 76000 > 31000 cash.
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
     assert waiting.status == OrderStatus.REJECTED
     assert "76,000.00" in waiting.reject_reason
     after = snapshot(db)
@@ -283,7 +284,7 @@ def test_open_order_stays_open_when_price_unavailable(db: Session, fake_provider
         raise DataUnavailable()
 
     monkeypatch.setattr(fake_provider, "get_quote", boom)
-    assert engine.fill_open_orders(db, fake_provider) == 0
+    assert engine.fill_open_orders(live(db, fake_provider)) == 0
     assert order.status == OrderStatus.OPEN
 
 
@@ -297,7 +298,7 @@ def test_portfolio_totals_and_identity(db: Session, fake_provider: FakeProvider)
     # RELIANCE: value 10 x 1250 x 0.011976 = 149.70, unrealized 0
     # cash = 100000 - 2300 - 149.70 + 1000 = 98550.30
     # market value 1649.70; total 98550.30 + 1649.70 = 100200.00; total pnl 200 = 80 + 120
-    pf = engine.get_portfolio(db, fake_provider)
+    pf = engine.get_portfolio(live(db, fake_provider))
     assert pf.cash == D("98550.30")
     assert pf.invested == D("1529.70")  # 1380 + 149.70
     assert pf.market_value == D("1649.70")
@@ -322,7 +323,7 @@ def test_portfolio_values_at_cost_when_quote_fails(db: Session, fake_provider: F
         return real(symbol)
 
     monkeypatch.setattr(fake_provider, "get_quote", flaky)
-    pf = engine.get_portfolio(db, fake_provider)
+    pf = engine.get_portfolio(live(db, fake_provider))
     (view,) = pf.holdings
     assert view.price_unavailable is True
     assert view.market_value == D("2300.00")  # at cost

@@ -1,11 +1,18 @@
 "use client";
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as api from "./api";
+import { LIVE_BASE } from "./api";
 import type { OrderFilters, TradeFilters } from "./api";
-import type { OrderIn, ProtectionIn } from "./types";
+import { useTradingBase } from "./trading-scope";
+import type { OrderIn, ProtectionIn, SimControl, SimSessionIn } from "./types";
 
 const THIRTY_SECONDS = 30_000;
+
+// Live keys stay as they are; a simulation's are nested under its base so the two never mix, and
+// invalidating one account's keys never touches the other's.
+export const scoped = (base: string, key: readonly unknown[]): readonly unknown[] =>
+  base === LIVE_BASE ? key : ["scope", base, ...key];
 
 export const queryKeys = {
   health: ["health"] as const,
@@ -27,6 +34,9 @@ export const queryKeys = {
   brokers: ["brokers"] as const,
   previewAll: ["order-preview"] as const,
   preview: (body: OrderIn) => ["order-preview", body] as const,
+  historyLimits: ["history-limits"] as const,
+  simSessions: ["sim-sessions"] as const,
+  simState: (id: number) => ["sim-state", id] as const,
 };
 
 export const useHealth = () =>
@@ -73,53 +83,66 @@ export const useMetrics = (symbol: string | null) =>
     staleTime: 15 * 60_000,
   });
 
-export const usePortfolio = () =>
-  useQuery({
-    queryKey: queryKeys.portfolio,
-    queryFn: api.getPortfolio,
+// The trading hooks read which account they talk to from the surrounding <TradingScope>.
+export const usePortfolio = () => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.portfolio),
+    queryFn: () => api.getPortfolio(base),
     refetchInterval: THIRTY_SECONDS,
   });
+};
 
-export const useOrders = (filters: OrderFilters = {}, enabled = true) =>
-  useQuery({
-    queryKey: queryKeys.orders(filters),
-    queryFn: () => api.getOrders(filters),
+export const useOrders = (filters: OrderFilters = {}, enabled = true) => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.orders(filters)),
+    queryFn: () => api.getOrders(filters, base),
     enabled,
   });
+};
 
-export const usePayouts = () =>
-  useQuery({
-    queryKey: queryKeys.payouts,
-    queryFn: api.getPayouts,
+export const usePayouts = () => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.payouts),
+    queryFn: () => api.getPayouts(base),
     refetchInterval: THIRTY_SECONDS,
   });
+};
 
-export const useTrades = (filters: TradeFilters = {}) =>
-  useQuery({
-    queryKey: queryKeys.trades(filters),
-    queryFn: () => api.getTrades(filters),
+export const useTrades = (filters: TradeFilters = {}) => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.trades(filters)),
+    queryFn: () => api.getTrades(filters, base),
     refetchInterval: THIRTY_SECONDS,
   });
+};
 
 // The caller debounces `quantity`. Shares the order-preview key prefix so a fill refreshes it.
-export const useExitPreview = (id: number | null, quantity: string | undefined, enabled = true) =>
-  useQuery({
-    queryKey: queryKeys.exitPreview(id ?? 0, quantity),
-    queryFn: () => api.previewExit(id!, quantity),
+export const useExitPreview = (id: number | null, quantity: string | undefined, enabled = true) => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.exitPreview(id ?? 0, quantity)),
+    queryFn: () => api.previewExit(id!, quantity, base),
     enabled: enabled && id !== null,
     placeholderData: keepPreviousData,
     retry: false,
   });
+};
 
 // The caller debounces the prices. Previews are of the current price, so they refetch with the quote.
-export const useProtectionPreview = (id: number, body: ProtectionIn | null) =>
-  useQuery({
-    queryKey: queryKeys.protectionPreview(id, body ?? {}),
-    queryFn: () => api.previewProtection(id, body!),
+export const useProtectionPreview = (id: number, body: ProtectionIn | null) => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.protectionPreview(id, body ?? {})),
+    queryFn: () => api.previewProtection(id, body!, base),
     enabled: !!body,
     placeholderData: keepPreviousData,
     retry: false,
   });
+};
 
 export const useWatchlist = () =>
   useQuery({
@@ -129,14 +152,16 @@ export const useWatchlist = () =>
   });
 
 // The caller debounces `body`. A null body (nothing valid to quote yet) disables the query.
-export const useOrderPreview = (body: OrderIn | null) =>
-  useQuery({
-    queryKey: queryKeys.preview(body ?? ({} as OrderIn)),
-    queryFn: () => api.previewOrder(body!),
+export const useOrderPreview = (body: OrderIn | null) => {
+  const base = useTradingBase();
+  return useQuery({
+    queryKey: scoped(base, queryKeys.preview(body ?? ({} as OrderIn))),
+    queryFn: () => api.previewOrder(body!, base),
     enabled: !!body,
     placeholderData: keepPreviousData,
     retry: false,
   });
+};
 
 export const useSettings = () => useQuery({ queryKey: queryKeys.settings, queryFn: api.getSettings });
 
@@ -155,56 +180,68 @@ export function useUpdateSettings() {
   });
 }
 
+/** Refetch everything an account's balances and lists are drawn from. */
+export function invalidateAccount(qc: QueryClient, base: string) {
+  qc.invalidateQueries({ queryKey: scoped(base, queryKeys.previewAll) });
+  qc.invalidateQueries({ queryKey: scoped(base, queryKeys.portfolio) });
+  qc.invalidateQueries({ queryKey: scoped(base, queryKeys.tradesAll) });
+  qc.invalidateQueries({ queryKey: scoped(base, queryKeys.payouts) });
+  qc.invalidateQueries({ queryKey: scoped(base, queryKeys.ordersAll) });
+}
+
 export function usePlaceOrder() {
   const qc = useQueryClient();
+  const base = useTradingBase();
   return useMutation({
-    mutationFn: api.placeOrder,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.previewAll });
-      qc.invalidateQueries({ queryKey: queryKeys.portfolio });
-      qc.invalidateQueries({ queryKey: queryKeys.tradesAll });
-      qc.invalidateQueries({ queryKey: queryKeys.payouts });
-      qc.invalidateQueries({ queryKey: queryKeys.ordersAll });
-    },
+    mutationFn: (body: OrderIn) => api.placeOrder(body, base),
+    onSuccess: () => invalidateAccount(qc, base),
   });
 }
 
 export function useExitTrade() {
   const qc = useQueryClient();
+  const base = useTradingBase();
   return useMutation({
-    mutationFn: api.exitTrade,
+    mutationFn: (arg: { id: number; quantity?: string }) => api.exitTrade(arg, base),
     onSuccess: (_order, { id }) => {
       // The exited trade's own previews are dropped, not refetched: it may be closed now and the
       // server would refuse. Other previews are stale because cash and holdings changed.
-      qc.removeQueries({ queryKey: ["order-preview", "exit", id] });
-      qc.invalidateQueries({ queryKey: queryKeys.previewAll, predicate: (q) => q.queryKey[1] !== "exit" });
-      qc.invalidateQueries({ queryKey: queryKeys.portfolio });
-      qc.invalidateQueries({ queryKey: queryKeys.tradesAll });
-      qc.invalidateQueries({ queryKey: queryKeys.payouts });
-      qc.invalidateQueries({ queryKey: queryKeys.ordersAll });
+      qc.removeQueries({ queryKey: scoped(base, ["order-preview", "exit", id]) });
+      // A simulation's keys carry two extra leading parts ("scope", base).
+      const kindAt = base === LIVE_BASE ? 1 : 3;
+      qc.invalidateQueries({
+        queryKey: scoped(base, queryKeys.previewAll),
+        predicate: (q) => q.queryKey[kindAt] !== "exit",
+      });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.portfolio) });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.tradesAll) });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.payouts) });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.ordersAll) });
     },
   });
 }
 
 export function useSetProtection() {
   const qc = useQueryClient();
+  const base = useTradingBase();
   return useMutation({
-    mutationFn: api.setProtection,
+    mutationFn: (arg: { id: number } & ProtectionIn) => api.setProtection(arg, base),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.portfolio });
-      qc.invalidateQueries({ queryKey: queryKeys.tradesAll });
-      qc.invalidateQueries({ queryKey: queryKeys.payouts });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.portfolio) });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.tradesAll) });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.payouts) });
     },
   });
 }
 
 export function useCancelOrder() {
   const qc = useQueryClient();
+  const base = useTradingBase();
   return useMutation({
-    mutationFn: api.cancelOrder,
+    mutationFn: (id: number) => api.cancelOrder(id, base),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.portfolio });
-      qc.invalidateQueries({ queryKey: queryKeys.ordersAll });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.portfolio) });
+      qc.invalidateQueries({ queryKey: scoped(base, queryKeys.ordersAll) });
     },
   });
 }
@@ -236,5 +273,49 @@ export function useRemoveFromWatchlist() {
   return useMutation({
     mutationFn: api.removeFromWatchlist,
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.watchlist }),
+  });
+}
+
+// Earliest date each interval can be replayed from.
+export const useHistoryLimits = () =>
+  useQuery({ queryKey: queryKeys.historyLimits, queryFn: api.getHistoryLimits, staleTime: 60 * 60_000 });
+
+export const useSimSessions = () =>
+  useQuery({ queryKey: queryKeys.simSessions, queryFn: api.listSimSessions, refetchInterval: THIRTY_SECONDS });
+
+// Polls quickly while the replay is running and not at all when it is paused or finished.
+export const useSimState = (id: number) =>
+  useQuery({
+    queryKey: queryKeys.simState(id),
+    queryFn: () => api.getSimSession(id),
+    refetchInterval: (q) => (q.state.data?.status === "running" ? 500 : false),
+    placeholderData: keepPreviousData,
+  });
+
+export function useCreateSimSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SimSessionIn) => api.createSimSession(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.simSessions }),
+  });
+}
+
+export function useDeleteSimSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteSimSession(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.simSessions }),
+  });
+}
+
+export function useSimControl(id: number) {
+  const qc = useQueryClient();
+  const base = api.simBase(id);
+  return useMutation({
+    mutationFn: (body: SimControl) => api.controlSimSession({ id, ...body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.simState(id) });
+      invalidateAccount(qc, base);
+    },
   });
 }

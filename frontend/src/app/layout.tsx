@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -31,7 +32,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full flex flex-col">
         <Providers>
-          <SiteHeader />
+          {/* The header reads the path, which on a dynamic route (/sim/[id]) is only known per request. */}
+          <Suspense fallback={<header className="sticky top-0 z-40 h-14 border-b bg-background/90" />}>
+            <SiteHeader />
+          </Suspense>
           <BackendStatusBanner />
           <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6">{children}</main>
           <DataNotice />

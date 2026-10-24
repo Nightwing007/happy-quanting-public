@@ -1,8 +1,16 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer, ValidationInfo, computed_field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    ValidationInfo,
+    computed_field,
+    field_validator,
+)
 
 from app.market_data.base import TRADABLE_TYPES, Instrument, Quote
 from app.trading import hours
@@ -162,6 +170,16 @@ class BarsOut(BaseModel):
     currency: str
     bars: list[BarOut]
     indicators: list[IndicatorSeriesOut]
+
+
+class HistoryLimitOut(BaseModel):
+    interval: str
+    earliest: date | None  # first day Yahoo serves for this interval; None means no limit
+
+
+class HistoryLimitsOut(BaseModel):
+    today: date
+    limits: list[HistoryLimitOut]
 
 
 class AccountOut(BaseModel):
@@ -599,3 +617,242 @@ class MetricsOut(BaseModel):
     metrics: list[MetricOut]
     omitted: list[OmittedMetricOut]
     note: str
+
+
+# --- simulation ---------------------------------------------------------------------------
+
+
+class SimSessionIn(BaseModel):
+    symbols: list[str] = Field(min_length=1, max_length=10)
+    interval: str = "1m"
+    start_date: date
+    end_date: date
+    speed: int = Field(default=60, ge=1, le=200, description="Bars per second while running")
+
+    @field_validator("symbols")
+    @classmethod
+    def _clean(cls, value: list[str]) -> list[str]:
+        return [s.strip().upper() for s in value if s.strip()]
+
+
+class SimControlIn(BaseModel):
+    action: Literal["start", "pause", "step", "reset"]
+    steps: int | None = Field(default=None, ge=1, le=5000, description="Bars to play, for `step`")
+    speed: int | None = Field(default=None, ge=1, le=200, description="New speed, bars per second")
+
+
+class SimExchangeTimeOut(BaseModel):
+    symbol: str
+    timezone: str
+    local_time: datetime  # the cursor in that exchange's own zone
+
+
+class SimSessionOut(BaseModel):
+    id: int
+    account_id: int
+    symbols: list[str]
+    interval: str
+    start_date: date
+    end_date: date
+    speed: int
+    status: Literal["ready", "running", "paused", "finished"]
+    cursor: datetime  # UTC
+    exchange_times: list[SimExchangeTimeOut]
+    progress_percent: float
+    created_at: datetime
+
+
+class SimSessionStateOut(SimSessionOut):
+    # Only bars that had finished by the cursor, so the chart can never show the future. The
+    # last `bars_limit` of each symbol, oldest first, stamped like a live chart (exchange-local).
+    bars: dict[str, list[BarOut]]
+
+
+class AlgoParamOut(BaseModel):
+    """One setting of a predefined algorithm. Decimals are strings, like every money-like value."""
+
+    name: str
+    label: str
+    kind: Literal["int", "decimal", "choice", "bool"]
+    default: str | int | bool
+    min: str | int | None
+    max: str | int | None
+    choices: list[str]
+    help: str
+
+
+class AlgoOut(BaseModel):
+    key: str
+    name: str
+    description: str
+    markets: list[str]
+    interval: str
+    warmup_bars: int
+    parameters: list[AlgoParamOut]
+
+
+# --- backtests ----------------------------------------------------------------------------
+
+
+class BacktestBrokersIn(BaseModel):
+    """Broker per segment; a segment left out uses the live account's choice."""
+
+    india: str | None = None
+    international: str | None = None
+    crypto: str | None = None
+
+
+class BacktestIn(BaseModel):
+    strategy: str = Field(description="Key of a predefined algorithm, from /api/algos/library")
+    params: dict[str, str | int | float | bool] = Field(default_factory=dict)
+    symbols: list[str] = Field(min_length=1, max_length=10)
+    interval: str
+    start_date: date
+    end_date: date
+    starting_cash: Decimal | None = Field(default=None, gt=0, description="Default: STARTING_CASH")
+    brokers: BacktestBrokersIn | None = None
+
+    @field_validator("symbols")
+    @classmethod
+    def _clean(cls, value: list[str]) -> list[str]:
+        return [s.strip().upper() for s in value if s.strip()]
+
+
+class BacktestPointOut(BaseModel):
+    """The account at the close of one bar (one day, for daily bars). All account currency."""
+
+    at: datetime
+    equity: Money  # cash + what the open positions are worth
+    cash: Money
+    positions: Money  # longs at market value, shorts at entry value less cost to cover
+    buy_hold_equity: Money
+
+
+class BacktestDrawdownOut(BaseModel):
+    at: datetime
+    strategy_pct: Money  # 0 at a new high, negative below it
+    buy_hold_pct: Money
+
+
+class BacktestTradeOut(BaseModel):
+    id: int
+    symbol: str
+    name: str
+    currency: str  # the instrument's; prices are in it, the rest in the account currency
+    direction: Literal["long", "short"]
+    product: str
+    quantity: Money
+    entry_at: datetime
+    entry_price: Money
+    exit_at: datetime | None
+    exit_price: Money | None
+    status: Literal["open", "closed"]
+    closed_how: str | None
+    entry_charges: Money
+    exit_charges: Money
+    charges_total: Money
+    charges_by_category: dict[str, Money]
+    financing: Money
+    gross_pnl: Money | None  # before charges and financing; None while open
+    realized_pnl: Money | None  # after every charge and financing; None while open
+    unrealized_pnl: Money | None  # open trades, at the last price
+
+
+class BacktestLogOut(BaseModel):
+    at: datetime
+    text: str
+
+
+class BacktestMetricsOut(BaseModel):
+    """Every figure is a string or null. Percentages are plain numbers ("12.34" is 12.34%)."""
+
+    starting_cash: Money
+    final_equity: Money
+    total_return_pct: Money
+    cagr_pct: Money | None
+    cagr_note: str | None  # why CAGR is null
+    max_drawdown_pct: Money  # positive: the deepest fall from a peak
+    sharpe: Money | None
+    sharpe_note: str | None  # why Sharpe is null
+    trades_closed: int
+    trades_open: int
+    win_rate_pct: Money | None
+    average_win: Money | None
+    average_loss: Money | None  # negative
+    profit_factor: Money | None
+    total_charges: Money
+    charges_by_category: dict[str, Money]
+    gross_profit: Money | None  # sum of the winning closed trades before charges
+    charges_pct_of_gross_profit: Money | None
+    financing_paid: Money
+    exposure_pct: Money  # share of bars with a position open
+
+
+class BacktestPurchaseOut(BaseModel):
+    symbol: str
+    at: datetime
+    quantity: Money
+    price: Money
+    charges: Money
+
+
+class BacktestBuyHoldOut(BaseModel):
+    """The same symbols bought at equal weight at the first fillable price, with real charges,
+    and held to the end."""
+
+    purchases: list[BacktestPurchaseOut]
+    final_equity: Money
+    total_return_pct: Money
+    cagr_pct: Money | None
+    max_drawdown_pct: Money
+    total_charges: Money
+
+
+class BacktestInstrumentOut(BaseModel):
+    symbol: str
+    name: str
+    currency: str
+    market: str
+
+
+class BacktestResultsOut(BaseModel):
+    strategy_key: str
+    strategy_name: str
+    params: dict[str, str | int | bool]
+    account_currency: str
+    interval: str
+    instruments: list[BacktestInstrumentOut]
+    bars: int  # bars (days, for daily) the run stepped through
+    warmup_bars: int  # the strategy's own warmup, at the start of the range
+    first_bar: datetime
+    last_bar: datetime
+    curve_stride: int  # 1: every bar is in the curves; n: every nth is (the metrics use all)
+    equity_curve: list[BacktestPointOut]
+    drawdown: list[BacktestDrawdownOut]
+    trades: list[BacktestTradeOut]
+    orders: list[OrderOut]
+    logs: list[BacktestLogOut]
+    errors: list[str]  # exceptions the strategy's own code raised
+    notes: list[str]
+    metrics: BacktestMetricsOut
+    buy_and_hold: BacktestBuyHoldOut
+
+
+class BacktestSummaryOut(BaseModel):
+    id: int
+    strategy_key: str
+    params: dict
+    symbols: list[str]
+    interval: str
+    start_date: date
+    end_date: date
+    starting_cash: Money
+    account_currency: str
+    status: Literal["queued", "running", "done", "failed"]
+    progress: int
+    error: str | None
+    created_at: datetime
+
+
+class BacktestDetailOut(BacktestSummaryOut):
+    results: BacktestResultsOut | None
