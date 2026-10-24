@@ -167,6 +167,8 @@ def test_hong_kong_stamp_duty_rounds_up_to_a_whole_dollar():
     assert lines["SFC transaction levy"] == D("0.03")
     # AFRC 0.00015% x 1234 = 0.00185 rounds to nothing, so there is no line for it
     assert "AFRC transaction levy" not in lines
+    # CCASS settlement 0.0042% x 1234 = 0.0518 = 0.05
+    assert lines["CCASS settlement fee"] == D("0.05")
     # IBKR 0.08% x 1234 = 0.99, lifted to its HKD 18 minimum
     assert lines["Brokerage (Hong Kong)"] == D("18.00")
 
@@ -232,22 +234,23 @@ def test_each_charge_is_rounded_in_its_own_currency_then_converted_last():
         "HKEX", "ibkr", "buy", "100", "12.34", account_currency="USD", fx_rate=D("0.128")
     )  # fmt: skip
     # Worked out in HKD and rounded there first:
-    #   brokerage 18.00 (minimum), stamp duty 2.00 (rounded up), exchange 0.07, SFC 0.03,
+    #   brokerage 18.00 (minimum), stamp duty 2.00 (rounded up), exchange 0.07, SFC 0.03, CCASS 0.05,
     #   FX markup 0.03% x 1234 = 0.3702 = 0.37
     # then each converted at 0.128 and rounded again:
     #   18.00 x 0.128 = 2.304 -> 2.30; 2.00 x 0.128 = 0.256 -> 0.26; 0.07 x 0.128 = 0.00896 -> 0.01
-    #   0.03 x 0.128 = 0.00384 -> 0.00; 0.37 x 0.128 = 0.04736 -> 0.05
+    #   0.03 x 0.128 = 0.00384 -> 0.00; 0.05 x 0.128 = 0.0064 -> 0.01; 0.37 x 0.128 = 0.04736 -> 0.05
     expected = {
         "Brokerage (Hong Kong)": (D("2.30"), D("18.00")),
         "Stamp duty": (D("0.26"), D("2.00")),
         "Exchange trading fee": (D("0.01"), D("0.07")),
         "SFC transaction levy": (D("0.00"), D("0.03")),
+        "CCASS settlement fee": (D("0.01"), D("0.05")),
         "Currency conversion markup": (D("0.05"), D("0.37")),
     }
     assert {c.name: (c.amount, c.native_amount) for c in lines} == expected
     assert all(c.native_currency == "HKD" for c in lines)
-    # 2.30 + 0.26 + 0.01 + 0.00 + 0.05
-    assert total(lines) == D("2.62")
+    # 2.30 + 0.26 + 0.01 + 0.00 + 0.01 + 0.05
+    assert total(lines) == D("2.63")
 
 
 def test_fx_markup_line_is_absent_when_no_conversion_happens():
@@ -296,6 +299,9 @@ def test_buy_side_and_sell_side_transaction_taxes():
     cn = by_name(charges("SSE", "ibkr", "sell", "100", "10"))
     assert cn["Stamp duty"] == D("0.50")
     assert cn["Transfer fee"] == D("0.01")
+    # handling fee 0.00341% x 1000 = 0.0341 -> 0.03; securities management fee 0.002% x 1000 = 0.02
+    assert cn["Handling fee"] == D("0.03")
+    assert cn["Securities management fee"] == D("0.02")
     # Taiwan: stocks 0.3% and ETFs 0.1% on sells. 1000 x 20 = 20000 -> 60.00 vs 20.00
     assert by_name(charges("TWSE", "ibkr", "sell", "1000", "20"))["Securities transaction tax"] == D("60.00")
     etf = by_name(charges("TWSE", "ibkr", "sell", "1000", "20", instrument_type="etf"))

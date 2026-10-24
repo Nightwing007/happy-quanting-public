@@ -9,7 +9,7 @@ import threading
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app import clock
@@ -156,11 +156,18 @@ def list_backtests(db: Session, owner_user_id: int) -> list[Backtest]:
 
 
 def delete_backtest(db: Session, backtest_id: int, owner_user_id: int) -> None:
-    row = get_backtest(db, backtest_id, owner_user_id)
-    if row.status == BacktestStatus.RUNNING:
-        raise BacktestConflict("This backtest is running. Delete it once it has finished.")
-    db.delete(row)
+    get_backtest(db, backtest_id, owner_user_id)
+    # One statement, so a worker that starts the job between the check and the delete can't have
+    # its row pulled from under it.
+    gone = db.execute(
+        delete(Backtest).where(Backtest.id == backtest_id, Backtest.status != BacktestStatus.RUNNING)
+    )
     db.commit()
+    if gone.rowcount == 0:
+        db.expire_all()
+        if db.get(Backtest, backtest_id) is not None:
+            raise BacktestConflict("This backtest is running. Delete it once it has finished.")
+        raise BacktestNotFound(f"There is no backtest {backtest_id}.")
 
 
 def _failure_text(why: Exception) -> str:

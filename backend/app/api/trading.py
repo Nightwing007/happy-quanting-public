@@ -47,12 +47,20 @@ def _preview_out(cost: engine.PlanCost) -> OrderPreviewOut:
 
 
 def build_router(
-    prefix: str, context: Callable[..., TradingContext], tags: list[str], *, resettable: bool
+    prefix: str,
+    context: Callable[..., TradingContext],
+    tags: list[str],
+    *,
+    resettable: bool,
+    write_context: Callable[..., TradingContext] | None = None,
 ) -> APIRouter:
     """The trading routes for whichever account `context` hands out: the live one under /api, or
     a sim's under /api/sim/sessions/{session_id}. Same bodies, so a sim can't drift from live.
-    `resettable` adds the live account's reset; a sim is reset through its control route."""
+    `resettable` adds the live account's reset; a sim is reset through its control route.
+    `write_context` (default: `context`) serves the routes that place an order, exit or protect a
+    trade, so a sim can refuse them once it has finished; cancelling and reading stay on `context`."""
     Ctx = Annotated[TradingContext, Depends(context)]
+    WriteCtx = Annotated[TradingContext, Depends(write_context or context)]
     router = APIRouter(prefix=prefix, tags=tags)
 
     @router.get("/portfolio", response_model=PortfolioOut)
@@ -81,7 +89,7 @@ def build_router(
         return ctx.db.scalars(query.order_by(Order.created_at.desc(), Order.id.desc()).limit(limit)).all()
 
     @router.post("/orders", response_model=OrderOut)
-    def create_order(body: OrderIn, ctx: Ctx):
+    def create_order(body: OrderIn, ctx: WriteCtx):
         return engine.place_order(
             ctx,
             symbol=clean_symbol(body.symbol),
@@ -123,7 +131,7 @@ def build_router(
         return engine.get_payouts(ctx, limit=limit)
 
     @router.post("/trades/{trade_id}/exit", response_model=OrderOut)
-    def exit_trade(trade_id: int, ctx: Ctx, body: ExitIn | None = None):
+    def exit_trade(trade_id: int, ctx: WriteCtx, body: ExitIn | None = None):
         quantity = body.quantity_decimal() if body else None
         return engine.exit_trade(ctx, trade_id, quantity)
 
@@ -145,7 +153,7 @@ def build_router(
         )
 
     @router.put("/trades/{trade_id}/protection", response_model=TradeOut)
-    def set_protection(trade_id: int, body: ProtectionIn, ctx: Ctx):
+    def set_protection(trade_id: int, body: ProtectionIn, ctx: WriteCtx):
         return engine.set_protection(ctx, trade_id, body.stop_decimal(), body.target_decimal())
 
     return router

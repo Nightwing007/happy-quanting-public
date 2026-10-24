@@ -80,6 +80,12 @@ class _NoFetch:
         return []
 
 
+class SimFinished(SimConflict):
+    """Something that only makes sense while a session can still move (an order would wait forever)."""
+
+    code = "sim_finished"
+
+
 _locks: dict[int, threading.Lock] = {}
 _locks_guard = threading.Lock()
 
@@ -283,6 +289,14 @@ def progress_percent(run: SimRun) -> float:
     return round(100 * played / len(run.ends), 1)
 
 
+def _refresh(db: Session, session: SimSession) -> bool:
+    """Re-read the row (a request or the driver may have moved it since this object was read).
+    False when it was deleted meanwhile, so the driver's turn on a deleted session is a no-op."""
+    if db.get(SimSession, session.id, populate_existing=True) is None:
+        return False
+    return True
+
+
 def advance(db: Session, session: SimSession, n_bars: int, provider: MarketDataProvider | None = None) -> int:
     """Move the cursor to the end of the next bar, `n_bars` times, running one tick after each.
     Returns how many steps were taken (fewer than asked when the data ends).
@@ -292,8 +306,7 @@ def advance(db: Session, session: SimSession, n_bars: int, provider: MarketDataP
     Reaching the end of the last bar finishes the session.
     """
     with _lock_for(session.id):
-        db.refresh(session)  # a request or the driver may have moved it since this object was read
-        if session.status == SimStatus.FINISHED:
+        if not _refresh(db, session) or session.status == SimStatus.FINISHED:
             return 0
         return _advance_locked(db, build_run(db, session, provider), n_bars, until=None)
 
@@ -303,8 +316,7 @@ def advance_until(
 ) -> int:
     """Step until the next bar would end after `until`."""
     with _lock_for(session.id):
-        db.refresh(session)
-        if session.status == SimStatus.FINISHED:
+        if not _refresh(db, session) or session.status == SimStatus.FINISHED:
             return 0
         return _advance_locked(db, build_run(db, session, provider), None, until=until)
 
@@ -363,7 +375,8 @@ def _advance_locked(db: Session, run: SimRun, n_bars: int | None, until: datetim
 
 def set_status(db: Session, session: SimSession, status: SimStatus) -> None:
     with _lock_for(session.id):
-        db.refresh(session)
+        if not _refresh(db, session):
+            raise SimNotFound(f"There is no simulation {session.id}.")
         if session.status == SimStatus.FINISHED:
             if status == SimStatus.RUNNING:
                 raise SimConflict("This simulation has finished. Reset it to play it again.")
@@ -382,7 +395,8 @@ def set_speed(db: Session, session: SimSession, speed: int) -> None:
 def reset_session(db: Session, session: SimSession, provider: MarketDataProvider | None = None) -> None:
     """Back to the first bar with the starting cash and no orders or trades."""
     with _lock_for(session.id):
-        db.refresh(session)
+        if not _refresh(db, session):
+            raise SimNotFound(f"There is no simulation {session.id}.")
         run = build_run(db, session, provider)
         strategies.drop(session.id)  # rebuilt on the next step, from the start
         reset_account(run.ctx)
@@ -394,6 +408,8 @@ def reset_session(db: Session, session: SimSession, provider: MarketDataProvider
 def delete_session(db: Session, session: SimSession) -> None:
     session_id, account_id = session.id, session.account_id
     with _lock_for(session_id):
+        if not _refresh(db, session):
+            return  # deleted already (a second click): nothing left to do
         db.delete(session)
         db.flush()
         # Orders point at trades, so they go first.

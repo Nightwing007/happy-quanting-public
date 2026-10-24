@@ -7,7 +7,7 @@ from app import auth, clock
 from app.db import get_db
 from app.market_data import get_provider
 from app.market_data.base import MarketDataProvider
-from app.models import User
+from app.models import SimStatus, User
 from app.sim import runner
 from app.trading import engine
 from app.trading.context import TradingContext
@@ -42,6 +42,19 @@ def get_sim_context(session_id: int, db: DbSession, provider: Provider, user: Cu
     clock of its cursor. `session_id` is the path parameter of the routes that use this. Someone
     else's session is a 404, the same as one that does not exist."""
     return runner.build_context(db, runner.get_session(db, session_id, user.id), provider)
+
+
+def get_open_sim_context(
+    session_id: int, db: DbSession, provider: Provider, user: CurrentUser
+) -> TradingContext:
+    """Like `get_sim_context`, for routes that add an order or protection. A finished session's
+    clock never moves again, so an order there could only sit forever: refused with a sentence."""
+    session = runner.get_session(db, session_id, user.id)
+    if session.status == SimStatus.FINISHED:
+        raise runner.SimFinished(
+            "This simulation has finished, so no new orders can be placed. Reset it to play again."
+        )
+    return runner.build_context(db, session, provider)
 
 
 # Symbols go in query params, never paths: Yahoo symbols contain ^, = and . (^GSPC, EURUSD=X,

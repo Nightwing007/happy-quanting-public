@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Response
 
-from app.api.deps import CurrentUser, DbSession, Provider, get_sim_context
+from app.api.deps import CurrentUser, DbSession, Provider, get_open_sim_context, get_sim_context
 from app.api.trading import build_router
 from app.models import SimSession, SimStatus
 from app.schemas import (
@@ -22,7 +22,13 @@ from app.sim import runner, strategies
 router = APIRouter(prefix="/api/sim/sessions", tags=["sim"])
 
 # Everything a person does inside a simulation, through the same route bodies as the live account.
-trading_router = build_router("/api/sim/sessions/{session_id}", get_sim_context, ["sim"], resettable=False)
+trading_router = build_router(
+    "/api/sim/sessions/{session_id}",
+    get_sim_context,
+    ["sim"],
+    resettable=False,
+    write_context=get_open_sim_context,
+)
 
 
 def _out(run: runner.SimRun) -> dict:
@@ -114,6 +120,8 @@ def control(session_id: int, body: SimControlIn, db: DbSession, provider: Provid
         case "pause":
             runner.set_status(db, session, SimStatus.PAUSED)
         case "step":
+            if session.status == SimStatus.FINISHED:
+                raise runner.SimConflict("This simulation has finished. Reset it to play it again.")
             if session.status not in (SimStatus.READY, SimStatus.PAUSED):
                 raise runner.SimConflict("Pause the simulation before stepping it.")
             runner.advance(db, session, body.steps or 1, provider)

@@ -16,7 +16,7 @@ BACKEND = Path(__file__).resolve().parent.parent
 # Keep in sync with the test-group table in docs/ARCHITECTURE.md.
 GROUPS = {
     "engine": "test_engine test_costs_engine test_costs_api test_fees test_shorting test_protection "
-    "test_payouts test_trading_api test_context",
+    "test_payouts test_trading_api test_context test_double_actions",
     "market": "test_market_data test_market_api test_history test_market_hours test_metrics test_indicators",
     "sim": "test_sim test_sim_strategies",
     "algos": "test_algos test_backtest test_validate test_sandbox test_blocks",
@@ -40,7 +40,9 @@ def main() -> int:
     cmd = [sys.executable, "-m", "pytest", "-q", "--no-header", "-p", "no:warnings", "--tb=line", "-rfE"]
     if not sys.argv[1:]:
         # Only the full run is parallel: targeted runs stay serial so their output stays simple.
-        cmd += ["-n", "auto"]
+        # Capped, not "auto": sandbox tests spawn processes, and one worker per core ran this
+        # machine out of memory.
+        cmd += ["-n", "4"]
     proc = subprocess.run(cmd + expand(sys.argv[1:]), cwd=BACKEND, capture_output=True, text=True,
                           encoding="utf-8", errors="replace")
     lines = proc.stdout.splitlines() + proc.stderr.splitlines()

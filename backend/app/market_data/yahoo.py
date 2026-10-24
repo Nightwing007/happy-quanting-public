@@ -35,6 +35,9 @@ _MINOR_UNITS = {"GBp": "GBP", "GBX": "GBP", "ZAc": "ZAR", "ILA": "ILS"}
 
 _DAILY_PLUS = {"1d", "1wk", "1mo"}
 
+# One retry after this pause for a dropped connection or timeout (WinError 10054 and friends).
+_RETRY_DELAY = 0.5
+
 
 def normalize_price(value: Decimal, currency: str) -> tuple[Decimal, str]:
     # Without this every London price is 100x too big (pence read as pounds).
@@ -133,8 +136,40 @@ def fundamentals_from_info(symbol: str, info: dict) -> Fundamentals:
 def _looks_missing(exc: Exception) -> bool:
     if isinstance(exc, MarketDataError):
         return False
+    # For an unknown symbol fast_info raises a bare KeyError('currentTradingPeriod'): the chart
+    # metadata Yahoo returns has no trading period, and the "No data found" text is only logged.
+    if isinstance(exc, LookupError):
+        return True
     text = str(exc).lower()
-    return "no data found" in text or "delisted" in text or "not found" in text
+    return any(
+        phrase in text
+        for phrase in ("no data found", "delisted", "not found", "404", "no timezone", "no price data")
+    )
+
+
+def _is_transient(exc: Exception) -> bool:
+    """A dropped connection or timeout: worth one retry. Never a rate limit or a missing symbol."""
+    text = str(exc).lower()
+    if "too many requests" in text or "rate limit" in text or "429" in text:
+        return False
+    if _looks_missing(exc):
+        return False
+    if isinstance(exc, ConnectionError | TimeoutError):
+        return True
+    return any(
+        phrase in text
+        for phrase in ("10054", "connection reset", "connection aborted", "timed out", "timeout")
+    )
+
+
+def _with_retry(fn):
+    try:
+        return fn()
+    except Exception as exc:
+        if not _is_transient(exc):
+            raise
+    time.sleep(_RETRY_DELAY)
+    return fn()
 
 
 def _bars_from_frame(frame, interval: str, currency: str, *, shift_to_local: bool) -> list[Bar]:
@@ -153,9 +188,27 @@ def _bars_from_frame(frame, interval: str, currency: str, *, shift_to_local: boo
         else:
             bar_time = int(index.timestamp())  # history keeps true UTC; see get_history in base.py
         o, h, low, c = (normalize_price(to_decimal(v), currency)[0] for v in values)
+        if daily:
+            # Yahoo's daily/weekly data sometimes has a high below the open/close or a low above
+            # it; widen the range so the candle is valid (intraday bars are left as they come).
+            h = max(h, o, c)
+            low = min(low, o, c)
         volume = _clean(row.get("Volume")) or 0
         bars.append(Bar(time=bar_time, open=o, high=h, low=low, close=c, volume=int(volume)))
     return bars
+
+
+def _last_trade_time(ticker) -> int | None:
+    """Unix time of the newest regular-session bar, not the time we fetched it.
+
+    `hours.can_fill` compares this with the session open to refuse yesterday's close right after
+    the open, so a fetch-time stamp would make a stale quote look fresh.
+    """
+    for interval in ("1m", "1d"):  # 1m gives the real last-trade minute; 1d is the coarse fallback
+        frame = ticker.history(period="5d", interval=interval, auto_adjust=False, prepost=False)
+        if frame is not None and not frame.empty:
+            return int(frame.index[-1].timestamp())
+    return None
 
 
 class YahooProvider:
@@ -184,19 +237,26 @@ class YahooProvider:
         return found[:limit]
 
     def get_quote(self, symbol: str) -> Quote:
-        try:
+        def fetch():
             ticker = yf.Ticker(symbol)
             fast = ticker.fast_info
             price = _clean(fast["lastPrice"])
             previous = _clean(fast["previousClose"])
             currency = fast["currency"] or ""
             exchange = fast["exchange"] or ""
+            as_of = _last_trade_time(ticker) if price is not None else 0
+            return ticker, price, previous, currency, exchange, as_of
+
+        try:
+            ticker, price, previous, currency, exchange, as_of = _with_retry(fetch)
         except Exception as exc:
             if _looks_missing(exc):
                 raise SymbolNotFound(symbol) from exc
             raise DataUnavailable() from exc
         if price is None:
             raise SymbolNotFound(symbol)
+        if as_of is None:
+            raise DataUnavailable()
 
         name, kind = symbol, "equity"
         try:
@@ -218,14 +278,17 @@ class YahooProvider:
             currency=ccy,
             price=price_dec,
             previous_close=prev_dec,
-            as_of=int(time.time()),
+            as_of=as_of,
         )
 
     def get_bars(self, symbol: str, interval: str, range_: str) -> list[Bar]:
         try:
-            ticker = yf.Ticker(symbol)
-            frame = ticker.history(period=range_, interval=interval, auto_adjust=False)
-            currency = ticker.fast_info["currency"] or ""
+            def fetch():
+                ticker = yf.Ticker(symbol)
+                frame = ticker.history(period=range_, interval=interval, auto_adjust=False)
+                return frame, ticker.fast_info["currency"] or ""
+
+            frame, currency = _with_retry(fetch)
         except Exception as exc:
             if _looks_missing(exc):
                 raise SymbolNotFound(symbol) from exc
@@ -240,15 +303,18 @@ class YahooProvider:
 
     def get_history(self, symbol: str, interval: str, start: date, end: date) -> list[Bar]:
         try:
-            ticker = yf.Ticker(symbol)
-            # Yahoo's `end` is exclusive; ours is the last day wanted.
-            frame = ticker.history(
-                start=start.isoformat(),
-                end=(end + timedelta(days=1)).isoformat(),
-                interval=interval,
-                auto_adjust=False,
-            )
-            currency = ticker.fast_info["currency"] or ""
+            def fetch():
+                ticker = yf.Ticker(symbol)
+                # Yahoo's `end` is exclusive; ours is the last day wanted.
+                frame = ticker.history(
+                    start=start.isoformat(),
+                    end=(end + timedelta(days=1)).isoformat(),
+                    interval=interval,
+                    auto_adjust=False,
+                )
+                return frame, ticker.fast_info["currency"] or ""
+
+            frame, currency = _with_retry(fetch)
         except Exception as exc:
             if _looks_missing(exc):
                 raise SymbolNotFound(symbol) from exc
@@ -260,7 +326,7 @@ class YahooProvider:
 
     def get_fundamentals(self, symbol: str) -> Fundamentals:
         try:
-            info = yf.Ticker(symbol).get_info()
+            info = _with_retry(lambda: yf.Ticker(symbol).get_info())
         except Exception as exc:
             if _looks_missing(exc):
                 raise SymbolNotFound(symbol) from exc

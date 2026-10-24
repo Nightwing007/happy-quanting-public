@@ -39,6 +39,7 @@ import dataclasses
 import enum
 import io
 import multiprocessing
+import os
 import pickle
 import sys
 import time
@@ -499,6 +500,10 @@ class SandboxedStrategy:
             return
         if self._closed:
             raise SandboxError("sandbox_failed", "This sandbox was closed.")
+        # A spawned child inherits this environment. Without a cap, numpy's BLAS starts a thread per
+        # core in every child, and a few concurrent sandboxes exhaust memory (OpenBLAS MemoryError).
+        for var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+            os.environ.setdefault(var, "1")
         context = multiprocessing.get_context("spawn")
         parent_end, child_end = context.Pipe(duplex=True)
         proc = context.Process(

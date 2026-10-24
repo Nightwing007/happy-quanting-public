@@ -24,9 +24,13 @@ realized + unrealized is exactly total value less starting cash, to the paisa, w
 """
 
 import logging
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
+from functools import wraps
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, or_, select
@@ -64,6 +68,7 @@ from .brokers import Broker
 from .context import TradingContext
 from .errors import (
     BrokerNotAvailable,
+    ExitAlreadyPending,
     InsufficientFunds,
     InsufficientShares,
     InvalidBroker,
@@ -90,6 +95,31 @@ HUNDRED = Decimal(100)
 _MAX_QUANTITY_DP = 8
 _OPENING = (LegKind.OPEN_LONG, LegKind.OPEN_SHORT)
 _OWN_TRADE_ORIGINS = (OrderOrigin.SQUARE_OFF, OrderOrigin.STOP_LOSS, OrderOrigin.TARGET)
+# One writer at a time per account. SQLite serialises the writes themselves, but a request reads
+# (open quantity, waiting orders), plans, then writes: two requests for the same trade would both
+# plan against the same books and both write, closing it twice. Held across the whole call and
+# re-reading the account inside, so the second request sees what the first committed.
+_account_locks: dict[int, threading.RLock] = {}
+_account_locks_guard = threading.Lock()
+
+
+def serialised(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Run an engine entry point (first argument: the `TradingContext`) under its account's lock."""
+
+    @wraps(fn)
+    def run(ctx: TradingContext, *args: Any, **kwargs: Any) -> Any:
+        with _account_locks_guard:
+            lock = _account_locks.setdefault(ctx.account.id, threading.RLock())
+        with lock:
+            # The account row may have been changed by another session while we waited. Skip when
+            # this session has its own unsaved edit to it (it is mid-call higher up).
+            if not ctx.db.is_modified(ctx.account):
+                ctx.db.refresh(ctx.account)
+            return fn(ctx, *args, **kwargs)
+
+    return run
+
+
 PROTECTION_DAYS = 365  # like a GTT: a stop or target lapses after a year
 
 STARTER_WATCHLIST = [
@@ -310,6 +340,9 @@ class OrderRequest:
     # Shares already promised to other open sell orders; they can't be sold twice. Only counted
     # when an order is placed, never when an order that is itself waiting finally fills.
     promised: Decimal = ZERO
+    # For an exit: the part of the named trade already promised to waiting orders that name it
+    # (a second exit must not close what the first already will).
+    promised_on_trade: Decimal = ZERO
 
 
 @dataclass
@@ -340,7 +373,9 @@ def _open_trades(ctx: TradingContext, symbol: str, direction: str | None = None)
     )
     if direction is not None:
         query = query.where(Trade.direction == direction)
-    return list(ctx.db.scalars(query.order_by(Trade.opened_at, Trade.id)))
+    return list(
+        ctx.db.scalars(query.order_by(Trade.opened_at, Trade.id).execution_options(populate_existing=True))
+    )
 
 
 def _promised(ctx: TradingContext, symbol: str) -> Decimal:
@@ -359,6 +394,58 @@ def _promised(ctx: TradingContext, symbol: str) -> Decimal:
             )
         ),
         ZERO,
+    )
+
+
+def _promised_to_trade(ctx: TradingContext, trade: Trade) -> Decimal:
+    """Shares of `trade` promised to open orders that name it: waiting exits (the market was
+    closed) and any other order that closes it. Summed in Python, like `_promised`."""
+    side = OrderSide.SELL if trade.direction == TradeDirection.LONG else OrderSide.BUY
+    return sum(
+        (
+            o.quantity
+            for o in ctx.db.scalars(
+                select(Order).where(
+                    Order.account_id == ctx.account.id,
+                    Order.trade_id == trade.id,
+                    Order.side == side,
+                    Order.status == OrderStatus.OPEN,
+                )
+            )
+        ),
+        ZERO,
+    )
+
+
+def _promised_to_exits(ctx: TradingContext, trade: Trade) -> Decimal:
+    """Everything promised to open orders that close `trade`'s symbol and direction. Sells are
+    `_promised`; for a short only buys that name a trade count, since a plain buy may be opening
+    a long instead."""
+    if trade.direction == TradeDirection.LONG:
+        return _promised(ctx, trade.symbol)
+    return sum(
+        (
+            o.quantity
+            for o in ctx.db.scalars(
+                select(Order).where(
+                    Order.account_id == ctx.account.id,
+                    Order.symbol == trade.symbol,
+                    Order.side == OrderSide.BUY,
+                    Order.trade_id.is_not(None),
+                    Order.status == OrderStatus.OPEN,
+                )
+            )
+        ),
+        ZERO,
+    )
+
+
+def _pending_message(symbol: str, held: Decimal, promised: Decimal, wanted: Decimal) -> str:
+    free = max(held - promised, ZERO)
+    return (
+        f"{promised:f} of your {held:f} {symbol} {'is' if promised == 1 else 'are'} already being "
+        f"exited by waiting orders, so only {free:f} can still be exited and you asked for "
+        f"{wanted:f}. Cancel the waiting order first if you want to change it."
     )
 
 
@@ -409,12 +496,16 @@ def _short_leg(
 
 
 def _get_open_trade(ctx: TradingContext, trade_id: int) -> Trade:
-    trade = ctx.db.get(Trade, trade_id)
+    trade = ctx.db.get(Trade, trade_id, populate_existing=True)  # the row as it is now
     if trade is None or trade.account_id != ctx.account.id:
         raise TradeNotFound(f"There is no trade with id {trade_id}.")
     if trade.status != TradeStatus.OPEN:
         raise TradeNotOpen(f"Trade {trade_id} is already closed, so there is nothing to exit.")
     return trade
+
+
+def _held(ctx: TradingContext, trade: Trade) -> Decimal:
+    return sum((t.open_quantity for t in _open_trades(ctx, trade.symbol, trade.direction)), ZERO)
 
 
 def _plan_exit(ctx: TradingContext, request: OrderRequest, market: Market) -> Plan:
@@ -430,11 +521,23 @@ def _plan_exit(ctx: TradingContext, request: OrderRequest, market: Market) -> Pl
                 f"Trade {trade.id} has only {trade.open_quantity:f} {trade.symbol} open, "
                 f"so you can't exit {quantity:f} of it."
             )
+        # Orders already waiting on this trade come off what is left; only checked when a new
+        # order is placed (`promised` is zero when a waiting one finally fills).
+        if request.promised_on_trade and quantity > trade.open_quantity - request.promised_on_trade:
+            raise ExitAlreadyPending(
+                _pending_message(trade.symbol, trade.open_quantity, request.promised_on_trade, quantity)
+            )
+        if request.promised and quantity > _held(ctx, trade) - request.promised:
+            raise ExitAlreadyPending(
+                _pending_message(trade.symbol, _held(ctx, trade), request.promised, quantity)
+            )
         return Plan(request, market, [LegPlan(kind, quantity, trade.product, trade)])
     pool = _open_trades(ctx, trade.symbol, trade.direction)
     available = sum((t.open_quantity for t in pool), ZERO)
     if quantity > available:
         raise InvalidOrder(f"You hold only {available:f} {trade.symbol}, so you can't exit {quantity:f}.")
+    if request.promised and quantity > available - request.promised:
+        raise ExitAlreadyPending(_pending_message(trade.symbol, available, request.promised, quantity))
     note = (
         f"{market.name} holdings are pooled, so this exit closes your oldest {trade.symbol} "
         "first (FIFO), whichever trade it was started from."
@@ -843,9 +946,17 @@ def _request(
     quantity: Decimal,
     exit_trade_id: int | None,
 ) -> OrderRequest:
-    # Only a plain sell competes with other open sells for the same shares.
-    promised = _promised(ctx, symbol) if side == OrderSide.SELL and exit_trade_id is None else ZERO
-    return OrderRequest(symbol, side, quantity, exit_trade_id, OrderOrigin.USER, promised)
+    # A plain sell competes with other open sells for the same shares; an exit competes with
+    # whatever already waits to close the same shares (and, trade by trade, the same lot).
+    promised = promised_on_trade = ZERO
+    if exit_trade_id is None:
+        promised = _promised(ctx, symbol) if side == OrderSide.SELL else ZERO
+    else:
+        trade = ctx.db.get(Trade, exit_trade_id)
+        if trade is not None and trade.account_id == ctx.account.id and trade.status == TradeStatus.OPEN:
+            promised = _promised_to_exits(ctx, trade)
+            promised_on_trade = _promised_to_trade(ctx, trade)
+    return OrderRequest(symbol, side, quantity, exit_trade_id, OrderOrigin.USER, promised, promised_on_trade)
 
 
 def preview_order(
@@ -897,6 +1008,7 @@ def _exit_arguments(
     return trade, side, trim8(quantity) if quantity is not None else trade.open_quantity
 
 
+@serialised
 def exit_trade(ctx: TradingContext, trade_id: int, quantity: Decimal | None = None) -> Order:
     """Close `quantity` of a trade (all of its open part by default) at the market. Where the
     market pools holdings the oldest lots are what actually close; see `preview_exit`."""
@@ -913,12 +1025,13 @@ def preview_exit(ctx: TradingContext, trade_id: int, quantity: Decimal | None = 
     _validate_shape(side, OrderType.MARKET, quantity, None)
     quote = _checked_quote(ctx.provider, trade.symbol)
     _check_quantity_step(market_data.market_for(trade.symbol, quote.type), quantity)
-    request = OrderRequest(trade.symbol, side, quantity, trade.id)
+    request = _request(ctx, symbol=trade.symbol, side=side, quantity=quantity, exit_trade_id=trade.id)
     plan = _plan(ctx, request, quote)
     price, resting = _pricing(side, OrderType.MARKET, None, quote)
     return plan_cost(ctx, plan, quote, price=price, order_type=OrderType.MARKET, resting=resting)
 
 
+@serialised
 def _submit(
     ctx: TradingContext,
     *,
@@ -978,6 +1091,7 @@ def _submit(
     return order
 
 
+@serialised
 def cancel_order(ctx: TradingContext, order_id: int) -> Order:
     order = ctx.db.get(Order, order_id)
     if order is None or order.account_id != ctx.account.id:
@@ -989,6 +1103,7 @@ def cancel_order(ctx: TradingContext, order_id: int) -> Order:
     return order
 
 
+@serialised
 def fill_open_orders(ctx: TradingContext) -> int:
     """Fill open orders that can: limit orders whose price has been reached, and orders that
     waited for the market to open. Returns how many filled."""
@@ -1215,6 +1330,7 @@ def _square_off_note(market: Market, leftover: bool, now: datetime) -> str:
     return note + (", left open from an earlier session." if leftover else ".")
 
 
+@serialised
 def square_off_due(ctx: TradingContext) -> list[Order]:
     """Buy back Indian intraday shorts that must not stay open: those that reach
     `square_off_minutes_before_close` before the close, and straight away any left over from an
@@ -1382,7 +1498,7 @@ def _protection_outcome(ctx: TradingContext, trade: Trade, quote: Quote, price: 
 
 
 def _open_trade_for_protection(ctx: TradingContext, trade_id: int) -> Trade:
-    trade = ctx.db.get(Trade, trade_id)
+    trade = ctx.db.get(Trade, trade_id, populate_existing=True)
     if trade is None or trade.account_id != ctx.account.id:
         raise TradeNotFound(f"There is no trade with id {trade_id}.")
     if trade.status != TradeStatus.OPEN:
@@ -1410,6 +1526,7 @@ def preview_protection(
     )
 
 
+@serialised
 def set_protection(
     ctx: TradingContext,
     trade_id: int,
@@ -1446,6 +1563,7 @@ def _protection_fires(trade: Trade, price: Decimal) -> str | None:
     return None
 
 
+@serialised
 def trigger_protected_trades(ctx: TradingContext) -> int:
     """Close, at the market, every open trade whose stop-loss or target the price has reached.
     Returns how many closed.

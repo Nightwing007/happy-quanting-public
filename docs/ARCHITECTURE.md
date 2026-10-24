@@ -24,8 +24,9 @@ Browser → Next.js (frontend/, proxies /api/* via next.config.ts BACKEND_URL)
 | Paper trading engine | `trading/engine.py` (≈1,900 lines — grep for `def `) | `_plan` → legs, `plan_cost`, `place_order`, `_fill`, `exit_trade`, `get_portfolio`, `get_payouts`, previews, `account_for_user`, `live_context(db, provider, user_id)` |
 | Trading costs | `trading/fees.py` (`Fee`, `Charge`, `calculate_charges`, `break_even_price`), `trading/markets.py` (35 `Market`s, `ShortRule`, `market_for`), `trading/brokers.py` (13 `Broker`s) | charges as data tables with `source`/`checked` |
 | Market hours | `trading/hours.py` (`market_status`, `can_fill`, `session_bounds`, `timezone_of`) | exchange_calendars, AMO waiting, labels in exchange tz |
+| Serialising | `engine.serialised` (per-account lock on `_submit`, `exit_trade`, `cancel_order`, the tick steps, `set_protection`), `deps.get_open_sim_context` (refuses new orders in a finished sim) | one writer per account, so a double click or a tick racing a click acts once |
 | Shorts / stop-loss / square-off | in `engine.py`: `accrue_financing`, `square_off_due`, `set_protection`, `trigger_protected_trades` | per-market short rules; OCO protection |
-| Errors / money | `trading/errors.py` (each `TradingError` has `code`), `trading/money.py` (`money`, `trim8`) | |
+| Errors / money | `trading/errors.py` (each `TradingError` has `code`; `ExitAlreadyPending`), `trading/money.py` (`money`, `trim8`) | |
 | Metrics | `metrics.py` | 5 company metrics + crypto 4, sector ranges |
 | Indicators | `indicators.py` | pure `sma ema rsi atr bollinger highest lowest` |
 | Virtual sim | `sim/runner.py` (`build_context`, `advance`, `create_session`), `sim/driver.py`, `sim/strategies.py` (`resolve`, `ensure`, `tick`, `drop`, `describe`, `log_lines`: one in-memory `StrategyRun` per session), `SimSession.strategy_kind/…` (migration 0015) | replay a past range through the real engine; a session may run a library, saved, source or marketplace-listing strategy (listing sims hide code, settings and logs) |
@@ -53,6 +54,7 @@ takes a connection from the caller. Latest number: see `backend/migrations/versi
 | Charts | `components/trade/price-chart.tsx` (lightweight-charts v5; `markers`, `priceLines`, `incremental`), `lib/chart-markers.ts`, `lib/chart-protection.ts`, `components/algos/series-chart.tsx` |
 | Trading UI | `components/trade/{order-ticket,chart-panel,quote-header,metrics-card}.tsx`, `components/{trades-table,orders-table,exit-dialog,protection-dialog,order-legs,payouts-panel,payout-card}.tsx` |
 | Pages | `app/page.tsx` (dashboard, `components/dashboard/*`), `app/trade/`, `app/orders/`, `app/payouts/`, `app/settings/`, `app/login/`, `app/signup/`, `app/profile/`, `app/sim/` + `components/sim/*`, `app/algos/` + `components/algos/*`, `app/algos/blocks` + `components/blocks/*` (block editor: `@xyflow/react` canvas, `graph.ts` converts to the server graph, `templates.ts`, compile is `useCompileBlocks`; reuses editor save dialog, Preview, SimPanel, read-only Monaco), `app/algos/editor` + `components/editor/*` (Monaco editor, `lib/hq-api-hints.ts` autocomplete list, save to `/api/algos/mine` with `source`, test panels reuse `create/upload-flow`'s `Preview`; sim page shows `components/sim/strategy-panel.tsx`), `app/marketplace/{,[id],subscriptions,earnings}`, `app/creators/[username]` + `components/marketplace/*`, `app/create/{,upload}` + `components/create/*` (code box, rules panel from `GET /api/algos/rules`, upload flow; `?listing=` = new-version mode) (`lib/marketplace-format.ts`) |
+| Browser tests | `frontend/playwright.config.ts` (starts backend :8040 with the fake provider and a fresh SQLite file in `e2e/.tmp`, and `next dev` :3040 with `.next-e2e`; one worker), `frontend/e2e/*.spec.ts` (auth trade dashboard sim algos editor blocks marketplace ip layout), `fixtures.ts` (`user` = fresh signed-up page, `go` waits for hydration, console-error and API-body collectors), `global-setup.ts` warms every route. Pages stay mounted hidden after navigation, so scope locators with `:visible` or use `go()` |
 | Shell | `app/layout.tsx`, `app/providers.tsx`, `components/site-header.tsx`, `components/backend-status-banner.tsx`, `components/data-notice.tsx` |
 | UI kit | `components/ui/*` — shadcn base-nova on `@base-ui/react` (`render` prop, not `asChild`); don't read unless changing one |
 
@@ -81,7 +83,7 @@ Group → files (used by `scripts/qtest.py`):
 
 | Group | Files |
 |---|---|
-| engine | `test_engine test_costs_engine test_costs_api test_fees test_shorting test_protection test_payouts test_trading_api test_context` |
+| engine | `test_engine test_costs_engine test_costs_api test_fees test_shorting test_protection test_payouts test_trading_api test_context test_double_actions` |
 | market | `test_market_data test_market_api test_history test_market_hours test_metrics test_indicators` |
 | sim | `test_sim test_sim_strategies` |
 | algos | `test_algos test_backtest test_validate test_sandbox test_blocks` |

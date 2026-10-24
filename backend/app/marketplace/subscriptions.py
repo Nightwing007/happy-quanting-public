@@ -7,6 +7,7 @@ other. Strategy execution lives in `marketplace/live.py`; this module is the mon
 """
 
 import logging
+import threading
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -41,6 +42,17 @@ from app.trading.money import money
 logger = logging.getLogger(__name__)
 ZERO = Decimal(0)
 HUNDRED = Decimal(100)
+
+
+# The background loop and a stop request can both reach a subscription at once. Settling a fee or
+# returning the cash reads the account, then writes; without this both would pay or return it.
+_sub_locks: dict[int, threading.RLock] = {}
+_sub_locks_guard = threading.Lock()
+
+
+def _sub_lock(sub_id: int) -> threading.RLock:
+    with _sub_locks_guard:
+        return _sub_locks.setdefault(sub_id, threading.RLock())
 
 
 def subscription_not_found(sub_id: int) -> MarketplaceError:
@@ -209,7 +221,13 @@ def settle_fees(db: Session, sub: Subscription) -> FeeLedger | None:
     open trade's unrealized gain is never charged. The mark only rises: a loss then a recovery to
     the old level owes nothing, so the same profit is never charged twice.
     """
-    account = db.get(Account, sub.account_id)
+    with _sub_lock(sub.id):
+        return _settle_fees_locked(db, sub)
+
+
+def _settle_fees_locked(db: Session, sub: Subscription) -> FeeLedger | None:
+    db.refresh(sub)  # another thread may have settled while we waited
+    account = db.get(Account, sub.account_id, populate_existing=True)
     assert account is not None
     profit, mark = account.realized_pnl, sub.high_water_mark
     if profit <= mark:
@@ -282,7 +300,16 @@ def _is_flat(ctx: TradingContext) -> bool:
 def advance_stop(db: Session, provider: MarketDataProvider, sub: Subscription) -> bool:
     """Move a stopping subscription forward: exit what is open, settle the final fee, and once the
     account is flat return its cash to the live account. Returns whether it is now stopped."""
+    with _sub_lock(sub.id):
+        return _advance_stop_locked(db, provider, sub)
+
+
+def _advance_stop_locked(db: Session, provider: MarketDataProvider, sub: Subscription) -> bool:
+    db.refresh(sub)
+    if sub.status == SubscriptionStatus.STOPPED:
+        return True  # the other thread finished it: the cash is already back
     ctx = sub_context(db, provider, sub)
+    db.refresh(ctx.account)
     _wind_down(ctx)
     settle_fees(db, sub)
     if not _is_flat(ctx):

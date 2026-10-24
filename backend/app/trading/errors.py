@@ -76,6 +76,13 @@ class ShortQuantityInvalid(ShortNotAllowed, InvalidOrder):
     code = "short_quantity_invalid"
 
 
+class ExitAlreadyPending(InvalidOrder):
+    """The shares this exit asks for are already promised to waiting exit or sell orders, so
+    nothing is left to exit (a second click, or a second tab). Cancel the waiting order first."""
+
+    code = "exit_already_pending"
+
+
 class TradeNotFound(TradingError):
     code = "trade_not_found"
 

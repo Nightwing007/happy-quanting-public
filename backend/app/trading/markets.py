@@ -34,8 +34,11 @@ _INDIA_STT = Fee(
     "0.1% of the value. You pay it whether you win or lose.",
     percent=D("0.1"),
     only_types=_EQ,
-    # Equity-oriented ETFs have their own, much lower STT rule that is not recorded here.
-    # UNVERIFIED: ETFs are charged no STT in this model.
+    # ETFs are charged no STT in this model, a simplification: Zerodha's support page says other
+    # ETFs pay 0.001% on the sell side (delivery) while gold, liquid and gilt ETFs pay none, and the
+    # kind of ETF is not known from its symbol.
+    # source: https://support.zerodha.com/category/account-opening/resident-individual/ri-charges/articles/stt-etfs,
+    # checked 2026-10-24
     source=f"{_ZERODHA_CHARGES} and {_GROWW_PRICING} (equity delivery, 0.1% buy and sell)",
     checked=_CHECKED,
 )
@@ -81,7 +84,8 @@ _INDIA_INTRADAY_STT = Fee(
     percent=D("0.025"),
     side="sell",
     only_types=_EQ,
-    # UNVERIFIED: ETFs are charged no STT in this model (see the delivery rule above).
+    # ETFs are charged no STT in this model (see the delivery rule above); the same page says
+    # ETFs that pay STT pay 0.025% on the sell side when traded intraday.
     source=f"{_ZERODHA_CHARGES} and {_GROWW_PRICING} (equity intraday, 0.025% on the sell side)",
     checked=_CHECKED,
 )
@@ -118,6 +122,11 @@ _BSE_EXCHANGE = Fee(
 )
 
 # --- Hong Kong -----------------------------------------------------------------------------
+
+_CN_CONNECT = (
+    "https://www.hkex.com.hk/Services/Rules-and-Forms-and-Fees/Fees/Securities-(Stock-Connect)/"
+    "Trading/Transactions"
+)
 
 _HKEX_FEES = (
     "https://www.hkex.com.hk/Services/Rules-and-Forms-and-Fees/Fees/Securities-(Hong-Kong)/"
@@ -173,8 +182,9 @@ class Market:
 _NO_TAX = (
     "UNVERIFIED: no transaction tax found in the sources consulted (Tax Foundation 'Financial "
     "Transaction Taxes in Europe, 2026'; BNY Mellon 'A Global View of Financial Transaction "
-    "Taxes', undated). A tax not appearing there is not proof that none exists; confirm with "
-    "a primary source before relying on it. Exchange fees are covered by the broker's commission."
+    "Taxes', undated). A tax not appearing there is not proof that none exists, and no tax "
+    "authority publishes a list of taxes it lacks, so no primary source per country was found "
+    "on 2026-10-24. Exchange fees are covered by the broker's commission."
 )
 
 _RAW_MARKETS = [
@@ -287,9 +297,13 @@ _RAW_MARKETS = [
                 percent=D("1"),
                 side="buy",
                 only_types=_EQ,
-                # UNVERIFIED: ETF exemption not checked; ETFs are simply not charged here.
+                # ETFs are not charged: Revenue says Irish stamp duty does not apply to transfers of
+                # shares in Irish-domiciled ETFs (non-Irish ETFs are not modelled separately).
+                # source: https://www.revenue.ie/en/tax-professionals/tdm/income-tax-capital-gains-tax-corporation-tax/part-27/27-01a-03.pdf,
+                # checked 2026-10-24
                 source="https://www.revenue.ie/en/property/stamp-duty/shares-stocks-marketable-"
-                "securities/shares-and-rates.aspx (1% on shares)",
+                "securities/shares-and-rates.aspx (1% on shares); Irish-domiciled ETFs exempt per "
+                "https://www.revenue.ie/en/tax-professionals/tdm/income-tax-capital-gains-tax-corporation-tax/part-27/27-01a-03.pdf",
                 checked=_CHECKED,
             )
         ],
@@ -419,8 +433,17 @@ _RAW_MARKETS = [
                 source=f"{_HKEX_FEES} (0.00015% per side, from 1 January 2022)",
                 checked=_CHECKED,
             ),
-            # UNVERIFIED: the CCASS settlement fee is charged to brokers and its rate was not
-            # on the HKEX page; it is not modelled.
+            Fee(
+                "CCASS settlement fee",
+                "exchange",
+                "The clearing house's stock settlement fee: 0.0042% of the value, on each side.",
+                percent=D("0.0042"),
+                only_types=_EQ_ETF,
+                # source: HKSCC circular, checked 2026-10-24 (0.0042% of gross value of an Exchange
+                # Trade, no minimum or maximum, for trades from 30 June 2025)
+                source="https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/HKSCC/2025/ce_HKSCC_SET_022_2025.pdf",
+                checked=_CHECKED,
+            ),
         ],
     ),
     Market(
@@ -444,8 +467,11 @@ _RAW_MARKETS = [
                 "exchange",
                 "The clearing house's fee: 0.0325% of the value.",
                 percent=D("0.0325"),
-                # UNVERIFIED: older SGX notices cap this at SGD 600 per contract; the current
-                # cap was not on the pages consulted, so large trades may be overcharged.
+                # UNVERIFIED: an earlier SGX revision (reported by Yahoo Finance Singapore and Lexology)
+                # caps this fee at SGD 600 for contracts of SGD 1.5 million or more. The current
+                # SGX page (https://www.sgx.com/securities/clearing-information) lists "0.0325% of
+                # contract value^" but is rendered by script, so its footnote could not be read on
+                # 2026-10-24; large trades may be overcharged.
                 source="https://www.sgx.com/securities/clearing-information (0.0325% of traded value)",
                 checked=_CHECKED,
             ),
@@ -455,13 +481,17 @@ _RAW_MARKETS = [
                 "Singapore's 9% goods and services tax on the exchange's fees.",
                 percent=D("9"),
                 on_categories=frozenset({"exchange"}),
-                # UNVERIFIED today: SGX says "prevailing GST rate"; the 9% (from 1 Jan 2024)
-                # is IRAS's rate, from memory and not re-fetched.
-                source="https://www.sgx.com/stock-exchange/trading (prevailing GST); IRAS 9%",
+                # source: https://www.iras.gov.sg/taxes/goods-services-tax-(gst)/gst-rate-change/gst-rate-change-for-consumers1,
+                # checked 2026-10-24 (9% from 1 Jan 2024)
+                source="https://www.sgx.com/stock-exchange/trading (prevailing GST); IRAS 9% from "
+                "1 Jan 2024: https://www.iras.gov.sg/taxes/goods-services-tax-(gst)/gst-rate-change/"
+                "gst-rate-change-for-consumers1",
                 checked=_CHECKED,
             ),
         ],
-        "No stamp duty on listed shares is assumed (UNVERIFIED).",
+        "No stamp duty applies to listed shares: IRAS exempts the electronic transfer of scripless "
+        "shares (https://www.iras.gov.sg/taxes/stamp-duty/for-shares/basics-of-stamp-duty-for-shares/"
+        "learning-the-basics-for-shares, checked 2026-10-24).",
     ),
     Market(
         "KOSPI",
@@ -478,9 +508,11 @@ _RAW_MARKETS = [
                 "development special tax. Only sells.",
                 percent=D("0.2"),
                 side="sell",
-                only_types=_EQ,  # UNVERIFIED: ETFs are believed exempt; not checked.
+                only_types=_EQ,  # ETFs exempt, checked 2026-10-24:
+                # https://www.rbcis.com/en/gmi/global-custody/market-profiles/market.page?dcr=templatedata/globalcustody/marketprofiles/data/south-korea
                 source="https://taxsummaries.pwc.com/republic-of-korea/corporate/other-taxes "
-                "(0.20% from 1 January 2026, incl. rural development tax)",
+                "(0.20% from 1 January 2026, incl. rural development tax); ETFs exempt per RBC "
+                "Investor Services' South Korea market profile",
                 checked=_CHECKED,
             )
         ],
@@ -499,9 +531,10 @@ _RAW_MARKETS = [
                 "Korean tax on selling shares: 0.20% of the value. Only sells.",
                 percent=D("0.2"),
                 side="sell",
-                only_types=_EQ,  # UNVERIFIED: ETFs are believed exempt; not checked.
+                only_types=_EQ,  # ETFs exempt (RBC South Korea profile, see KOSPI), checked 2026-10-24
                 source="https://taxsummaries.pwc.com/republic-of-korea/corporate/other-taxes "
-                "(0.20% for KOSPI and KOSDAQ from 1 January 2026)",
+                "(0.20% for KOSPI and KOSDAQ from 1 January 2026); ETFs exempt per RBC Investor "
+                "Services' South Korea market profile",
                 checked=_CHECKED,
             )
         ],
@@ -552,8 +585,10 @@ _RAW_MARKETS = [
                 percent=D("0.3"),
                 side="sell",
                 only_types=_EQ,
-                source="https://www.twse.com.tw/en/about/company/guide.html (stocks 0.3% on the "
-                "seller; assumed to apply to TPEx-listed shares too, UNVERIFIED)",
+                # source: https://law-out.mof.gov.tw/EngLawContent.aspx?id=20707, checked 2026-10-24
+                source="https://law-out.mof.gov.tw/EngLawContent.aspx?id=20707 (Securities "
+                "Transaction Tax Act, Art. 2: 0.3% on shares, paid by the seller; the Act covers "
+                "listed and OTC-listed stock alike)",
                 checked=_CHECKED,
             ),
             Fee(
@@ -563,8 +598,9 @@ _RAW_MARKETS = [
                 percent=D("0.1"),
                 side="sell",
                 only_types=frozenset({"etf"}),
-                source="https://www.twse.com.tw/en/about/company/guide.html (ETFs 0.1%; TPEx "
-                "assumed the same, UNVERIFIED)",
+                # source: https://law-out.mof.gov.tw/EngLawContent.aspx?id=20707, checked 2026-10-24
+                source="https://law-out.mof.gov.tw/EngLawContent.aspx?id=20707 (Securities "
+                "Transaction Tax Act, Art. 2: 0.1% on other approved securities, paid by the seller)",
                 checked=_CHECKED,
             ),
         ],
@@ -598,8 +634,33 @@ _RAW_MARKETS = [
                 "Securities-(Stock-Connect)/Trading/Transactions (0.001% per purchase or sale)",
                 checked=_CHECKED,
             ),
-            # UNVERIFIED: the exchange handling fee and securities management fee were not
-            # recorded; they are small.
+            Fee(
+                "Handling fee",
+                "exchange",
+                "The exchange's fee: 0.00341% of the value, on each side.",
+                percent=D("0.00341"),
+                only_types=_EQ,
+                source=_CN_CONNECT + " (A shares 0.00341% per purchase or sale)",
+                checked=_CHECKED,
+            ),
+            Fee(
+                "Handling fee (ETF)",
+                "exchange",
+                "The exchange's fee for ETFs: 0.004% of the value, on each side.",
+                percent=D("0.004"),
+                only_types=frozenset({"etf"}),
+                source=_CN_CONNECT + " (ETFs 0.004% per purchase or sale)",
+                checked=_CHECKED,
+            ),
+            Fee(
+                "Securities management fee",
+                "regulatory",
+                "The securities regulator's fee: 0.002% of the value, on each side. Waived for ETFs.",
+                percent=D("0.002"),
+                only_types=_EQ,
+                source=_CN_CONNECT + " (A shares 0.002% per purchase or sale, ETFs waived)",
+                checked=_CHECKED,
+            ),
         ],
     ),
     Market(
@@ -631,6 +692,33 @@ _RAW_MARKETS = [
                 "Securities-(Stock-Connect)/Trading/Transactions (0.001% per purchase or sale)",
                 checked=_CHECKED,
             ),
+            Fee(
+                "Handling fee",
+                "exchange",
+                "The exchange's fee: 0.00341% of the value, on each side.",
+                percent=D("0.00341"),
+                only_types=_EQ,
+                source=_CN_CONNECT + " (A shares 0.00341% per purchase or sale)",
+                checked=_CHECKED,
+            ),
+            Fee(
+                "Handling fee (ETF)",
+                "exchange",
+                "The exchange's fee for ETFs: 0.004% of the value, on each side.",
+                percent=D("0.004"),
+                only_types=frozenset({"etf"}),
+                source=_CN_CONNECT + " (ETFs 0.004% per purchase or sale)",
+                checked=_CHECKED,
+            ),
+            Fee(
+                "Securities management fee",
+                "regulatory",
+                "The securities regulator's fee: 0.002% of the value, on each side. Waived for ETFs.",
+                percent=D("0.002"),
+                only_types=_EQ,
+                source=_CN_CONNECT + " (A shares 0.002% per purchase or sale, ETFs waived)",
+                checked=_CHECKED,
+            ),
         ],
     ),
     Market(
@@ -647,7 +735,10 @@ _RAW_MARKETS = [
                 "South African tax on buying shares: 0.25% of the value. The buyer pays.",
                 percent=D("0.25"),
                 side="buy",
-                # UNVERIFIED: that listed ETF units are charged too (SARS says "securities").
+                # UNVERIFIED: that listed ETF units are charged too. SARS (re-read 2026-10-24) defines
+                # a security as a share, a depository interest in a company or a close-corporation
+                # member's interest and never mentions ETFs or unit trusts; no SARS or JSE page was
+                # found that settles ETF units either way.
                 # JSE trading and Strate settlement fees are not recorded.
                 source="https://www.sars.gov.za/types-of-tax/securities-transfer-tax/ (0.25%); "
                 "buyer pays per https://globallawexperts.com/share-sale-vs-asset-sale-south-africa-tax/",
@@ -682,11 +773,12 @@ _RAW_MARKETS = [
         (".SW",),
         "international",
         [],
-        # UNVERIFIED: Switzerland has a securities turnover tax (0.15% Swiss, 0.3% foreign
-        # securities per the BNY Mellon paper) that applies when a Swiss securities dealer is a
-        # party to the trade. It is not charged here because none of the brokers modelled is Swiss.
+        # source: https://taxsummaries.pwc.com/switzerland/corporate/other-taxes, checked 2026-10-24
+        # The securities turnover tax (0.15% Swiss, 0.3% foreign securities) applies when a Swiss
+        # securities dealer is a party or intermediary. It is not charged here because none of
+        # the brokers modelled is Swiss.
         "A Swiss turnover tax applies when a Swiss securities dealer is involved; none of the "
-        "brokers here is, so it is not charged (UNVERIFIED).",
+        "brokers here is, so it is not charged.",
     ),
     Market(
         "BRU",
@@ -697,7 +789,9 @@ _RAW_MARKETS = [
         "international",
         [],
         # UNVERIFIED: Belgium's tax on stock exchange transactions (0.35%, max EUR 1,600 per
-        # BNY Mellon paper) is aimed at Belgian residents and Belgian intermediaries.
+        # BNY Mellon paper; DEGIRO's help page gives the same) is aimed at Belgian residents and
+        # Belgian intermediaries. Only secondary sources (DEGIRO, Curvo) were found for who owes it
+        # when the broker is abroad, and no FPS Finance page stating it was found on 2026-10-24.
         "Belgium's stock-exchange tax targets Belgian residents and intermediaries, so it is "
         "not charged (UNVERIFIED).",
     ),
@@ -714,9 +808,11 @@ _RAW_MARKETS = [
         (".HE",),
         "international",
         [],
-        # BNY Mellon paper: 1.6% transfer tax on Finnish securities, exempt on a qualified
-        # exchange (UNVERIFIED, undated paper).
-        "Finland's transfer tax does not apply on a regulated exchange (UNVERIFIED).",
+        # source: https://www.vero.fi/en/individuals/property/transfer-tax/corporate-stock/,
+        # checked 2026-10-24
+        # Transfer tax (now 1.5%) is not usually due on listed shares bought through a bank or
+        # investment firm.
+        "Finland's transfer tax is not usually due on listed shares bought through a broker.",
     ),
     Market("NZX", "New Zealand", "New Zealand", "NZD", (".NZ",), "international", [], _NO_TAX),
     Market("BMV", "Mexico", "Mexico", "MXN", (".MX",), "international", [], _NO_TAX),

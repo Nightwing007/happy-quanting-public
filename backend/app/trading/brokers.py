@@ -228,22 +228,22 @@ _ALL_BROKERS = [
                 "What the broker charges to place the order: a flat Rs 20 per order.",
                 flat=D("20"),
                 only_types=_EQ_ETF,
-                # UNVERIFIED: Upstox is believed to charge "Rs 20 or 2.5%, whichever is lower";
-                # only the flat Rs 20 was confirmed, so very small orders are overcharged.
+                # source: https://upstox.com/brokerage-charges/, checked 2026-10-24
+                # (Equity Delivery: "Rs 20 per executed order"; no percentage alternative listed).
                 source=f"{_UPSTOX} (Rs 20 per executed order)",
                 checked=_CHECKED,
             ),
             _dp_charge("20", f"{_UPSTOX} (CDSL Rs 3.5 + Upstox Rs 16.5, + GST)"),
         ],
-        # UNVERIFIED: whether Upstox applies a minimum to intraday brokerage; the page says only
-        # "Rs 20 per executed order or 0.1% (whichever is lower)", so none is modelled.
+        # source: https://upstox.com/brokerage-charges/, checked 2026-10-24
+        # (Equity Intraday: "Rs 20 per executed order or 0.1% (whichever is lower)"; no minimum listed).
         [
             _intraday_brokerage(
                 "0.1", None, "20", f"{_UPSTOX} (Rs 20 or 0.1% per executed order, whichever is lower)"
             )
         ],
         markets=("NSE", "BSE"),
-        notes="Flat Rs 20 brokerage per order (a lower cap for tiny orders is not modelled).",
+        notes="Flat Rs 20 brokerage per order on delivery; intraday is the lower of Rs 20 or 0.1%.",
         source=_UPSTOX,
         checked=_CHECKED,
     ),
@@ -268,8 +268,10 @@ _ALL_BROKERS = [
         "Dhan",
         "india",
         [_dp_charge("12.5", f"{_DHAN} (Rs 12.50 per instruction per ISIN, + GST)")],
-        # UNVERIFIED: Dhan's page says both "Rs 20 or 0.03% per executed order, whichever is lower"
-        # and, in its summary, "flat Rs 20 for intraday". The lower-of rule is modelled.
+        # UNVERIFIED: re-read https://dhan.co/pricing/ on 2026-10-24: the table says "Rs 20 or 0.03%
+        # of trade value per executed order, whichever is lower" for Equity & ETFs Intraday and MTF,
+        # but the page's meta description says "flat Rs 20 for Intraday". The two still disagree and
+        # no other Dhan page was found to settle it; the lower-of rule is modelled.
         [
             _intraday_brokerage(
                 "0.03", None, "20", f"{_DHAN} (Rs 20 or 0.03% per executed order, whichever is lower)"
@@ -357,8 +359,9 @@ _ALL_BROKERS = [
                 "18% goods and services tax on the brokerage.",
                 percent=D("18"),
                 on_categories=frozenset({"brokerage"}),
-                # UNVERIFIED: INDmoney says "excl GST" without naming the rate; 18% is India's
-                # rate and what Zerodha's page lists for its US equity brokerage.
+                # UNVERIFIED: https://www.indmoney.com/pricing?type=us-stocks (re-read 2026-10-24)
+                # says only "subject to GST as per the applicable provisions of the GST Act" and
+                # never names the rate; 18% is India's rate for brokerage (Upstox and Zerodha list it).
                 source="https://www.indmoney.com/us-stocks (brokerage excl GST); rate from "
                 "https://zerodha.com/charges/ (US equity, 18% on brokerage)",
                 checked=_CHECKED,

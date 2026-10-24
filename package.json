@@ -9,7 +9,8 @@
     "test:q": "cd backend && .venv\\Scripts\\python scripts\\qtest.py",
     "lint:q": "node scripts/quiet.mjs backend\\.venv\\Scripts\\python -m ruff check backend -q && node scripts/quiet.mjs npm --prefix frontend run lint --silent",
     "check:web": "node scripts/quiet.mjs npx --prefix frontend tsc --noEmit -p frontend",
-    "build:web": "node scripts/quiet.mjs npm --prefix frontend run build --silent"
+    "build:web": "node scripts/quiet.mjs npm --prefix frontend run build --silent",
+    "e2e": "node scripts/quiet.mjs npx --prefix frontend playwright test -c frontend/playwright.config.ts"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

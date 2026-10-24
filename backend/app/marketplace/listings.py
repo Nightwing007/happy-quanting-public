@@ -385,6 +385,8 @@ def publish_listing(db: Session, provider: MarketDataProvider, owner: User, list
     listing = owned_listing(db, owner, listing_id)
     if listing.status == ListingStatus.RETIRED:
         raise MarketplaceError("listing_retired", "A retired listing can't be published again.", 409)
+    if listing.status == ListingStatus.PUBLISHED:
+        return listing  # a second click: re-queueing would wipe the measured performance
     _ready(listing)
     check_test_markets(provider, listing)
     listing.status = ListingStatus.PUBLISHED
@@ -396,6 +398,8 @@ def publish_listing(db: Session, provider: MarketDataProvider, owner: User, list
 
 def retire_listing(db: Session, owner: User, listing_id: int) -> AlgoListing:
     listing = owned_listing(db, owner, listing_id)
+    if listing.status == ListingStatus.RETIRED:
+        return listing
     listing.status = ListingStatus.RETIRED
     listing.updated_at = clock.now()
     db.commit()

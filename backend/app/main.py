@@ -163,7 +163,10 @@ app.add_exception_handler(AuthError, _auth_error)
 
 
 def _sim_error(request: Request, exc: SimError) -> JSONResponse:
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+    content = {"detail": exc.message}
+    if getattr(exc, "code", None):
+        content["code"] = exc.code
+    return JSONResponse(status_code=exc.status_code, content=content)
 
 
 app.add_exception_handler(SimError, _sim_error)

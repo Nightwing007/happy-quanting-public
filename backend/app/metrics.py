@@ -210,8 +210,8 @@ DE = MetricDef(
 )
 
 # Dividend yield, in percent. UNVERIFIED for every sector: Damodaran's dividend dataset (divfund,
-# January 2026) publishes payout ratios, not yields, so these are sensible rounded rules of thumb
-# for large listed companies, not figures read from a table.
+# January 2026; re-read 2026-10-24) publishes payout ratios, not yields, so these are sensible
+# rounded rules of thumb for large listed companies, not figures read from a table.
 DIVIDEND_YIELD = MetricDef(
     key="dividend_yield",
     label="Dividend yield",
