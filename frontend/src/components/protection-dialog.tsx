@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Term } from "@/components/term";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,7 +62,7 @@ function PriceField({
   accountCurrency,
 }: {
   id: string;
-  label: string;
+  label: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   hint: string;
@@ -191,7 +192,7 @@ export function ProtectionDialog({
 
         <PriceField
           id="protection-stop"
-          label="Stop-loss price"
+          label={<><Term id="stop_loss">Stop-loss</Term> price</>}
           value={stop}
           onChange={setStop}
           hint={stopHint}
@@ -203,7 +204,7 @@ export function ProtectionDialog({
         />
         <PriceField
           id="protection-target"
-          label="Target price"
+          label={<><Term id="target">Target</Term> price</>}
           value={target}
           onChange={setTarget}
           hint={targetHint}

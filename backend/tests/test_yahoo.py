@@ -39,9 +39,20 @@ class FakeTicker:
         return self._info
 
 
+class FakeSearch:
+    """Stands in for yf.Search: `quotes` is whatever the test wants Yahoo to know about."""
+
+    quotes: list[dict] = []
+
+    def __init__(self, query, **kwargs):
+        pass
+
+
 @pytest.fixture(autouse=True)
 def no_sleep(monkeypatch):
     monkeypatch.setattr(yahoo, "_RETRY_DELAY", 0)
+    FakeSearch.quotes = []  # by default Yahoo's search knows nothing
+    monkeypatch.setattr(yahoo.yf, "Search", FakeSearch)
 
 
 def _use(monkeypatch, *tickers):
@@ -87,6 +98,39 @@ def test_unknown_symbol_is_not_found(monkeypatch, error):
     _use(monkeypatch, FakeTicker(fast_error=error))
     with pytest.raises(SymbolNotFound):
         YahooProvider().get_quote("ZZZZNOPE")
+
+
+def test_suspicious_error_for_a_real_symbol_is_unavailable_not_not_found(monkeypatch):
+    # A bare KeyError is what Yahoo throws on a hiccup too; recent bars prove the symbol exists.
+    bars = _frame([LAST_TRADE], [[1, 2, 1, 1.5, 10]])
+    _use(monkeypatch, FakeTicker(fast_error=KeyError("currentTradingPeriod"), history=bars))
+    with pytest.raises(DataUnavailable):
+        YahooProvider().get_quote("BTC-USD")
+
+
+def test_suspicious_error_is_unavailable_when_search_still_knows_the_symbol(monkeypatch):
+    FakeSearch.quotes = [{"symbol": "BTC-USD", "quoteType": "CRYPTOCURRENCY"}]
+    _use(monkeypatch, FakeTicker(fast_error=KeyError("currentTradingPeriod")))
+    with pytest.raises(DataUnavailable):
+        YahooProvider().get_quote("btc-usd")
+
+
+def test_unconfirmable_absence_is_unavailable(monkeypatch):
+    # The confirming call itself fails: nothing proves the symbol is missing.
+    class Broken(FakeTicker):
+        def history(self, **kwargs):
+            raise ConnectionError("down")
+
+    _use(monkeypatch, Broken(fast_error=KeyError("currentTradingPeriod")))
+    with pytest.raises(DataUnavailable):
+        YahooProvider().get_quote("AAPL")
+
+
+def test_empty_history_for_a_known_symbol_is_unavailable(monkeypatch):
+    FakeSearch.quotes = [{"symbol": "AAPL"}]
+    _use(monkeypatch, FakeTicker())
+    with pytest.raises(DataUnavailable):
+        YahooProvider().get_bars("AAPL", "1h", "1mo")
 
 
 def test_missing_price_is_not_found(monkeypatch):

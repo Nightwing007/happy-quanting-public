@@ -2,10 +2,12 @@
 
 import { QueryError } from "@/components/query-error";
 import { Pnl } from "@/components/pnl";
+import { Term } from "@/components/term";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatMoney, isZero, toNumber } from "@/lib/format";
+import type { TermId } from "@/lib/glossary";
 import { usePortfolio } from "@/lib/queries";
 
 function Stat({
@@ -13,17 +15,22 @@ function Stat({
   children,
   sub,
   help,
+  term,
 }: {
   title: string;
   children: React.ReactNode;
   sub: React.ReactNode;
   help?: string;
+  /** A glossary term to explain the title instead of `help`. */
+  term?: TermId;
 }) {
   return (
     <Card size="sm">
       <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          {help ? (
+          {term ? (
+            <Term id={term}>{title}</Term>
+          ) : help ? (
             <Tooltip>
               <TooltipTrigger
                 render={<span tabIndex={0} className="cursor-help underline decoration-dotted underline-offset-4" />}
@@ -81,14 +88,14 @@ export function SummaryCards() {
       <Stat
         title="Margin used"
         sub="Held against your open shorts"
-        help="Cash held back as a deposit against your open shorts. You get it back when you buy the shares back."
+        term="margin"
       >
         {formatMoney(p.margin_used, c)}
       </Stat>
       <Stat
         title="Available cash"
         sub="Cash minus margin"
-        help="What a new order can spend: your cash less the margin blocked for open shorts."
+        term="available_cash"
       >
         {formatMoney(p.available_cash, c)}
       </Stat>
@@ -99,7 +106,7 @@ export function SummaryCards() {
         title="Profit / loss"
         sub={
           <>
-            Realized <Pnl value={p.realized_pnl} currency={c} /> · Unrealized{" "}
+            <Term id="realized_pnl">Realized</Term> <Pnl value={p.realized_pnl} currency={c} /> · <Term id="unrealized_pnl">Unrealized</Term>{" "}
             <Pnl value={p.unrealized_pnl} currency={c} />
           </>
         }

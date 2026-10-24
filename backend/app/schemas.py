@@ -1146,6 +1146,7 @@ class ListingCreatorOut(BaseModel):
     username: str
     display_name: str
     avatar_url: str | None
+    badges: list[str] = []  # Elite Four and Champion only (badge ids)
 
 
 class CreatorProfileOut(BaseModel):
@@ -1264,3 +1265,45 @@ class EarningsOut(BaseModel):
     currency: str
     total: Money
     listings: list[ListingEarningsOut]
+
+
+# --- badges ---------------------------------------------------------------------------------
+
+
+class BadgeOut(BaseModel):
+    id: str
+    name: str
+    order: int
+    hint: str  # the "Earned by" sentence
+    kind: Literal["trader", "creator"]
+
+
+class BadgeRegionOut(BaseModel):
+    id: str
+    name: str
+    group: Literal["india", "us", "crypto", "global"] | None  # None: the Elite Four
+    badges: list[BadgeOut]
+
+
+class BadgeCatalogOut(BaseModel):
+    regions: list[BadgeRegionOut]
+
+
+class EarnedBadgeOut(BaseModel):
+    id: str
+    earned_at: datetime
+
+
+class MyBadgesOut(BaseModel):
+    earned: list[EarnedBadgeOut]
+    new: list[str]  # earned and not yet shown as a toast
+    backfill_summary: int | None  # badges awarded for past activity, until acknowledged
+
+
+class BadgesSeenIn(BaseModel):
+    ids: list[str]
+
+
+class UserBadgesOut(BaseModel):
+    username: str
+    earned: list[EarnedBadgeOut]

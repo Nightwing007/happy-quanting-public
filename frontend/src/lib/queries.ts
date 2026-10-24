@@ -49,6 +49,9 @@ export const queryKeys = {
   algoRules: ["algo-rules"] as const,
   myListings: ["my-listings"] as const,
   blockCatalog: ["block-catalog"] as const,
+  badgeCatalog: ["badge-catalog"] as const,
+  myBadges: ["my-badges"] as const,
+  userBadges: (username: string) => ["user-badges", username] as const,
 };
 
 export const useHealth = () =>
@@ -253,7 +256,11 @@ export function useUpdateSettings() {
 }
 
 /** Refetch everything an account's balances and lists are drawn from. */
+// Anything that trades, publishes or subscribes may earn a badge, so the watcher re-reads at once.
+export const invalidateBadges = (qc: QueryClient) => qc.invalidateQueries({ queryKey: queryKeys.myBadges });
+
 export function invalidateAccount(qc: QueryClient, base: string) {
+  invalidateBadges(qc);
   qc.invalidateQueries({ queryKey: scoped(base, queryKeys.previewAll) });
   qc.invalidateQueries({ queryKey: scoped(base, queryKeys.portfolio) });
   qc.invalidateQueries({ queryKey: scoped(base, queryKeys.tradesAll) });
@@ -276,6 +283,7 @@ export function useExitTrade() {
   return useMutation({
     mutationFn: (arg: { id: number; quantity?: string }) => api.exitTrade(arg, base),
     onSuccess: (_order, { id }) => {
+      invalidateBadges(qc);
       // The exited trade's own previews are dropped, not refetched: it may be closed now and the
       // server would refuse. Other previews are stale because cash and holdings changed.
       qc.removeQueries({ queryKey: scoped(base, ["order-preview", "exit", id]) });
@@ -425,7 +433,10 @@ export function useRunBacktest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: BacktestIn) => api.createBacktest(body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.backtests }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.backtests });
+      invalidateBadges(qc);
+    },
   });
 }
 
@@ -482,6 +493,7 @@ export const useSubscriptions = () =>
 
 // Subscribing and stopping move cash between the live account and the sub-account.
 function invalidateAfterSubscriptionChange(qc: QueryClient) {
+  invalidateBadges(qc);
   qc.invalidateQueries({ queryKey: queryKeys.subscriptions });
   qc.invalidateQueries({ queryKey: queryKeys.portfolio });
   qc.invalidateQueries({ queryKey: queryKeys.earnings });
@@ -515,6 +527,7 @@ export const useValidateCode = () => useMutation({ mutationFn: (source: string) 
 export const useMyListings = () => useQuery({ queryKey: queryKeys.myListings, queryFn: api.listMyListings });
 
 function invalidateAfterListingChange(qc: QueryClient) {
+  invalidateBadges(qc);
   qc.invalidateQueries({ queryKey: queryKeys.myListings });
   qc.invalidateQueries({ queryKey: ["listings"] });
   qc.invalidateQueries({ queryKey: ["listing"] });
@@ -582,5 +595,39 @@ export function useCreateCustomBlock() {
   return useMutation({
     mutationFn: (body: CustomBlockIn) => api.createCustomBlock(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.blockCatalog }),
+  });
+}
+
+// --- badges ---
+
+export const useBadgeCatalog = () =>
+  useQuery({ queryKey: queryKeys.badgeCatalog, queryFn: api.getBadgeCatalog, staleTime: Infinity });
+
+// The 60 s poll is what catches badges earned by the background loop (a sim run to the close, a
+// backtest finishing, a 30-day hold); the mutations above invalidate it for the instant ones.
+export const useMyBadges = (enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.myBadges,
+    queryFn: api.getMyBadges,
+    enabled,
+    refetchInterval: 60_000,
+  });
+
+export const useUserBadges = (username: string) =>
+  useQuery({ queryKey: queryKeys.userBadges(username), queryFn: () => api.getUserBadges(username) });
+
+export function useMarkBadgesSeen() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.markBadgesSeen(ids),
+    onSuccess: (data) => qc.setQueryData(queryKeys.myBadges, data),
+  });
+}
+
+export function useAcknowledgeBadgeSummary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.acknowledgeBadgeSummary,
+    onSuccess: (data) => qc.setQueryData(queryKeys.myBadges, data),
   });
 }

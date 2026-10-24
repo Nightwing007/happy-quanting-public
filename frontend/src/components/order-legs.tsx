@@ -1,9 +1,16 @@
 import { Pnl } from "@/components/pnl";
+import { Term } from "@/components/term";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatMoney, formatQuantity, isZero, toNumber } from "@/lib/format";
 import type { OrderLeg } from "@/lib/types";
 
 export const productLabel = (product: string) => product.charAt(0).toUpperCase() + product.slice(1);
+
+/** The product name, explained when the glossary knows it. */
+export function ProductLabel({ product }: { product: string }) {
+  const label = productLabel(product);
+  return product === "delivery" || product === "intraday" ? <Term id={product}>{label}</Term> : <>{label}</>;
+}
 
 /** Plain-language title of one leg, e.g. "Closes 5 shares you hold (delivery)". */
 export function legTitle(leg: OrderLeg, unit: string): string {

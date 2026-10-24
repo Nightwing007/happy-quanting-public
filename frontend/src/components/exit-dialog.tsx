@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { unitFor } from "@/components/order-legs";
 import { Pnl } from "@/components/pnl";
+import { Term } from "@/components/term";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,12 +174,12 @@ export function ExitDialog({
                 </Row>
               )}
               {!isZero(p.margin_change) && (
-                <Row label={toNumber(p.margin_change) > 0 ? "Margin blocked" : "Margin released"}>
+                <Row label={<Term id="margin">{toNumber(p.margin_change) > 0 ? "Margin blocked" : "Margin released"}</Term>}>
                   {formatMoney(Math.abs(toNumber(p.margin_change)), accountCurrency)}
                 </Row>
               )}
               {p.realized_pnl !== null && p.realized_pnl !== undefined && (
-                <Row label="Realized P&L">
+                <Row label={<Term id="realized_pnl">Realized P&L</Term>}>
                   <Pnl value={p.realized_pnl} currency={accountCurrency} />
                 </Row>
               )}

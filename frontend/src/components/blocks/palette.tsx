@@ -1,10 +1,25 @@
 "use client";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { GLOSSARY, type TermId } from "@/lib/glossary";
 import type { BlockSpec } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CATEGORY_BAR, CATEGORY_ORDER, CATEGORY_TITLES } from "./graph";
 import { TEMPLATES, type Template } from "./templates";
+
+// Blocks named after a glossary term; their hover adds the glossary's reading and rule of thumb.
+const BLOCK_TERMS: Record<string, TermId> = {
+  sma_cross: "crossover",
+  price_vs_sma: "sma",
+  rsi_below: "oversold",
+  rsi_above: "overbought",
+  breakout: "donchian",
+  bollinger_touch: "bollinger",
+  volume_spike: "volume",
+  short: "short",
+  stop_loss: "stop_loss",
+  target: "target",
+};
 
 export const DRAG_TYPE = "application/x-hq-block";
 
@@ -70,7 +85,16 @@ export function Palette({
                     <span className="text-xs text-muted-foreground lg:hidden">{b.help}</span>
                   </span>
                 </TooltipTrigger>
-                <TooltipContent side="right">{b.help}</TooltipContent>
+                <TooltipContent side="right" className="block">
+                  {b.help}
+                  {BLOCK_TERMS[b.type] && (
+                    <span className="mt-1 block opacity-80">
+                      {GLOSSARY[BLOCK_TERMS[b.type]].read}
+                      {" "}
+                      {(GLOSSARY[BLOCK_TERMS[b.type]] as { good?: string }).good}
+                    </span>
+                  )}
+                </TooltipContent>
               </Tooltip>
             ))}
           </section>

@@ -22,7 +22,10 @@ GROUPS = {
     "algos": "test_algos test_backtest test_validate test_sandbox test_blocks",
     "auth": "test_auth test_scoping",
     "db": "test_migrations",
-    "marketplace": "test_marketplace test_subscriptions test_seed test_listing_versions",
+    "marketplace": (
+        "test_marketplace test_subscriptions test_seed test_listing_versions test_performance_retry"
+    ),
+    "badges": "test_badges",
     "health": "test_health",
 }
 

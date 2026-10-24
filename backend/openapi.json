@@ -3136,6 +3136,152 @@
         }
       }
     },
+    "/api/badges/catalog": {
+      "get": {
+        "tags": [
+          "badges"
+        ],
+        "summary": "Get Catalog",
+        "operationId": "get_catalog_api_badges_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadgeCatalogOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/badges/me": {
+      "get": {
+        "tags": [
+          "badges"
+        ],
+        "summary": "Get My Badges",
+        "operationId": "get_my_badges_api_badges_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyBadgesOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/badges/me/seen": {
+      "post": {
+        "tags": [
+          "badges"
+        ],
+        "summary": "Mark Badges Seen",
+        "operationId": "mark_badges_seen_api_badges_me_seen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BadgesSeenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyBadgesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/badges/me/summary-seen": {
+      "post": {
+        "tags": [
+          "badges"
+        ],
+        "summary": "Acknowledge Summary",
+        "operationId": "acknowledge_summary_api_badges_me_summary_seen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyBadgesOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{username}/badges": {
+      "get": {
+        "tags": [
+          "badges"
+        ],
+        "summary": "Get User Badges",
+        "operationId": "get_user_badges_api_users__username__badges_get",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Username"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserBadgesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/settings": {
       "get": {
         "tags": [
@@ -4522,6 +4668,119 @@
         ],
         "title": "BacktestTradeOut"
       },
+      "BadgeCatalogOut": {
+        "properties": {
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/BadgeRegionOut"
+            },
+            "type": "array",
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regions"
+        ],
+        "title": "BadgeCatalogOut"
+      },
+      "BadgeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "hint": {
+            "type": "string",
+            "title": "Hint"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "trader",
+              "creator"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "order",
+          "hint",
+          "kind"
+        ],
+        "title": "BadgeOut"
+      },
+      "BadgeRegionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "india",
+                  "us",
+                  "crypto",
+                  "global"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/BadgeOut"
+            },
+            "type": "array",
+            "title": "Badges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "group",
+          "badges"
+        ],
+        "title": "BadgeRegionOut"
+      },
+      "BadgesSeenIn": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "BadgesSeenIn"
+      },
       "BarOut": {
         "properties": {
           "time": {
@@ -5092,6 +5351,25 @@
         ],
         "title": "CustomBlockOut"
       },
+      "EarnedBadgeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "earned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Earned At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "earned_at"
+        ],
+        "title": "EarnedBadgeOut"
+      },
       "EarningsOut": {
         "properties": {
           "currency": {
@@ -5444,6 +5722,14 @@
               }
             ],
             "title": "Avatar Url"
+          },
+          "badges": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Badges",
+            "default": []
           }
         },
         "type": "object",
@@ -6480,6 +6766,42 @@
           "note"
         ],
         "title": "MetricsOut"
+      },
+      "MyBadgesOut": {
+        "properties": {
+          "earned": {
+            "items": {
+              "$ref": "#/components/schemas/EarnedBadgeOut"
+            },
+            "type": "array",
+            "title": "Earned"
+          },
+          "new": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "New"
+          },
+          "backfill_summary": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backfill Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "earned",
+          "new",
+          "backfill_summary"
+        ],
+        "title": "MyBadgesOut"
       },
       "OmittedMetricOut": {
         "properties": {
@@ -9112,6 +9434,27 @@
           "created_at"
         ],
         "title": "UserAlgoOut"
+      },
+      "UserBadgesOut": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "earned": {
+            "items": {
+              "$ref": "#/components/schemas/EarnedBadgeOut"
+            },
+            "type": "array",
+            "title": "Earned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "earned"
+        ],
+        "title": "UserBadgesOut"
       },
       "UserOut": {
         "properties": {

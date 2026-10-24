@@ -16,11 +16,12 @@ from app.algos import jobs as backtest_jobs
 from app.algos.api import ParameterError
 from app.algos.backtest import BacktestError
 from app.algos.runner import StrategyRunError
-from app.api import algos, backtests, blocks, market, marketplace, sim, trading, watchlist
+from app.api import algos, backtests, badges, blocks, market, marketplace, sim, trading, watchlist
 from app.api import auth as auth_api
 from app.api import settings as settings_api
 from app.api.deps import Provider
 from app.auth import AuthError, ensure_demo_password
+from app.badges import award as badge_award
 from app.config import Settings, get_settings
 from app.db import SessionLocal
 from app.market_data import get_provider
@@ -59,6 +60,8 @@ def _fill_once() -> None:
             # Subscriptions trade on their own accounts, after the live tick so both see one clock.
             # This loop only exists when background jobs are on.
             run_subscriptions_once(db, provider)
+            # Badges last, so they see what the tick just filled and closed.
+            badge_award.sweep(db, clock.now())
     except Exception:  # noqa: BLE001 - the loop must survive any single failure
         logger.exception("Background tick failed; will retry")
 
@@ -125,6 +128,7 @@ app.include_router(sim.router)
 app.include_router(sim.trading_router)
 app.include_router(backtests.router)
 app.include_router(marketplace.router)
+app.include_router(badges.router)
 app.include_router(settings_api.router)
 app.include_router(watchlist.router)
 

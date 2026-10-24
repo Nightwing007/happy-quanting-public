@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BadgeCase } from "@/components/badges/badge-case";
 import { UserAvatar } from "@/components/user-avatar";
 import { useMe, useUpdateMe } from "@/lib/queries";
 import type { User } from "@/lib/types";
@@ -72,5 +73,15 @@ export default function ProfilePage() {
   // null = logged out; the form needs a user, so ask them to log in.
   if (!user) return <p className="text-sm text-muted-foreground">Please log in to see your profile.</p>;
   // Keyed on id so a different user never inherits the previous form state.
-  return <ProfileForm key={user.id} user={user} />;
+  return (
+    <div className="grid min-w-0 gap-8">
+      <ProfileForm key={user.id} user={user} />
+      <section className="mx-auto grid w-full min-w-0 max-w-3xl gap-3" aria-labelledby="profile-badges">
+        <h2 id="profile-badges" className="text-lg font-semibold tracking-tight">
+          Badge case
+        </h2>
+        <BadgeCase />
+      </section>
+    </div>
+  );
 }

@@ -4,6 +4,7 @@ export const PAGE_ROUTES = [
   "/login",
   "/signup",
   "/profile",
+  "/badges",
   "/trade",
   "/trade?symbol=AAPL",
   "/orders",

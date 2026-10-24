@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Term } from "@/components/term";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -24,10 +25,10 @@ const TIMEFRAMES = [
 ] as const;
 
 const INDICATORS = [
-  { id: "sma:20", label: "SMA 20" },
-  { id: "sma:50", label: "SMA 50" },
-  { id: "ema:20", label: "EMA 20" },
-  { id: "rsi:14", label: "RSI 14" },
+  { id: "sma:20", label: "SMA 20", term: "sma", period: 20 },
+  { id: "sma:50", label: "SMA 50", term: "sma", period: 50 },
+  { id: "ema:20", label: "EMA 20", term: "ema", period: 20 },
+  { id: "rsi:14", label: "RSI 14", term: "rsi", period: 14 },
 ] as const;
 
 const INTRADAY = new Set(["1m", "5m", "15m", "30m", "1h"]);
@@ -91,7 +92,9 @@ export function ChartPanel({ symbol, currency, orders, timeZone, priceLines }: P
           >
             {TIMEFRAMES.map((t) => (
               <ToggleGroupItem key={t.id} value={t.id}>
-                {t.id}
+                <Term id="timeframe" focusable={false}>
+                  {t.id}
+                </Term>
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -106,7 +109,9 @@ export function ChartPanel({ symbol, currency, orders, timeZone, priceLines }: P
                   setActive((cur) => (on ? [...cur.filter((c) => c !== ind.id), ind.id] : cur.filter((c) => c !== ind.id)))
                 }
               >
-                {ind.label}
+                <Term id={ind.term} params={{ period: ind.period }} focusable={false}>
+                  {ind.label}
+                </Term>
               </Toggle>
             ))}
           </div>
@@ -115,17 +120,25 @@ export function ChartPanel({ symbol, currency, orders, timeZone, priceLines }: P
         <div className="flex min-h-5 flex-wrap items-center gap-x-4 gap-y-1 text-xs tabular-nums">
           {shown && (
             <span className="text-muted-foreground">
-              <span className="mr-2">O {fmt(shown.open)}</span>
-              <span className="mr-2">H {fmt(shown.high)}</span>
-              <span className="mr-2">L {fmt(shown.low)}</span>
-              <span className="mr-2">C {fmt(shown.close)}</span>
-              {shown.volume !== null && <span>Vol {new Intl.NumberFormat("en-US", { notation: "compact" }).format(shown.volume)}</span>}
+              <span className="mr-2">
+                <Term id="ohlc">O</Term> {fmt(shown.open)}
+              </span>
+              <span className="mr-2">
+                <Term id="ohlc">H</Term> {fmt(shown.high)}
+              </span>
+              <span className="mr-2">
+                <Term id="ohlc">L</Term> {fmt(shown.low)}
+              </span>
+              <span className="mr-2">
+                <Term id="ohlc">C</Term> {fmt(shown.close)}
+              </span>
+              {shown.volume !== null && <span><Term id="volume">Vol</Term> {new Intl.NumberFormat("en-US", { notation: "compact" }).format(shown.volume)}</span>}
             </span>
           )}
           {priceLines?.some((l) => l.title === "Break-even") && (
             <span className="inline-flex items-center gap-1.5 text-muted-foreground">
               <span className="inline-block w-3 border-t-2 border-dashed border-current" />
-              Break-even: the price you need to sell at to get back everything you paid, charges included.
+              <Term id="break_even">Break-even</Term>: the price you need to sell at to get back everything you paid, charges included.
             </span>
           )}
           {priceLines?.some((l) => l.title === "Stop" || l.title === "Target") && (
@@ -133,13 +146,13 @@ export function ChartPanel({ symbol, currency, orders, timeZone, priceLines }: P
               {priceLines.some((l) => l.title === "Stop") && (
                 <span className="inline-flex items-center gap-1.5">
                   <span className="inline-block w-3 border-t-2 border-dashed border-red-600" />
-                  Stop: closes the trade at the market price if the price reaches it, to limit a loss.
+                  <Term id="stop_loss">Stop</Term>: closes the trade at the market price if the price reaches it, to limit a loss.
                 </span>
               )}
               {priceLines.some((l) => l.title === "Target") && (
                 <span className="inline-flex items-center gap-1.5">
                   <span className="inline-block w-3 border-t-2 border-dashed border-green-600" />
-                  Target: closes the trade at the market price if the price reaches it, to take a profit.
+                  <Term id="target">Target</Term>: closes the trade at the market price if the price reaches it, to take a profit.
                 </span>
               )}
             </span>
@@ -160,7 +173,13 @@ export function ChartPanel({ symbol, currency, orders, timeZone, priceLines }: P
           {indicators.map((ind, i) => (
             <span key={`${ind.name}:${ind.period}`} className="inline-flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-3 rounded" style={{ background: indicatorColor(ind, i) }} />
-              {ind.label}
+              {ind.name === "sma" || ind.name === "ema" || ind.name === "rsi" ? (
+                <Term id={ind.name} params={{ period: ind.period }}>
+                  {ind.label}
+                </Term>
+              ) : (
+                ind.label
+              )}
             </span>
           ))}
         </div>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SymbolSearch } from "@/components/symbol-search";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UserAvatar } from "@/components/user-avatar";
-import { useLogout, useMe } from "@/lib/queries";
+import { useLogout, useMe, useMyBadges } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -76,6 +76,7 @@ function UserMenu() {
   const router = useRouter();
   const { data: user, isPending } = useMe();
   const logout = useLogout();
+  const badges = useMyBadges(!!user);
 
   if (isPending) return null;
   if (!user) {
@@ -99,6 +100,14 @@ function UserMenu() {
       <PopoverContent align="end" className="w-48 gap-1 p-1">
         <Link href="/profile" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
           Profile
+        </Link>
+        <Link href="/badges" className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+          Badges
+          {badges.data && (
+            <span className="text-xs tabular-nums text-muted-foreground" data-testid="menu-badge-count">
+              {badges.data.earned.length}
+            </span>
+          )}
         </Link>
         <Link href="/marketplace/subscriptions" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
           My subscriptions

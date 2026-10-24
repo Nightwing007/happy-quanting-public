@@ -6,6 +6,7 @@ import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
 import { BackendStatusBanner } from "@/components/backend-status-banner";
 import { DataNotice } from "@/components/data-notice";
+import { BadgeWatcher } from "@/components/badges/badge-watcher";
 
 // The variable is named --font-sans because globals.css (shadcn) reads that name.
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Suspense fallback={<header className="sticky top-0 z-40 h-14 border-b bg-background/90" />}>
             <SiteHeader />
           </Suspense>
+          <BadgeWatcher />
           <BackendStatusBanner />
           <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6">{children}</main>
           <Suspense fallback={null}>

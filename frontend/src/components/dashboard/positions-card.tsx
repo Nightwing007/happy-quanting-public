@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DirectionBadge } from "@/components/trades-table";
 import { QueryError } from "@/components/query-error";
 import { Pnl } from "@/components/pnl";
+import { Term } from "@/components/term";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,10 +37,10 @@ export function PositionsCard() {
                   <TableHead>Direction</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Avg price</TableHead>
+                  <TableHead className="text-right"><Term id="avg_entry">Avg price</Term></TableHead>
                   <TableHead className="text-right">Last price</TableHead>
                   <TableHead className="text-right" title="For a short: what buying the shares back would cost now">Market value</TableHead>
-                  <TableHead className="text-right">Unrealized P&amp;L</TableHead>
+                  <TableHead className="text-right"><Term id="unrealized_pnl">Unrealized P&amp;L</Term></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

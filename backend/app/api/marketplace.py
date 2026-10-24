@@ -11,7 +11,8 @@ from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, Provider
-from app.marketplace import listings, subscriptions
+from app.badges.award import creator_badges
+from app.marketplace import listings, performance, subscriptions
 from app.marketplace.performance import HEADLINE_ORDER
 from app.models import (
     AlgoListing,
@@ -49,7 +50,8 @@ def _performance_out(row: ListingPerformance) -> ListingPerformanceOut:
         start=row.start,
         end=row.end,
         status=row.status,  # type: ignore[arg-type]
-        note=row.note,
+        # A window that will be tried again shows a calm sentence, not the raw data error.
+        note=performance.WAITING_NOTE if performance.is_waiting_to_retry(row) else row.note,
         computed_at=row.computed_at,
         results=PerformanceResultsOut.model_validate(row.results) if row.results else None,
     )
@@ -81,6 +83,7 @@ def _public_fields(db: DbSession, listing: AlgoListing, rows: list[ListingPerfor
             username=creator.username,
             display_name=creator.display_name,
             avatar_url=creator.avatar_url,
+            badges=creator_badges(db, creator.id),
         ),
         headline=_headline(rows),
     )  # fmt: skip

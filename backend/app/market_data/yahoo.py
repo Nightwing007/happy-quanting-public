@@ -147,6 +147,32 @@ def _looks_missing(exc: Exception) -> bool:
     )
 
 
+def _confirmed_absent(symbol: str) -> bool:
+    """True only when Yahoo has nothing for `symbol` on a second, cheap look.
+
+    The errors `_looks_missing` matches (a bare KeyError from fast_info, "no price data") are the
+    same ones Yahoo throws during a hiccup, so on their own they would label a real symbol as
+    missing. Recent bars or a search hit prove it exists; if this check itself fails we can't tell,
+    which is never "absent".
+    """
+    try:
+        frame = yf.Ticker(symbol).history(period="5d", auto_adjust=False)
+        if frame is not None and not frame.empty:
+            return False
+        wanted = symbol.upper()
+        hits = yf.Search(symbol, max_results=5, news_count=0).quotes
+        return not any(str(item.get("symbol", "")).upper() == wanted for item in hits)
+    except Exception:  # noqa: BLE001 - an unanswered check proves nothing
+        return False
+
+
+def _missing_or_unavailable(symbol: str, cause: Exception | None = None) -> MarketDataError:
+    """SymbolNotFound only when absence is confirmed, otherwise DataUnavailable (a retry may work)."""
+    if cause is not None and not _looks_missing(cause):
+        return DataUnavailable()
+    return SymbolNotFound(symbol) if _confirmed_absent(symbol) else DataUnavailable()
+
+
 def _is_transient(exc: Exception) -> bool:
     """A dropped connection or timeout: worth one retry. Never a rate limit or a missing symbol."""
     text = str(exc).lower()
@@ -250,11 +276,9 @@ class YahooProvider:
         try:
             ticker, price, previous, currency, exchange, as_of = _with_retry(fetch)
         except Exception as exc:
-            if _looks_missing(exc):
-                raise SymbolNotFound(symbol) from exc
-            raise DataUnavailable() from exc
+            raise _missing_or_unavailable(symbol, exc) from exc
         if price is None:
-            raise SymbolNotFound(symbol)
+            raise _missing_or_unavailable(symbol)
         if as_of is None:
             raise DataUnavailable()
 
@@ -290,15 +314,13 @@ class YahooProvider:
 
             frame, currency = _with_retry(fetch)
         except Exception as exc:
-            if _looks_missing(exc):
-                raise SymbolNotFound(symbol) from exc
-            raise DataUnavailable() from exc
+            raise _missing_or_unavailable(symbol, exc) from exc
         if frame is None or frame.empty:
-            raise SymbolNotFound(symbol)
+            raise _missing_or_unavailable(symbol)
 
         bars = _bars_from_frame(frame, interval, currency, shift_to_local=True)
         if not bars:
-            raise SymbolNotFound(symbol)
+            raise _missing_or_unavailable(symbol)
         return bars
 
     def get_history(self, symbol: str, interval: str, start: date, end: date) -> list[Bar]:
@@ -316,9 +338,7 @@ class YahooProvider:
 
             frame, currency = _with_retry(fetch)
         except Exception as exc:
-            if _looks_missing(exc):
-                raise SymbolNotFound(symbol) from exc
-            raise DataUnavailable() from exc
+            raise _missing_or_unavailable(symbol, exc) from exc
         # An empty frame is a weekend or a holiday, not an error: the caller records the span.
         if frame is None or frame.empty:
             return []
@@ -328,7 +348,5 @@ class YahooProvider:
         try:
             info = _with_retry(lambda: yf.Ticker(symbol).get_info())
         except Exception as exc:
-            if _looks_missing(exc):
-                raise SymbolNotFound(symbol) from exc
-            raise DataUnavailable() from exc
+            raise _missing_or_unavailable(symbol, exc) from exc
         return fundamentals_from_info(symbol, info or {})

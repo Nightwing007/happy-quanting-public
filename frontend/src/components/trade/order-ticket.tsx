@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ExitDialog } from "@/components/exit-dialog";
-import { LegBreakdown, productLabel, unitFor } from "@/components/order-legs";
+import { LegBreakdown, ProductLabel, unitFor } from "@/components/order-legs";
 import { Pnl } from "@/components/pnl";
 import { DirectionBadge } from "@/components/trades-table";
+import { Term } from "@/components/term";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +87,9 @@ function PreviewLines({
         </div>
         {!isZero(preview.margin_change) && (
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">{margin > 0 ? "Margin blocked" : "Margin released"}</dt>
+            <dt className="text-muted-foreground">
+              <Term id="margin">{margin > 0 ? "Margin blocked" : "Margin released"}</Term>
+            </dt>
             <dd className="tabular-nums">{formatMoney(Math.abs(margin), accountCurrency)}</dd>
           </div>
         )}
@@ -119,7 +122,7 @@ function ExitList({ trades, accountCurrency }: { trades: Trade[]; accountCurrenc
           <div className="grid min-w-0 gap-0.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <DirectionBadge direction={t.direction} />
-              <span className="text-muted-foreground">{productLabel(t.product)}</span>
+              <span className="text-muted-foreground"><ProductLabel product={t.product} /></span>
             </div>
             <span className="tabular-nums">
               {formatQuantity(t.open_quantity)} at {formatPrice(t.entry_price, t.currency)}
@@ -280,10 +283,14 @@ export function OrderTicket({ quote }: { quote: Quote }) {
                 onValueChange={(v) => v[0] && setKind(v[0] as Kind)}
               >
                 <ToggleGroupItem value="market" className="flex-1">
-                  Market
+                  <Term id="market_order" focusable={false}>
+                    Market
+                  </Term>
                 </ToggleGroupItem>
                 <ToggleGroupItem value="limit" className="flex-1">
-                  Limit
+                  <Term id="limit_order" focusable={false}>
+                    Limit
+                  </Term>
                 </ToggleGroupItem>
               </ToggleGroup>
 
@@ -363,13 +370,15 @@ export function OrderTicket({ quote }: { quote: Quote }) {
                     {portfolio.data ? `${formatQuantity(heldLong?.quantity ?? "0")} ${quote.symbol}` : "—"}
                     {heldShort && (
                       <span className="block text-xs text-orange-700 dark:text-orange-300">
-                        short {formatQuantity(heldShort.quantity)}
+                        <Term id="short">short</Term> {formatQuantity(heldShort.quantity)}
                       </span>
                     )}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Available cash</dt>
+                  <dt className="text-muted-foreground">
+                    <Term id="available_cash">Available cash</Term>
+                  </dt>
                   <dd className="tabular-nums">
                     {portfolio.data ? formatMoney(portfolio.data.available_cash, portfolio.data.currency) : "—"}
                   </dd>

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ExitDialog } from "@/components/exit-dialog";
-import { productLabel } from "@/components/order-legs";
+import { ProductLabel } from "@/components/order-legs";
 import { Pnl } from "@/components/pnl";
 import { ProtectionDialog } from "@/components/protection-dialog";
+import { Term } from "@/components/term";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,7 +26,7 @@ export function DirectionBadge({ direction, className }: { direction: "long" | "
         className,
       )}
     >
-      {direction === "short" ? "Short" : "Long"}
+      {direction === "short" ? <Term id="short" focusable={false}>Short</Term> : <Term id="long" focusable={false}>Long</Term>}
     </Badge>
   );
 }
@@ -42,7 +43,7 @@ export function ClosedHowBadge({ closedHow }: { closedHow: string | null | undef
           : "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300"
       }
     >
-      {closedHow === "stop_loss" ? "Stop-loss" : "Target"}
+      {closedHow === "stop_loss" ? <Term id="stop_loss" focusable={false}>Stop-loss</Term> : <Term id="target" focusable={false}>Target</Term>}
     </Badge>
   );
 }
@@ -65,12 +66,12 @@ export function TradesTable({ trades, showSymbol = true }: { trades: Trade[]; sh
             <TableHead className="text-right">Open / qty</TableHead>
             <TableHead className="text-right">Entry price</TableHead>
             <TableHead className="text-right">Current price</TableHead>
-            <TableHead className="text-right">Unrealized P&amp;L</TableHead>
+            <TableHead className="text-right"><Term id="unrealized_pnl">Unrealized P&amp;L</Term></TableHead>
             <TableHead className="text-right">Entry charges</TableHead>
-            <TableHead className="text-right">Margin blocked</TableHead>
+            <TableHead className="text-right"><Term id="margin">Margin blocked</Term></TableHead>
             <TableHead className="text-right">Financing paid</TableHead>
-            <TableHead className="text-right">Stop-loss</TableHead>
-            <TableHead className="text-right">Target</TableHead>
+            <TableHead className="text-right"><Term id="stop_loss">Stop-loss</Term></TableHead>
+            <TableHead className="text-right"><Term id="target">Target</Term></TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -90,7 +91,7 @@ export function TradesTable({ trades, showSymbol = true }: { trades: Trade[]; sh
               <TableCell>
                 <DirectionBadge direction={t.direction} />
               </TableCell>
-              <TableCell>{productLabel(t.product)}</TableCell>
+              <TableCell><ProductLabel product={t.product} /></TableCell>
               <TableCell className="whitespace-nowrap text-right tabular-nums">
                 {formatQuantity(t.open_quantity)} / {formatQuantity(t.quantity)}
               </TableCell>

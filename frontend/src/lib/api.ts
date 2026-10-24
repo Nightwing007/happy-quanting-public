@@ -11,6 +11,9 @@ import type {
   Bars,
   BrokerGroup,
   CreatorProfile,
+  BadgeCatalog,
+  MyBadges,
+  UserBadges,
   Earnings,
   Health,
   HistoryLimits,
@@ -326,3 +329,18 @@ export const compileBlocks = (body: CompileIn) =>
 
 export const createCustomBlock = (body: CustomBlockIn) =>
   request<CustomBlock>("/api/blocks/custom", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+// --- badges ---
+
+export const getBadgeCatalog = () => request<BadgeCatalog>("/api/badges/catalog");
+
+// Reading evaluates, so a badge earned a moment ago is already in the answer.
+export const getMyBadges = () => request<MyBadges>("/api/badges/me");
+
+export const markBadgesSeen = (ids: string[]) =>
+  request<MyBadges>("/api/badges/me/seen", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ ids }) });
+
+export const acknowledgeBadgeSummary = () => request<MyBadges>("/api/badges/me/summary-seen", { method: "POST" });
+
+export const getUserBadges = (username: string) =>
+  request<UserBadges>(`/api/users/${encodeURIComponent(username)}/badges`);

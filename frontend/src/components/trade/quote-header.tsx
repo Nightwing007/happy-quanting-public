@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
+import { Term } from "@/components/term";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +23,7 @@ function MarketBadge({ market }: { market: NonNullable<Quote["market"]> }) {
           : "";
   return (
     <Badge variant={variant} className={cn("h-auto whitespace-normal py-0.5", tone)}>
-      {market.label}
+      {market.state === "closed" ? <Term id="amo">{market.label}</Term> : market.label}
     </Badge>
   );
 }

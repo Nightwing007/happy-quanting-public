@@ -17,7 +17,7 @@ from app.algos import jobs
 from app.algos.backtest import run_backtest
 from app.config import get_settings
 from app.market_data import get_provider
-from app.market_data.base import MarketDataProvider
+from app.market_data.base import MarketDataError, MarketDataProvider
 from app.market_data.history import LIMITS, earliest_date, today_utc
 from app.models import AlgoListing, ListingPerformance, PerformanceStatus
 from app.schemas import (
@@ -39,6 +39,12 @@ WINDOWS: dict[str, tuple[int, str]] = {
     "3y": (1095, "3-year"),
 }
 HEADLINE_ORDER = ("1y", "3y", "3mo")
+
+# A window that failed for want of market data is tried again after these pauses (the last one
+# repeats) until MAX_ATTEMPTS failures; anything else (a strategy error, too few bars) is final.
+MAX_ATTEMPTS = 5
+RETRY_BACKOFF = (timedelta(minutes=10), timedelta(minutes=30), timedelta(hours=2))
+WAITING_NOTE = "Measuring again soon — market data was temporarily unavailable."
 
 
 def window_range(window: str, today: date) -> tuple[date, date]:
@@ -132,19 +138,45 @@ def _unavailable_note(interval: str, window: str, today: date) -> str | None:
     )
 
 
+def is_retryable(why: Exception) -> bool:
+    """A data failure may pass on its own; a strategy error or too little history never will."""
+    return isinstance(why, MarketDataError | ConnectionError | TimeoutError)
+
+
+def is_waiting_to_retry(row: ListingPerformance) -> bool:
+    return row.status == PerformanceStatus.FAILED and (row.attempts or 0) < MAX_ATTEMPTS
+
+
 def compute_performance(
-    db: Session, provider: MarketDataProvider, listing: AlgoListing, today: date | None = None
+    db: Session,
+    provider: MarketDataProvider,
+    listing: AlgoListing,
+    today: date | None = None,
+    *,
+    only_queued: bool = False,
 ) -> list[ListingPerformance]:
     """Backtest the listing on its test symbols for every window and store each outcome on its
     row. A window the history can't cover is "unavailable" with the reason; a run that fails is
-    "failed" with a sentence. Neither stops the other windows."""
+    "failed" with a sentence. Neither stops the other windows. With `only_queued`, windows that already
+    finished (or failed) are left alone, so a retry doesn't redo what worked."""
     today = today or today_utc()
     settings = get_settings()
     rows = []
     for window in WINDOWS:
         start, end = window_range(window, today)
+        if only_queued:
+            before = db.scalar(
+                select(ListingPerformance).where(
+                    ListingPerformance.listing_id == listing.id,
+                    ListingPerformance.window == window,
+                    ListingPerformance.version == listing.version,
+                )
+            )
+            if before is not None and before.status != PerformanceStatus.QUEUED:
+                rows.append(before)
+                continue
         row = _row(db, listing, window, start, end)
-        row.results, row.note, row.computed_at = None, None, None
+        row.results, row.note, row.computed_at, row.retry_after = None, None, None, None
         rows.append(row)
         note = _unavailable_note(listing.interval, window, today)
         if note is not None:
@@ -165,13 +197,39 @@ def compute_performance(
         except Exception as why:  # noqa: BLE001 - whatever went wrong is what the creator reads
             db.rollback()
             row.results, row.status, row.note = None, PerformanceStatus.FAILED, jobs._failure_text(why)
+            _schedule_retry(row, why)
         row.computed_at = clock.now()
         db.commit()
     return rows
 
 
+def _schedule_retry(row: ListingPerformance, why: Exception) -> None:
+    attempts = (row.attempts or 0) + 1
+    if not is_retryable(why) or attempts >= MAX_ATTEMPTS:
+        row.attempts, row.retry_after = MAX_ATTEMPTS if not is_retryable(why) else attempts, None
+        return
+    row.attempts = attempts
+    row.retry_after = clock.now() + RETRY_BACKOFF[min(attempts, len(RETRY_BACKOFF)) - 1]
+
+
+def requeue_due(db: Session) -> None:
+    """Failed windows whose pause is over go back in the queue."""
+    now = clock.now()
+    for row in db.scalars(
+        select(ListingPerformance).where(
+            ListingPerformance.status == PerformanceStatus.FAILED,
+            ListingPerformance.retry_after.is_not(None),
+            ListingPerformance.retry_after <= now,
+            ListingPerformance.attempts < MAX_ATTEMPTS,
+        )
+    ):
+        row.status, row.retry_after = PerformanceStatus.QUEUED, None
+    db.commit()
+
+
 def run_next_queued(db: Session, provider: MarketDataProvider | None = None) -> bool:
     """Measure one listing that has queued windows. The worker calls this when no backtest waits."""
+    requeue_due(db)
     listing_id = db.scalar(
         select(ListingPerformance.listing_id)
         .where(ListingPerformance.status == PerformanceStatus.QUEUED)
@@ -183,7 +241,7 @@ def run_next_queued(db: Session, provider: MarketDataProvider | None = None) -> 
     listing = db.get(AlgoListing, listing_id)  # the worker serves every owner's listings
     if listing is None:
         return True
-    compute_performance(db, provider or get_provider(), listing)
+    compute_performance(db, provider or get_provider(), listing, only_queued=True)
     return True
 
 
@@ -193,4 +251,17 @@ def recover_interrupted(db: Session) -> None:
         select(ListingPerformance).where(ListingPerformance.status == PerformanceStatus.RUNNING)
     ):
         row.status = PerformanceStatus.QUEUED
+    db.commit()
+
+
+def requeue_retryable_failures(db: Session) -> None:
+    """At start-up, every failed window that retrying could still fix is queued again at once,
+    including ones that failed before retries existed (they have 0 attempts)."""
+    for row in db.scalars(
+        select(ListingPerformance).where(
+            ListingPerformance.status == PerformanceStatus.FAILED,
+            ListingPerformance.attempts < MAX_ATTEMPTS,
+        )
+    ):
+        row.status, row.retry_after = PerformanceStatus.QUEUED, None
     db.commit()

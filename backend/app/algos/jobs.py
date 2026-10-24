@@ -233,14 +233,21 @@ def _recover(db: Session) -> None:
 
 
 def _work(stop: threading.Event) -> None:
+    from app.badges import award as badge_award
     from app.marketplace import performance  # imported here: performance uses this module's helpers
 
     try:
         with SessionLocal() as db:
             _recover(db)
             performance.recover_interrupted(db)
+            performance.requeue_retryable_failures(db)
     except Exception:  # noqa: BLE001 - the worker must come up regardless
         logger.exception("Backtest recovery failed")
+    try:
+        with SessionLocal() as db:
+            badge_award.backfill_all(db, clock.now())  # past activity, once: no toast per badge
+    except Exception:  # noqa: BLE001 - badges are not worth a failed start
+        logger.exception("Badge backfill failed")
     while not stop.is_set():
         try:
             with SessionLocal() as db:

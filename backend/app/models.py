@@ -155,6 +155,9 @@ class Trade(Base):
     stop_price: Mapped[Decimal | None] = mapped_column(DecimalString, nullable=True)
     target_price: Mapped[Decimal | None] = mapped_column(DecimalString, nullable=True)
     protection_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # True once a stop-loss was ever set on this trade. The stop is cleared when the trade closes,
+    # so this is the only lasting record that it was protected (badges read it).
+    had_stop: Mapped[bool] = mapped_column(default=False)
 
 
 class Order(Base):
@@ -444,6 +447,11 @@ class ListingPerformance(Base):
     results: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # PerformanceResultsOut
     note: Mapped[str | None] = mapped_column(String, nullable=True)  # why unavailable / failed
     computed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Failed data fetches are retried with backoff: `attempts` counts failures, `retry_after` is when
+    # the next try is due (NULL = none scheduled). A failure that retrying can't fix sets attempts to
+    # the cap. Rows that failed before this existed start at 0, so they count as retryable.
+    attempts: Mapped[int] = mapped_column(default=0)
+    retry_after: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
 
 class SubscriptionStatus(StrEnum):
@@ -526,6 +534,8 @@ class User(Base):
     # "scrypt$n$r$p$salt$hash", or "!" for a user nobody can log in as until a password is set.
     password_hash: Mapped[str] = mapped_column(String)
     is_creator: Mapped[bool] = mapped_column(default=False)
+    # The one-time "N badges awarded for your past activity" notice has been acknowledged.
+    badge_summary_seen: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 
@@ -540,3 +550,18 @@ class UserSession(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_user_sessions_user_id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class UserBadge(Base):
+    """A badge a user has earned. Rows are never removed: a badge is not revoked when the data
+    that earned it later changes (a sim reset, a retired listing)."""
+
+    __tablename__ = "user_badges"
+    __table_args__ = (UniqueConstraint("user_id", "badge_id", name="uq_user_badges_user_id_badge_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_user_badges_user_id_users"))
+    badge_id: Mapped[str] = mapped_column(String)  # an id in badges/catalog.py
+    earned_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    seen: Mapped[bool] = mapped_column(default=False)  # the unlock toast has been shown
+    backfilled: Mapped[bool] = mapped_column(default=False)  # awarded for past activity, no toast

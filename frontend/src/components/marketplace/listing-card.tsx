@@ -1,6 +1,8 @@
 "use client";
 
+import { Term } from "@/components/term";
 import Link from "next/link";
+import { CreatorBadges } from "@/components/badges/creator-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +15,13 @@ import type { Listing } from "@/lib/types";
 
 export function CreatorLink({ creator }: { creator: Listing["creator"] }) {
   return (
-    <Link href={`/creators/${creator.username}`} className="inline-flex min-w-0 items-center gap-2 hover:underline">
-      <UserAvatar name={creator.display_name} url={creator.avatar_url} />
-      <span className="truncate text-sm font-medium">{creator.display_name}</span>
-    </Link>
+    <div className="flex min-w-0 items-center gap-2">
+      <Link href={`/creators/${creator.username}`} className="inline-flex min-w-0 items-center gap-2 hover:underline">
+        <UserAvatar name={creator.display_name} url={creator.avatar_url} />
+        <span className="truncate text-sm font-medium">{creator.display_name}</span>
+      </Link>
+      <CreatorBadges ids={creator.badges} />
+    </div>
   );
 }
 
@@ -55,7 +60,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Max drawdown</dt>
+                <dt className="text-xs text-muted-foreground">
+                  <Term id="max_drawdown">Max drawdown</Term>
+                </dt>
                 <dd className="font-semibold tabular-nums">{stats.drawdown}</dd>
               </div>
               <div>

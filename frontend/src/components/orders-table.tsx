@@ -6,6 +6,7 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Pnl } from "@/components/pnl";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Term } from "@/components/term";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMoney, formatPrice, formatQuantity, isZero } from "@/lib/format";
 import { useCancelOrder, usePortfolio } from "@/lib/queries";
@@ -79,12 +80,12 @@ export function OrdersTable({ orders, showSymbol = true }: { orders: Order[]; sh
             <TableHead>Type</TableHead>
             <TableHead>What it did</TableHead>
             <TableHead className="text-right">Qty</TableHead>
-            <TableHead className="text-right">Limit</TableHead>
+            <TableHead className="text-right"><Term id="limit_order">Limit</Term></TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Fill price</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead className="text-right">Charges</TableHead>
-            <TableHead className="text-right">Realized P&amp;L</TableHead>
+            <TableHead className="text-right"><Term id="realized_pnl">Realized P&amp;L</Term></TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -106,7 +107,7 @@ export function OrdersTable({ orders, showSymbol = true }: { orders: Order[]; sh
               >
                 {o.side}
               </TableCell>
-              <TableCell>{o.type}</TableCell>
+              <TableCell>{o.type === "market" ? <Term id="market_order">market</Term> : o.type === "limit" ? <Term id="limit_order">limit</Term> : o.type}</TableCell>
               <TableCell>
                 <WhatItDid order={o} />
               </TableCell>

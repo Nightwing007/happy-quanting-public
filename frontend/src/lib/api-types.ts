@@ -977,6 +977,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/badges/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Catalog */
+        get: operations["get_catalog_api_badges_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get My Badges */
+        get: operations["get_my_badges_api_badges_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges/me/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Badges Seen */
+        post: operations["mark_badges_seen_api_badges_me_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges/me/summary-seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Summary */
+        post: operations["acknowledge_summary_api_badges_me_summary_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{username}/badges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get User Badges */
+        get: operations["get_user_badges_api_users__username__badges_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -1475,6 +1560,43 @@ export interface components {
             /** Unrealized Pnl */
             unrealized_pnl: string | null;
         };
+        /** BadgeCatalogOut */
+        BadgeCatalogOut: {
+            /** Regions */
+            regions: components["schemas"]["BadgeRegionOut"][];
+        };
+        /** BadgeOut */
+        BadgeOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Order */
+            order: number;
+            /** Hint */
+            hint: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "trader" | "creator";
+        };
+        /** BadgeRegionOut */
+        BadgeRegionOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Group */
+            group: ("india" | "us" | "crypto" | "global") | null;
+            /** Badges */
+            badges: components["schemas"]["BadgeOut"][];
+        };
+        /** BadgesSeenIn */
+        BadgesSeenIn: {
+            /** Ids */
+            ids: string[];
+        };
         /** BarOut */
         BarOut: {
             /** Time */
@@ -1716,6 +1838,16 @@ export interface components {
              */
             created_at: string;
         };
+        /** EarnedBadgeOut */
+        EarnedBadgeOut: {
+            /** Id */
+            id: string;
+            /**
+             * Earned At
+             * Format: date-time
+             */
+            earned_at: string;
+        };
         /** EarningsOut */
         EarningsOut: {
             /** Currency */
@@ -1841,6 +1973,11 @@ export interface components {
             display_name: string;
             /** Avatar Url */
             avatar_url: string | null;
+            /**
+             * Badges
+             * @default []
+             */
+            badges: string[];
         };
         /** ListingDetailOut */
         ListingDetailOut: {
@@ -2179,6 +2316,15 @@ export interface components {
             omitted: components["schemas"]["OmittedMetricOut"][];
             /** Note */
             note: string;
+        };
+        /** MyBadgesOut */
+        MyBadgesOut: {
+            /** Earned */
+            earned: components["schemas"]["EarnedBadgeOut"][];
+            /** New */
+            new: string[];
+            /** Backfill Summary */
+            backfill_summary: number | null;
         };
         /**
          * OmittedMetricOut
@@ -3142,6 +3288,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** UserBadgesOut */
+        UserBadgesOut: {
+            /** Username */
+            username: string;
+            /** Earned */
+            earned: components["schemas"]["EarnedBadgeOut"][];
         };
         /**
          * UserOut
@@ -5357,6 +5510,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EarningsOut"];
+                };
+            };
+        };
+    };
+    get_catalog_api_badges_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadgeCatalogOut"];
+                };
+            };
+        };
+    };
+    get_my_badges_api_badges_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBadgesOut"];
+                };
+            };
+        };
+    };
+    mark_badges_seen_api_badges_me_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BadgesSeenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBadgesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_summary_api_badges_me_summary_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBadgesOut"];
+                };
+            };
+        };
+    };
+    get_user_badges_api_users__username__badges_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserBadgesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

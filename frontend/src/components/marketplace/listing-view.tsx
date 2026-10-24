@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { InfoIcon } from "lucide-react";
 import { QueryError } from "@/components/query-error";
+import { Term } from "@/components/term";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SeriesChart, type ChartLine } from "@/components/algos/series-chart";
 import { algoIntervalWords, formatPlain, isIntraday } from "@/lib/algo-format";
 import { formatMoney, formatPercent, formatRatio, toNumber } from "@/lib/format";
+import type { TermId } from "@/lib/glossary";
 import { feeShort, feeTerms, marketWord, WINDOW_WORDS } from "@/lib/marketplace-format";
 import { useListing, useMe } from "@/lib/queries";
 import type { ListingDetail, ListingPerformance, PerformanceResults } from "@/lib/types";
@@ -27,11 +29,23 @@ const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFra
 const formatEquity = (v: number) => compact.format(v);
 const formatDrawdown = (v: number) => `${v.toFixed(1)}%`;
 
-function Stat({ label, value, note, tone }: { label: string; value: React.ReactNode; note?: React.ReactNode; tone?: string }) {
+function Stat({
+  label,
+  value,
+  note,
+  tone,
+  term,
+}: {
+  label: string;
+  value: React.ReactNode;
+  note?: React.ReactNode;
+  tone?: string;
+  term?: TermId;
+}) {
   return (
     <Card size="sm">
       <CardContent className="grid min-w-0 gap-0.5">
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{term ? <Term id={term}>{label}</Term> : label}</p>
         <p className={`text-xl font-semibold tabular-nums ${tone ?? ""}`}>{value}</p>
         {note && <p className="text-xs text-muted-foreground">{note}</p>}
       </CardContent>
@@ -86,37 +100,43 @@ function Metrics({ results }: { results: PerformanceResults }) {
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Stat
         label="Total return"
+        term="total_return"
         value={formatPercent(m.total_return_pct)}
         tone={toNumber(m.total_return_pct) < 0 ? "text-red-600 dark:text-red-400" : undefined}
         note={`${formatMoney(m.starting_cash, currency)} to ${formatMoney(m.final_equity, currency)} · buy and hold ${formatPercent(hold.total_return_pct)}`}
       />
       <Stat
         label="CAGR"
+        term="cagr"
         value={m.cagr_pct === null ? "Under a year" : formatPercent(m.cagr_pct)}
         note={m.cagr_pct === null ? (m.cagr_note ?? "Annualised only over a year or more") : undefined}
       />
       <Stat
         label="Max drawdown"
+        term="max_drawdown"
         value={`-${formatRatio(m.max_drawdown_pct, "%")}`}
         note={`Buy and hold -${formatRatio(hold.max_drawdown_pct, "%")}`}
       />
       <Stat
         label="Sharpe ratio"
+        term="sharpe"
         value={m.sharpe === null ? "—" : formatPlain(m.sharpe)}
         note={m.sharpe === null ? (m.sharpe_note ?? undefined) : undefined}
       />
       <Stat
         label="Win rate"
+        term="win_rate"
         value={m.win_rate_pct === null ? "—" : formatRatio(m.win_rate_pct, "%")}
         note={m.win_rate_pct === null ? "No closed trades" : undefined}
       />
       <Stat
         label="Profit factor"
+        term="profit_factor"
         value={m.profit_factor === null ? "—" : formatPlain(m.profit_factor)}
         note="Gross wins over gross losses"
       />
       <Stat label="Trades" value={m.trade_count} note="Closed trades" />
-      <Stat label="Exposure" value={formatRatio(m.exposure_pct, "%")} note="Share of bars with a position open" />
+      <Stat label="Exposure" term="exposure" value={formatRatio(m.exposure_pct, "%")} note="Share of bars with a position open" />
     </div>
   );
 }
@@ -163,12 +183,20 @@ function Curves({ results, interval }: { results: PerformanceResults; interval: 
 
 function WindowPanel({ perf, interval }: { perf: ListingPerformance; interval: string }) {
   if (perf.status !== "done" || !perf.results) {
+    // A retry the server has scheduled is not a failure: say so calmly, whatever status it carries.
+    const retrying = perf.note?.startsWith("Measuring again soon") ?? false;
     const waiting = perf.status === "queued" || perf.status === "running";
     return (
       <Alert>
         <InfoIcon />
         <AlertTitle>
-          {waiting ? "Still being measured" : perf.status === "failed" ? "Couldn't be measured" : "Not available"}
+          {retrying
+            ? "Being measured"
+            : waiting
+              ? "Still being measured"
+              : perf.status === "failed"
+                ? "Couldn't be measured"
+                : "Not available"}
         </AlertTitle>
         <AlertDescription>
           {perf.note ?? (waiting ? "Check back in a minute." : "This window has no result.")}

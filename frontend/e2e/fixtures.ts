@@ -86,7 +86,8 @@ export async function buyViaTicket(page: Page, symbol: string, quantity: string)
   const buy = page.getByRole("button", { name: `Buy ${symbol}`, exact: true });
   await expect(buy).toBeEnabled();
   await buy.click();
-  const toast = page.locator("[data-sonner-toast]").first();
+  // A badge toast may land beside the order toast; this helper reports the order's.
+  const toast = page.locator("[data-sonner-toast]").filter({ hasNotText: /Badge!|past activity/ }).first();
   await expect(toast).toBeVisible();
   return (await toast.innerText()).trim();
 }

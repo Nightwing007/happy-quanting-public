@@ -1,8 +1,10 @@
 "use client";
 
+import { Term } from "@/components/term";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { paramProblem, sliderStep, type ParamValue } from "@/lib/algo-format";
+import type { TermId } from "@/lib/glossary";
 import type { Algo, AlgoParam } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,22 @@ export function initialValues(algo: Algo, saved?: Record<string, unknown>): Para
     out[p.name] = typeof v === "boolean" || typeof v === "string" ? v : String(v);
   }
   return out;
+}
+
+// Param labels that are a glossary term. Anything else keeps just the server's help text.
+const LABEL_TERMS: Record<string, TermId> = {
+  "RSI period": "rsi",
+  "ATR period": "atr",
+  "Oversold level": "oversold",
+  "Band period": "bollinger",
+  "Band width (k)": "bollinger",
+  "Stop-loss (%)": "stop_loss",
+  "Allow shorts": "short",
+};
+
+function ParamLabel({ label }: { label: string }) {
+  const term = LABEL_TERMS[label];
+  return term ? <Term id={term}>{label}</Term> : <>{label}</>;
 }
 
 function Field({
@@ -38,7 +56,7 @@ function Field({
     <div className="grid content-start gap-1.5">
       {param.kind === "bool" ? (
         <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={id}>{param.label}</Label>
+          <Label htmlFor={id}><ParamLabel label={param.label} /></Label>
           <button
             id={id}
             type="button"
@@ -61,7 +79,7 @@ function Field({
         </div>
       ) : param.kind === "choice" ? (
         <>
-          <Label htmlFor={id}>{param.label}</Label>
+          <Label htmlFor={id}><ParamLabel label={param.label} /></Label>
           <select
             id={id}
             value={String(value)}
@@ -78,7 +96,7 @@ function Field({
         </>
       ) : (
         <>
-          <Label htmlFor={id}>{param.label}</Label>
+          <Label htmlFor={id}><ParamLabel label={param.label} /></Label>
           <div className="flex min-w-0 items-center gap-3">
             {hasRange && (
               <input

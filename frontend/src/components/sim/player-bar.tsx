@@ -1,5 +1,6 @@
 "use client";
 
+import { Term } from "@/components/term";
 import { useState } from "react";
 import { PauseIcon, PlayIcon, RotateCcwIcon, StepForwardIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,9 @@ export function PlayerBar({ session, symbol }: { session: SimSession; symbol: st
             Reset
           </Button>
           <label className="ml-auto flex min-w-0 basis-56 items-center gap-2 text-xs text-muted-foreground">
-            <span className="shrink-0 tabular-nums">{speed} bars/sec</span>
+            <span className="shrink-0 tabular-nums">
+              <Term id="speed">{speed} bars/sec</Term>
+            </span>
             <input
               type="range"
               min={1}

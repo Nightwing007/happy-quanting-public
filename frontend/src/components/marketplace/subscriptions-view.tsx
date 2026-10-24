@@ -1,5 +1,7 @@
 "use client";
 
+import { Term } from "@/components/term";
+import type { TermId } from "@/lib/glossary";
 import { useState } from "react";
 import Link from "next/link";
 import { QueryError } from "@/components/query-error";
@@ -30,10 +32,10 @@ const STATUS_BADGE: Record<Subscription["status"], { label: string; variant: "de
   stopped: { label: "Stopped", variant: "outline" },
 };
 
-function Figure({ label, children }: { label: string; children: React.ReactNode }) {
+function Figure({ label, children, term }: { label: string; children: React.ReactNode; term?: TermId }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{term ? <Term id={term}>{label}</Term> : label}</dt>
       <dd className="font-medium tabular-nums">{children}</dd>
     </div>
   );
@@ -164,14 +166,14 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
           <Figure label="Capital">{formatMoney(sub.capital, sub.currency)}</Figure>
           <Figure label={sub.status === "stopped" ? "Returned" : "Equity now"}>{formatMoney(sub.equity, sub.currency)}</Figure>
-          <Figure label="Realized P&L">
+          <Figure label="Realized P&L" term="realized_pnl">
             <Pnl value={sub.realized_pnl} currency={sub.currency} />
           </Figure>
-          <Figure label="Unrealized P&L">
+          <Figure label="Unrealized P&L" term="unrealized_pnl">
             <Pnl value={sub.unrealized_pnl} currency={sub.currency} />
           </Figure>
-          <Figure label={`Fees paid (${formatRatio(sub.fee_percent, "%")})`}>{formatMoney(sub.fees_paid, sub.currency)}</Figure>
-          <Figure label="High-water mark">{formatMoney(sub.high_water_mark, sub.currency)}</Figure>
+          <Figure label={`Fees paid (${formatRatio(sub.fee_percent, "%")})`} term="performance_fee">{formatMoney(sub.fees_paid, sub.currency)}</Figure>
+          <Figure label="High-water mark" term="high_water_mark">{formatMoney(sub.high_water_mark, sub.currency)}</Figure>
         </dl>
         <p className="text-xs text-muted-foreground">Running version {sub.listing_version}.</p>
         {sub.status === "active" && sub.upgrade_available && (

@@ -1543,6 +1543,8 @@ def set_protection(
         raise ProtectionInvalid(problems)
     trade.stop_price = trim8(stop_price) if stop_price is not None else None
     trade.target_price = trim8(target_price) if target_price is not None else None
+    if stop_price is not None:
+        trade.had_stop = True  # stays after the stop is cleared or the trade closes
     if stop_price is None and target_price is None:
         trade.protection_expires_at = None
     else:
