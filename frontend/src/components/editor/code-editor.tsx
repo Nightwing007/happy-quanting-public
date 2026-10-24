@@ -22,6 +22,9 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   problems: CodeProblem[];
+  readOnly?: boolean;
+  /** Tailwind height class; the default suits the full-page editor. */
+  heightClass?: string;
   ref?: React.Ref<CodeEditorHandle>;
 };
 
@@ -89,7 +92,14 @@ function applyMarkers(editor: monaco.editor.IStandaloneCodeEditor, problems: Cod
 }
 
 /** Monaco with the Python language, the app theme, the `hq` autocomplete and validator markers. */
-export default function CodeEditor({ value, onChange, problems, ref }: Props) {
+export default function CodeEditor({
+  value,
+  onChange,
+  problems,
+  readOnly = false,
+  heightClass = "h-[28rem]",
+  ref,
+}: Props) {
   const { resolvedTheme } = useTheme();
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const completions = useRef<monaco.IDisposable | null>(null);
@@ -118,7 +128,7 @@ export default function CodeEditor({ value, onChange, problems, ref }: Props) {
   };
 
   return (
-    <div className="h-[28rem] min-w-0 overflow-hidden rounded-lg border">
+    <div className={`${heightClass} min-w-0 overflow-hidden rounded-lg border`}>
       <Editor
         height="100%"
         language="python"
@@ -128,6 +138,7 @@ export default function CodeEditor({ value, onChange, problems, ref }: Props) {
         onMount={onMount}
         loading={<p className="p-3 text-sm text-muted-foreground">Loading the editor...</p>}
         options={{
+          readOnly,
           minimap: { enabled: false },
           fontSize: 13,
           tabSize: 4,

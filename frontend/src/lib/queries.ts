@@ -5,7 +5,7 @@ import * as api from "./api";
 import { LIVE_BASE } from "./api";
 import type { OrderFilters, TradeFilters } from "./api";
 import { useTradingBase } from "./trading-scope";
-import type { BacktestIn, ListingIn, ListingUpdateIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, SubscribeIn, UserAlgoIn } from "./types";
+import type { BacktestIn, CompileIn, CustomBlockIn, ListingIn, ListingUpdateIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, SubscribeIn, UserAlgoIn } from "./types";
 
 const THIRTY_SECONDS = 30_000;
 
@@ -48,6 +48,7 @@ export const queryKeys = {
   earnings: ["earnings"] as const,
   algoRules: ["algo-rules"] as const,
   myListings: ["my-listings"] as const,
+  blockCatalog: ["block-catalog"] as const,
 };
 
 export const useHealth = () =>
@@ -556,5 +557,30 @@ export function useUpgradeSubscription() {
   return useMutation({
     mutationFn: (id: number) => api.upgradeSubscription(id),
     onSuccess: () => invalidateAfterSubscriptionChange(qc),
+  });
+}
+
+// --- block editor ---
+
+export const useBlockCatalog = () =>
+  useQuery({ queryKey: queryKeys.blockCatalog, queryFn: api.getBlockCatalog, staleTime: 60_000 });
+
+/** The graph compiled on the server. `enabled` stays false until the caller has settled on a graph. */
+export const useCompileBlocks = (body: CompileIn, enabled: boolean) =>
+  useQuery({
+    queryKey: ["blocks-compile", body],
+    queryFn: () => api.compileBlocks(body),
+    enabled,
+    placeholderData: keepPreviousData,
+    gcTime: 30_000,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+export function useCreateCustomBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CustomBlockIn) => api.createCustomBlock(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.blockCatalog }),
   });
 }

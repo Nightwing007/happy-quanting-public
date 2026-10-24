@@ -167,6 +167,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/blocks/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog */
+        get: operations["catalog_api_blocks_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/blocks/compile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compile Blocks */
+        post: operations["compile_blocks_api_blocks_compile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/blocks/custom": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Custom */
+        get: operations["list_custom_api_blocks_custom_get"];
+        put?: never;
+        /** Create Custom */
+        post: operations["create_custom_api_blocks_custom_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/blocks/custom/{block_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Custom */
+        get: operations["get_custom_api_blocks_custom__block_id__get"];
+        /** Update Custom */
+        put: operations["update_custom_api_blocks_custom__block_id__put"];
+        post?: never;
+        /** Delete Custom */
+        delete: operations["delete_custom_api_blocks_custom__block_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/market/search": {
         parameters: {
             query?: never;
@@ -1434,6 +1505,79 @@ export interface components {
             /** Indicators */
             indicators: components["schemas"]["IndicatorSeriesOut"][];
         };
+        /** BlockCatalogOut */
+        BlockCatalogOut: {
+            /** Blocks */
+            blocks: components["schemas"]["BlockOut"][];
+        };
+        /**
+         * BlockOut
+         * @description One block of the editor's palette.
+         */
+        BlockOut: {
+            /** Type */
+            type: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "universe" | "signal" | "combine" | "action" | "risk" | "custom";
+            /** Label */
+            label: string;
+            /** Help */
+            help: string;
+            /** Params */
+            params: components["schemas"]["AlgoParamOut"][];
+            /** Inputs */
+            inputs: components["schemas"]["BlockPortOut"][];
+            /** Outputs */
+            outputs: components["schemas"]["BlockPortOut"][];
+            /** Lookback */
+            lookback: string;
+            /** Custom Id */
+            custom_id?: number | null;
+            /** Custom Kind */
+            custom_kind?: ("group" | "code") | null;
+        };
+        /** BlockPortOut */
+        BlockPortOut: {
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "signal" | "trigger";
+            /** Multi */
+            multi: boolean;
+            /** Min */
+            min: number;
+        };
+        /**
+         * BlockProblemOut
+         * @description A graph problem names its block (`node_id`); a code problem has a `line` instead.
+         */
+        BlockProblemOut: {
+            /** Node Id */
+            node_id?: string | null;
+            /**
+             * Line
+             * @default 0
+             */
+            line: number;
+            /**
+             * Col
+             * @default 0
+             */
+            col: number;
+            /**
+             * Code
+             * @default
+             */
+            code: string;
+            /** Message */
+            message: string;
+        };
         /** BrokerOut */
         BrokerOut: {
             /** Code */
@@ -1488,6 +1632,37 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** CompileIn */
+        CompileIn: {
+            /** Graph */
+            graph: {
+                [key: string]: unknown;
+            };
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
+        /** CompileOut */
+        CompileOut: {
+            /** Ok */
+            ok: boolean;
+            /** Problems */
+            problems: components["schemas"]["BlockProblemOut"][];
+            /** Source */
+            source: string;
+            /**
+             * Warmup Bars
+             * @default 0
+             */
+            warmup_bars: number;
+        };
         /**
          * CreatorProfileOut
          * @description A creator's public face. Built field by field: never the password hash or sessions.
@@ -1503,6 +1678,43 @@ export interface components {
             bio: string;
             /** Listing Count */
             listing_count: number;
+        };
+        /** CustomBlockIn */
+        CustomBlockIn: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "group" | "code";
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+        };
+        /** CustomBlockOut */
+        CustomBlockOut: {
+            /** Id */
+            id: number;
+            /** Type */
+            type: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "group" | "code";
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** EarningsOut */
         EarningsOut: {
@@ -2887,6 +3099,13 @@ export interface components {
              * @description Code written in the editor, checked against the code rules; instead of `strategy`
              */
             source?: string | null;
+            /**
+             * Graph
+             * @description A block graph (see algos/blocks/compile.py), compiled to the saved `source`; instead of `strategy` or `source`
+             */
+            graph?: {
+                [key: string]: unknown;
+            } | null;
             /** Params */
             params?: {
                 [key: string]: string | number | boolean;
@@ -2914,6 +3133,10 @@ export interface components {
             };
             /** Source */
             source?: string | null;
+            /** Graph */
+            graph?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Created At
              * Format: date-time
@@ -3333,6 +3556,207 @@ export interface operations {
             header?: never;
             path: {
                 algo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_api_blocks_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockCatalogOut"];
+                };
+            };
+        };
+    };
+    compile_blocks_api_blocks_compile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_custom_api_blocks_custom_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlockOut"][];
+                };
+            };
+        };
+    };
+    create_custom_api_blocks_custom_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomBlockIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlockOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_custom_api_blocks_custom__block_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                block_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlockOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_custom_api_blocks_custom__block_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                block_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomBlockIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomBlockOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_custom_api_blocks_custom__block_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                block_id: number;
             };
             cookie?: never;
         };

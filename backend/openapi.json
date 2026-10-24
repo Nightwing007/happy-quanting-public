@@ -439,6 +439,257 @@
         }
       }
     },
+    "/api/blocks/catalog": {
+      "get": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "Catalog",
+        "operationId": "catalog_api_blocks_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockCatalogOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blocks/compile": {
+      "post": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "Compile Blocks",
+        "operationId": "compile_blocks_api_blocks_compile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blocks/custom": {
+      "get": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "List Custom",
+        "operationId": "list_custom_api_blocks_custom_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomBlockOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Custom Api Blocks Custom Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "Create Custom",
+        "operationId": "create_custom_api_blocks_custom_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomBlockIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBlockOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blocks/custom/{block_id}": {
+      "get": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "Get Custom",
+        "operationId": "get_custom_api_blocks_custom__block_id__get",
+        "parameters": [
+          {
+            "name": "block_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Block Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBlockOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "Update Custom",
+        "operationId": "update_custom_api_blocks_custom__block_id__put",
+        "parameters": [
+          {
+            "name": "block_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Block Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomBlockIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomBlockOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "blocks"
+        ],
+        "summary": "Delete Custom",
+        "operationId": "delete_custom_api_blocks_custom__block_id__delete",
+        "parameters": [
+          {
+            "name": "block_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Block Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/market/search": {
       "get": {
         "tags": [
@@ -4360,6 +4611,186 @@
         ],
         "title": "BarsOut"
       },
+      "BlockCatalogOut": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/BlockOut"
+            },
+            "type": "array",
+            "title": "Blocks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "blocks"
+        ],
+        "title": "BlockCatalogOut"
+      },
+      "BlockOut": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "universe",
+              "signal",
+              "combine",
+              "action",
+              "risk",
+              "custom"
+            ],
+            "title": "Category"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "help": {
+            "type": "string",
+            "title": "Help"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/AlgoParamOut"
+            },
+            "type": "array",
+            "title": "Params"
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/BlockPortOut"
+            },
+            "type": "array",
+            "title": "Inputs"
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/BlockPortOut"
+            },
+            "type": "array",
+            "title": "Outputs"
+          },
+          "lookback": {
+            "type": "string",
+            "title": "Lookback"
+          },
+          "custom_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Id"
+          },
+          "custom_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "group",
+                  "code"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "category",
+          "label",
+          "help",
+          "params",
+          "inputs",
+          "outputs",
+          "lookback"
+        ],
+        "title": "BlockOut",
+        "description": "One block of the editor's palette."
+      },
+      "BlockPortOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "signal",
+              "trigger"
+            ],
+            "title": "Type"
+          },
+          "multi": {
+            "type": "boolean",
+            "title": "Multi"
+          },
+          "min": {
+            "type": "integer",
+            "title": "Min"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "multi",
+          "min"
+        ],
+        "title": "BlockPortOut"
+      },
+      "BlockProblemOut": {
+        "properties": {
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "line": {
+            "type": "integer",
+            "title": "Line",
+            "default": 0
+          },
+          "col": {
+            "type": "integer",
+            "title": "Col",
+            "default": 0
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "default": ""
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "BlockProblemOut",
+        "description": "A graph problem names its block (`node_id`); a code problem has a `line` instead."
+      },
       "BrokerOut": {
         "properties": {
           "code": {
@@ -4489,6 +4920,63 @@
         ],
         "title": "ChargesPaidOut"
       },
+      "CompileIn": {
+        "properties": {
+          "graph": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Graph"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph"
+        ],
+        "title": "CompileIn"
+      },
+      "CompileOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/BlockProblemOut"
+            },
+            "type": "array",
+            "title": "Problems"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "warmup_bars": {
+            "type": "integer",
+            "title": "Warmup Bars",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "problems",
+          "source"
+        ],
+        "title": "CompileOut"
+      },
       "CreatorProfileOut": {
         "properties": {
           "username": {
@@ -4529,6 +5017,80 @@
         ],
         "title": "CreatorProfileOut",
         "description": "A creator's public face. Built field by field: never the password hash or sessions."
+      },
+      "CustomBlockIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "group",
+              "code"
+            ],
+            "title": "Kind"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "definition"
+        ],
+        "title": "CustomBlockIn"
+      },
+      "CustomBlockOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "group",
+              "code"
+            ],
+            "title": "Kind"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "kind",
+          "definition",
+          "created_at"
+        ],
+        "title": "CustomBlockOut"
       },
       "EarningsOut": {
         "properties": {
@@ -8418,6 +8980,19 @@
             "title": "Source",
             "description": "Code written in the editor, checked against the code rules; instead of `strategy`"
           },
+          "graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph",
+            "description": "A block graph (see algos/blocks/compile.py), compiled to the saved `source`; instead of `strategy` or `source`"
+          },
           "params": {
             "additionalProperties": {
               "anyOf": [
@@ -8505,6 +9080,18 @@
               }
             ],
             "title": "Source"
+          },
+          "graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph"
           },
           "created_at": {
             "type": "string",

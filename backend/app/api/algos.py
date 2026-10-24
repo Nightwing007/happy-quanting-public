@@ -12,6 +12,7 @@ from app.algos.api import Param, Strategy, validate_params
 from app.algos.library import LIBRARY
 from app.algos.sandbox import load_strategy, run_in_subprocess
 from app.algos.validate import validate_and_dry_run, validate_source
+from app.api.blocks import compile_for_user
 from app.api.deps import CurrentUser, DbSession
 from app.models import UserAlgo
 from app.schemas import (
@@ -104,7 +105,7 @@ def _mine_out(row: UserAlgo) -> UserAlgoOut:
         return UserAlgoOut(
             id=row.id, name=row.name, description=row.description, strategy="",
             strategy_name=meta.name if meta else row.name, interval=meta.interval if meta else "",
-            markets=list(meta.markets) if meta else [], params=row.params, source=row.source,
+            markets=list(meta.markets) if meta else [], params=row.params, source=row.source, graph=row.graph,
             created_at=row.created_at,
         )  # fmt: skip
     algo = LIBRARY.get(row.strategy_key)
@@ -135,18 +136,31 @@ def _checked(body: UserAlgoIn) -> tuple[str, dict]:
     return body.strategy, {name: _plain(v) for name, v in values.items()}
 
 
-def _checked_source(body: UserAlgoIn) -> dict:
+def _checked_source(source: str | None, params: dict) -> dict:
     """Editor code must pass the code rules (raises with every problem, worded with its line); the
     settings are validated against the class's own `PARAMETERS`."""
     from app.marketplace.listings import check_source  # here: listings reads the algos package
 
-    check_source(body.source or "")
-    sandbox = load_strategy(body.source or "")  # starts no process until a hook runs
+    check_source(source or "")
+    sandbox = load_strategy(source or "")  # starts no process until a hook runs
     try:
-        values = validate_params(sandbox, body.params)  # type: ignore[arg-type]
+        values = validate_params(sandbox, params)  # type: ignore[arg-type]
     finally:
         sandbox.close()
     return {name: _plain(v) for name, v in values.items()}
+
+
+def _code_of(body: UserAlgoIn, db, user) -> tuple[str | None, dict | None]:
+    """The code to save and the graph it came from. A block graph is compiled here, so what is
+    stored is ordinary source that goes through the same checks as anything else."""
+    if body.graph is None:
+        return body.source, None
+    if body.source is not None or body.strategy is not None:
+        raise HTTPException(status_code=400, detail="Send one of `strategy`, `source` or `graph`.")
+    graph, problems, source = compile_for_user(db, user.id, body.graph, body.name, body.description)
+    if problems:
+        raise HTTPException(status_code=400, detail=" ".join(p.message for p in problems))
+    return source, graph
 
 
 def _found(db, algo_id: int, user_id: int) -> UserAlgo:
@@ -166,8 +180,9 @@ def list_mine(db: DbSession, user: CurrentUser):
 def create_mine(body: UserAlgoIn, db: DbSession, user: CurrentUser):
     if body.source is not None and body.strategy is not None:
         raise HTTPException(status_code=400, detail="Send either `strategy` or `source`, not both.")
-    if body.source is not None:
-        key, params = "", _checked_source(body)
+    source, graph = _code_of(body, db, user)
+    if source is not None:
+        key, params = "", _checked_source(source, body.params)
     else:
         key, params = _checked(body)
     row = UserAlgo(
@@ -176,7 +191,8 @@ def create_mine(body: UserAlgoIn, db: DbSession, user: CurrentUser):
         description=body.description,
         strategy_key=key,
         params=params,
-        source=body.source,
+        source=source,
+        graph=graph,
         created_at=clock.now(),
     )
     db.add(row)
@@ -194,11 +210,17 @@ def update_mine(algo_id: int, body: UserAlgoIn, db: DbSession, user: CurrentUser
     row = _found(db, algo_id, user.id)
     if body.source is not None and body.strategy is not None:
         raise HTTPException(status_code=400, detail="Send either `strategy` or `source`, not both.")
-    if body.source is not None:
-        row.strategy_key, row.params, row.source = "", _checked_source(body), body.source
+    source, graph = _code_of(body, db, user)
+    if source is not None:
+        row.strategy_key, row.params, row.source, row.graph = (
+            "",
+            _checked_source(source, body.params),
+            source,
+            graph,
+        )
     else:
         row.strategy_key, row.params = _checked(body)
-        row.source = None
+        row.source = row.graph = None
     row.name, row.description = body.name, body.description
     db.commit()
     return _mine_out(row)

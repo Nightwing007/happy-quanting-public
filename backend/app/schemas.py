@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -776,6 +776,11 @@ class UserAlgoIn(BaseModel):
         default=None,
         description="Code written in the editor, checked against the code rules; instead of `strategy`",
     )
+    graph: dict[str, Any] | None = Field(
+        default=None,
+        description="A block graph (see algos/blocks/compile.py), compiled to the saved `source`; instead of "
+        "`strategy` or `source`",
+    )
     params: dict[str, str | int | float | bool] = Field(default_factory=dict)
 
     @field_validator("name", "description")
@@ -801,6 +806,79 @@ class UserAlgoOut(BaseModel):
     markets: list[str]
     params: dict[str, str | int | bool]
     source: str | None = None  # the owner's own code (these routes are owner-only)
+    graph: dict[str, Any] | None = None  # the owner's block graph, same rule as `source`
+    created_at: datetime
+
+
+class BlockPortOut(BaseModel):
+    name: str
+    type: Literal["signal", "trigger"]
+    multi: bool
+    min: int
+
+
+class BlockOut(BaseModel):
+    """One block of the editor's palette."""
+
+    type: str
+    category: Literal["universe", "signal", "combine", "action", "risk", "custom"]
+    label: str
+    help: str
+    params: list[AlgoParamOut]
+    inputs: list[BlockPortOut]
+    outputs: list[BlockPortOut]
+    lookback: str  # bars of history needed, e.g. "$period + 1"
+    custom_id: int | None = None
+    custom_kind: Literal["group", "code"] | None = None
+
+
+class BlockCatalogOut(BaseModel):
+    blocks: list[BlockOut]
+
+
+class CompileIn(BaseModel):
+    graph: dict[str, Any]
+    name: str = Field(default="", max_length=80)
+    description: str = Field(default="", max_length=500)
+
+
+class BlockProblemOut(BaseModel):
+    """A graph problem names its block (`node_id`); a code problem has a `line` instead."""
+
+    node_id: str | None = None
+    line: int = 0
+    col: int = 0
+    code: str = ""
+    message: str
+
+
+class CompileOut(BaseModel):
+    ok: bool
+    problems: list[BlockProblemOut]
+    source: str  # empty unless ok
+    warmup_bars: int = 0
+
+
+class CustomBlockIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    kind: Literal["group", "code"]
+    definition: dict[str, Any]
+
+    @field_validator("name")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Give the block a name.")
+        return value
+
+
+class CustomBlockOut(BaseModel):
+    id: int
+    type: str  # "custom:<id>", what a graph node's `type` holds
+    name: str
+    kind: Literal["group", "code"]
+    definition: dict[str, Any]
     created_at: datetime
 
 

@@ -16,7 +16,7 @@ from app.algos import jobs as backtest_jobs
 from app.algos.api import ParameterError
 from app.algos.backtest import BacktestError
 from app.algos.runner import StrategyRunError
-from app.api import algos, backtests, market, marketplace, sim, trading, watchlist
+from app.api import algos, backtests, blocks, market, marketplace, sim, trading, watchlist
 from app.api import auth as auth_api
 from app.api import settings as settings_api
 from app.api.deps import Provider
@@ -118,6 +118,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Happy Quanting", lifespan=lifespan)
 app.include_router(auth_api.router)
 app.include_router(algos.router)
+app.include_router(blocks.router)
 app.include_router(market.router)
 app.include_router(trading.router)
 app.include_router(sim.router)

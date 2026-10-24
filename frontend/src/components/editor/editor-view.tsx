@@ -231,19 +231,24 @@ export function EditorView() {
         <QueryError error={mine.error} title="Couldn't load your algorithms" onRetry={() => mine.refetch()} />
       )}
       {waiting && !mine.error && <Skeleton className="h-96 w-full" />}
-      {mineId !== null && !mine.isPending && !mine.error && (!found || found.source === null) && (
+      {mineId !== null && !mine.isPending && !mine.error && (!found || found.source === null || found.graph) && (
         <Alert>
           <AlertDescription>
-            {found
-              ? "That saved algorithm is built on a ready-made one, so it opens in the lab."
-              : `You have no saved algorithm ${raw}.`}{" "}
-            <Link href={found ? `/algos/lab?mine=${found.id}` : "/algos"} className="underline underline-offset-2">
-              {found ? "Open in the lab" : "Back to algorithms"}
+            {found?.graph
+              ? "That saved algorithm is built with blocks, so it opens in the block editor."
+              : found
+                ? "That saved algorithm is built on a ready-made one, so it opens in the lab."
+                : `You have no saved algorithm ${raw}.`}{" "}
+            <Link
+              href={found?.graph ? `/algos/blocks?mine=${found.id}` : found ? `/algos/lab?mine=${found.id}` : "/algos"}
+              className="underline underline-offset-2"
+            >
+              {found?.graph ? "Open in the block editor" : found ? "Open in the lab" : "Back to algorithms"}
             </Link>
           </AlertDescription>
         </Alert>
       )}
-      {!waiting && !mine.error && (mineId === null || (found && found.source !== null)) && (
+      {!waiting && !mine.error && (mineId === null || (found && found.source !== null && !found.graph)) && (
         <Workspace key={found?.id ?? "new"} saved={found} />
       )}
     </div>

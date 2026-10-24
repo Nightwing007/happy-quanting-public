@@ -72,7 +72,7 @@ function Mine() {
       {data && data.length === 0 && (
         <p className="text-sm text-muted-foreground">
           Nothing saved yet. Tune an algorithm in the lab and choose &ldquo;Save as my algorithm&rdquo; on the
-          results, or write your own in the editor.
+          results, or build one in the block editor or write your own code.
         </p>
       )}
       {remove.error && (
@@ -88,7 +88,7 @@ function Mine() {
             </CardHeader>
             <CardContent className="grid min-w-0 gap-3">
               <p className="text-xs text-muted-foreground">
-                {a.source !== null ? "Your own code" : `Built on ${a.strategy_name}`}
+                {a.graph ? "Built with blocks" : a.source !== null ? "Your own code" : `Built on ${a.strategy_name}`}
               </p>
               {a.description && <p className="text-sm text-muted-foreground">{a.description}</p>}
               <div className="flex flex-wrap items-center gap-2">
@@ -96,7 +96,11 @@ function Mine() {
                 <Badge variant="outline">{algoIntervalWords(a.interval)} bars</Badge>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {a.source !== null ? (
+                {a.graph ? (
+                  <Button size="sm" nativeButton={false} render={<Link href={`/algos/blocks?mine=${a.id}`} />}>
+                    Edit in block editor
+                  </Button>
+                ) : a.source !== null ? (
                   <Button size="sm" nativeButton={false} render={<Link href={`/algos/editor?mine=${a.id}`} />}>
                     Edit in editor
                   </Button>
@@ -145,7 +149,10 @@ export function AlgoGallery() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" nativeButton={false} render={<Link href="/algos/editor" />}>
+          <Button size="sm" nativeButton={false} render={<Link href="/algos/blocks" />}>
+            Block editor
+          </Button>
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/editor" />}>
             Code editor
           </Button>
           <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/backtests" />}>

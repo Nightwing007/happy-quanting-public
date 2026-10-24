@@ -1,5 +1,10 @@
 import type {
   Algo,
+  BlockSpec,
+  CompileIn,
+  CompileResult,
+  CustomBlock,
+  CustomBlockIn,
   BacktestDetail,
   BacktestIn,
   BacktestSummary,
@@ -311,3 +316,13 @@ export const retireListing = (id: number) =>
 
 export const upgradeSubscription = (id: number) =>
   request<Subscription>(`/api/marketplace/subscriptions/${id}/upgrade`, { method: "POST" });
+
+// --- block editor ---
+
+export const getBlockCatalog = () => request<{ blocks: BlockSpec[] }>("/api/blocks/catalog");
+
+export const compileBlocks = (body: CompileIn) =>
+  request<CompileResult>("/api/blocks/compile", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const createCustomBlock = (body: CustomBlockIn) =>
+  request<CustomBlock>("/api/blocks/custom", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });

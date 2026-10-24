@@ -19,7 +19,7 @@ GROUPS = {
     "test_payouts test_trading_api test_context",
     "market": "test_market_data test_market_api test_history test_market_hours test_metrics test_indicators",
     "sim": "test_sim test_sim_strategies",
-    "algos": "test_algos test_backtest test_validate test_sandbox",
+    "algos": "test_algos test_backtest test_validate test_sandbox test_blocks",
     "auth": "test_auth test_scoping",
     "db": "test_migrations",
     "marketplace": "test_marketplace test_subscriptions test_seed test_listing_versions",

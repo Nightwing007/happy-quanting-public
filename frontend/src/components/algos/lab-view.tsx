@@ -303,16 +303,24 @@ export function LabView() {
       {!waiting && !error && !algo && (
         <Alert>
           <AlertDescription>
-            {mine?.source != null
+            {mine?.graph
+              ? "That saved algorithm is built with blocks, so it opens in the block editor."
+              : mine?.source != null
               ? "That saved algorithm is your own code, so it opens in the editor."
               : wantsMine && !mine
                 ? "That saved algorithm no longer exists."
                 : "Pick an algorithm to open in the lab."}{" "}
             <Link
-              href={mine?.source != null ? `/algos/editor?mine=${mine.id}` : "/algos"}
+              href={
+                mine?.graph
+                  ? `/algos/blocks?mine=${mine.id}`
+                  : mine?.source != null
+                    ? `/algos/editor?mine=${mine.id}`
+                    : "/algos"
+              }
               className="underline underline-offset-2"
             >
-              {mine?.source != null ? "Open in the editor" : "Choose one"}
+              {mine?.graph ? "Open in the block editor" : mine?.source != null ? "Open in the editor" : "Choose one"}
             </Link>
           </AlertDescription>
         </Alert>

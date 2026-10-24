@@ -80,7 +80,7 @@ def short_windows(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(performance, "WINDOWS", SHORT_WINDOWS)
 
 
-BANNED_NAMES = {"source", "params", "parameters", "strategy_key", "code", "trades"}
+BANNED_NAMES = {"source", "params", "parameters", "strategy_key", "code", "trades", "graph"}
 
 
 def body(**over):

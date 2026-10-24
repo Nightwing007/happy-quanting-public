@@ -19,6 +19,7 @@ export function SaveAlgoDialog({
   initialName,
   initialDescription,
   publishing,
+  what = "code",
   pending,
   error,
   onSave,
@@ -27,6 +28,8 @@ export function SaveAlgoDialog({
   initialName: string;
   initialDescription: string;
   publishing: boolean;
+  /** What is being kept, in the dialog's words: "code" or "blocks". */
+  what?: "code" | "blocks";
   pending: boolean;
   error: string | null;
   onSave: (name: string, description: string) => void;
@@ -48,7 +51,8 @@ export function SaveAlgoDialog({
           <DialogHeader>
             <DialogTitle>{publishing ? "Save, then publish" : "Save to My algorithms"}</DialogTitle>
             <DialogDescription>
-              Keeps this code under My algorithms, where you can reopen it in the editor.
+              Keeps {what === "blocks" ? "these blocks" : "this code"} under My algorithms, where you can reopen{" "}
+              {what === "blocks" ? "them" : "it"} in the {what === "blocks" ? "block editor" : "editor"}.
               {publishing ? " Next you choose how to list it in the marketplace." : ""}
             </DialogDescription>
           </DialogHeader>

@@ -126,13 +126,16 @@ export function ParamForm({
   algo,
   values,
   onChange,
+  narrow = false,
 }: {
-  algo: Algo;
+  algo: Pick<Algo, "parameters">;
   values: ParamValues;
   onChange: (name: string, value: ParamValue) => void;
+  /** One column always (a side panel), instead of two from the `sm` breakpoint. */
+  narrow?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className={cn("grid grid-cols-1 gap-4", !narrow && "sm:grid-cols-2")}>
       {algo.parameters.map((p) => (
         <Field key={p.name} param={p} value={values[p.name] ?? p.default} onChange={(v) => onChange(p.name, v)} />
       ))}

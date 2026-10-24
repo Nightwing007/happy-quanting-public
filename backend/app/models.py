@@ -347,6 +347,22 @@ class UserAlgo(Base):
     strategy_key: Mapped[str] = mapped_column(String)  # a key of the predefined library; "" for source
     params: Mapped[dict] = mapped_column(JSON)  # every setting, decimals as strings
     source: Mapped[str | None] = mapped_column(Text, nullable=True)  # editor code, owner-only
+    # The block graph `source` was compiled from (owner-only, like `source`); NULL for code and library algos.
+    graph: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class CustomBlock(Base):
+    """A block someone made for the block editor: a saved group of blocks or a piece of code.
+    Owner-only; graphs embed the definitions they use, so deleting one breaks no saved algorithm."""
+
+    __tablename__ = "custom_blocks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_custom_blocks_owner_user_id"))
+    name: Mapped[str] = mapped_column(String)
+    kind: Mapped[str] = mapped_column(String)  # "group" or "code"
+    definition: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 
