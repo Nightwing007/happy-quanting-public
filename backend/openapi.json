@@ -1,0 +1,3398 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Happy Quanting",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/market/search": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Search",
+        "operationId": "search_api_market_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InstrumentOut"
+                  },
+                  "title": "Response Search Api Market Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/quote": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Quote",
+        "operationId": "quote_api_market_quote_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC",
+              "title": "Symbol"
+            },
+            "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/metrics": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Metrics",
+        "operationId": "metrics_api_market_metrics_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC",
+              "title": "Symbol"
+            },
+            "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/bars": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Bars",
+        "operationId": "bars_api_market_bars_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC",
+              "title": "Symbol"
+            },
+            "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC"
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1d",
+              "title": "Interval"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "6mo",
+              "title": "Range"
+            }
+          },
+          {
+            "name": "indicators",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Indicators"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolio": {
+      "get": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Portfolio",
+        "operationId": "portfolio_api_portfolio_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolio/reset": {
+      "post": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Reset Portfolio",
+        "operationId": "reset_portfolio_api_portfolio_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "List Orders",
+        "operationId": "list_orders_api_orders_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/OrderStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderOut"
+                  },
+                  "title": "Response List Orders Api Orders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Create Order",
+        "operationId": "create_order_api_orders_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/preview": {
+      "post": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Preview Order",
+        "operationId": "preview_order_api_orders_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/{order_id}": {
+      "delete": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Cancel Order",
+        "operationId": "cancel_order_api_orders__order_id__delete",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades": {
+      "get": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "List Trades",
+        "operationId": "list_trades_api_trades_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TradeStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TradeOut"
+                  },
+                  "title": "Response List Trades Api Trades Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payouts": {
+      "get": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Payouts",
+        "operationId": "payouts_api_payouts_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/{trade_id}/exit": {
+      "post": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Exit Trade",
+        "operationId": "exit_trade_api_trades__trade_id__exit_post",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ExitIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/{trade_id}/exit/preview": {
+      "post": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Preview Exit",
+        "operationId": "preview_exit_api_trades__trade_id__exit_preview_post",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ExitIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/{trade_id}/protection/preview": {
+      "post": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Preview Protection",
+        "operationId": "preview_protection_api_trades__trade_id__protection_preview_post",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtectionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtectionPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/{trade_id}/protection": {
+      "put": {
+        "tags": [
+          "trading"
+        ],
+        "summary": "Set Protection",
+        "operationId": "set_protection_api_trades__trade_id__protection_put",
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trade Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtectionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Read Settings",
+        "operationId": "read_settings_api_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Update Settings",
+        "operationId": "update_settings_api_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/brokers": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "List Brokers",
+        "operationId": "list_brokers_api_brokers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SegmentBrokersOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Brokers Api Brokers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/watchlist": {
+      "get": {
+        "tags": [
+          "watchlist"
+        ],
+        "summary": "List Watchlist",
+        "operationId": "list_watchlist_api_watchlist_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WatchlistItemOut"
+                  },
+                  "title": "Response List Watchlist Api Watchlist Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "watchlist"
+        ],
+        "summary": "Add To Watchlist",
+        "operationId": "add_to_watchlist_api_watchlist_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistItemOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "watchlist"
+        ],
+        "summary": "Remove From Watchlist",
+        "operationId": "remove_from_watchlist_api_watchlist_delete",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC",
+              "title": "Symbol"
+            },
+            "description": "Yahoo-style symbol, e.g. AAPL, RELIANCE.NS, ^GSPC"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Api Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BarOut": {
+        "properties": {
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Time"
+          },
+          "open": {
+            "type": "string",
+            "title": "Open"
+          },
+          "high": {
+            "type": "string",
+            "title": "High"
+          },
+          "low": {
+            "type": "string",
+            "title": "Low"
+          },
+          "close": {
+            "type": "string",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "integer",
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "BarOut"
+      },
+      "BarsOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "range": {
+            "type": "string",
+            "title": "Range"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/BarOut"
+            },
+            "type": "array",
+            "title": "Bars"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorSeriesOut"
+            },
+            "type": "array",
+            "title": "Indicators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "interval",
+          "range",
+          "currency",
+          "bars",
+          "indicators"
+        ],
+        "title": "BarsOut"
+      },
+      "BrokerOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "segment": {
+            "type": "string",
+            "title": "Segment"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "fx_markup_percent": {
+            "type": "string",
+            "title": "Fx Markup Percent"
+          },
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketRefOut"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "checked": {
+            "type": "string",
+            "title": "Checked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "segment",
+          "notes",
+          "fx_markup_percent",
+          "markets",
+          "source",
+          "checked"
+        ],
+        "title": "BrokerOut"
+      },
+      "BrokerRefOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "BrokerRefOut"
+      },
+      "ChargeOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          },
+          "native_amount": {
+            "type": "string",
+            "title": "Native Amount"
+          },
+          "native_currency": {
+            "type": "string",
+            "title": "Native Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "category",
+          "description",
+          "amount",
+          "native_amount",
+          "native_currency"
+        ],
+        "title": "ChargeOut",
+        "description": "One line of a trade's costs. Also the shape stored on the order, so what is saved is\nexactly what is served."
+      },
+      "ChargesPaidOut": {
+        "properties": {
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "by_category": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "By Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "by_category"
+        ],
+        "title": "ChargesPaidOut"
+      },
+      "ExitIn": {
+        "properties": {
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "type": "object",
+        "title": "ExitIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HoldingOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Direction"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "avg_price": {
+            "type": "string",
+            "title": "Avg Price"
+          },
+          "cost_basis": {
+            "type": "string",
+            "title": "Cost Basis"
+          },
+          "margin_blocked": {
+            "type": "string",
+            "title": "Margin Blocked"
+          },
+          "last_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Price"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "market_value": {
+            "type": "string",
+            "title": "Market Value"
+          },
+          "unrealized_pnl": {
+            "type": "string",
+            "title": "Unrealized Pnl"
+          },
+          "unrealized_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pct"
+          },
+          "price_unavailable": {
+            "type": "boolean",
+            "title": "Price Unavailable"
+          },
+          "break_even_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Break Even Price"
+          },
+          "trade_count": {
+            "type": "integer",
+            "title": "Trade Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "currency",
+          "direction",
+          "quantity",
+          "avg_price",
+          "cost_basis",
+          "margin_blocked",
+          "last_price",
+          "fx_rate",
+          "market_value",
+          "unrealized_pnl",
+          "unrealized_pct",
+          "price_unavailable",
+          "break_even_price",
+          "trade_count"
+        ],
+        "title": "HoldingOut",
+        "description": "Open trades of one symbol and direction, pooled. Computed, never stored."
+      },
+      "IndicatorPoint": {
+        "properties": {
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Time"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "value"
+        ],
+        "title": "IndicatorPoint"
+      },
+      "IndicatorSeriesOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "period": {
+            "type": "integer",
+            "title": "Period"
+          },
+          "pane": {
+            "type": "string",
+            "enum": [
+              "price",
+              "own"
+            ],
+            "title": "Pane"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "period",
+          "pane",
+          "label",
+          "points"
+        ],
+        "title": "IndicatorSeriesOut"
+      },
+      "InstrumentOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "tradable": {
+            "type": "boolean",
+            "title": "Tradable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "type",
+          "currency",
+          "tradable"
+        ],
+        "title": "InstrumentOut"
+      },
+      "MarketRefOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "currency"
+        ],
+        "title": "MarketRefOut"
+      },
+      "MarketStatusOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "unknown"
+            ],
+            "title": "State"
+          },
+          "is_open": {
+            "type": "boolean",
+            "title": "Is Open"
+          },
+          "next_open": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Open"
+          },
+          "next_close": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Close"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "quantity_step": {
+            "type": "string",
+            "title": "Quantity Step"
+          },
+          "short_selling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShortRuleOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lot_exits": {
+            "type": "string",
+            "enum": [
+              "specific",
+              "fifo"
+            ],
+            "title": "Lot Exits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "state",
+          "is_open",
+          "next_open",
+          "next_close",
+          "timezone",
+          "reason",
+          "label",
+          "quantity_step",
+          "short_selling",
+          "lot_exits"
+        ],
+        "title": "MarketStatusOut"
+      },
+      "MetricOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "x",
+              "%",
+              "currency",
+              "units"
+            ],
+            "title": "Unit"
+          },
+          "display_hint": {
+            "type": "string",
+            "enum": [
+              "multiple",
+              "percent",
+              "amount",
+              "count",
+              "position"
+            ],
+            "title": "Display Hint"
+          },
+          "assessment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "below usual",
+                  "typical",
+                  "above usual"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricRangeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "better": {
+            "type": "string",
+            "enum": [
+              "lower",
+              "higher",
+              "depends"
+            ],
+            "title": "Better"
+          },
+          "meaning": {
+            "type": "string",
+            "title": "Meaning"
+          },
+          "if_below": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Below"
+          },
+          "if_above": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Above"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "value",
+          "unit",
+          "display_hint",
+          "assessment",
+          "range",
+          "explanation",
+          "better",
+          "meaning",
+          "if_below",
+          "if_above"
+        ],
+        "title": "MetricOut"
+      },
+      "MetricRangeOut": {
+        "properties": {
+          "low": {
+            "type": "string",
+            "title": "Low"
+          },
+          "high": {
+            "type": "string",
+            "title": "High"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "low",
+          "high",
+          "label"
+        ],
+        "title": "MetricRangeOut",
+        "description": "A sector's usual band for an equity metric; for a coin's 52-week position, the year's low and high."
+      },
+      "MetricsOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "equity",
+              "crypto",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/MetricOut"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "omitted": {
+            "items": {
+              "$ref": "#/components/schemas/OmittedMetricOut"
+            },
+            "type": "array",
+            "title": "Omitted"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "kind",
+          "sector",
+          "currency",
+          "metrics",
+          "omitted",
+          "note"
+        ],
+        "title": "MetricsOut"
+      },
+      "OmittedMetricOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "reason"
+        ],
+        "title": "OmittedMetricOut",
+        "description": "A metric left out on purpose, with why. Metrics that merely have no figure are not listed."
+      },
+      "OrderIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "title": "Side"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "market",
+              "limit"
+            ],
+            "title": "Type",
+            "default": "market"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "limit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "side",
+          "quantity"
+        ],
+        "title": "OrderIn"
+      },
+      "OrderLegOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "close_long",
+              "open_short",
+              "close_short",
+              "open_long"
+            ],
+            "title": "Kind"
+          },
+          "trade_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Id"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "product": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "intraday",
+              "margin"
+            ],
+            "title": "Product"
+          },
+          "price": {
+            "type": "string",
+            "title": "Price"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "charges": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeOut"
+            },
+            "type": "array",
+            "title": "Charges"
+          },
+          "charges_total": {
+            "type": "string",
+            "title": "Charges Total"
+          },
+          "entry_charges": {
+            "type": "string",
+            "title": "Entry Charges"
+          },
+          "cash_change": {
+            "type": "string",
+            "title": "Cash Change"
+          },
+          "margin_change": {
+            "type": "string",
+            "title": "Margin Change"
+          },
+          "realized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realized Pnl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "trade_id",
+          "quantity",
+          "product",
+          "price",
+          "value",
+          "charges",
+          "charges_total",
+          "entry_charges",
+          "cash_change",
+          "margin_change",
+          "realized_pnl"
+        ],
+        "title": "OrderLegOut",
+        "description": "What one leg of an order did. Also the shape stored on the order, so what is saved is\nexactly what is served."
+      },
+      "OrderOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "limit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Price"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "fill_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fill Price"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "realized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realized Pnl"
+          },
+          "charges": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeOut"
+            },
+            "type": "array",
+            "title": "Charges"
+          },
+          "charges_total": {
+            "type": "string",
+            "title": "Charges Total"
+          },
+          "trade_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Id"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "cash_change": {
+            "type": "string",
+            "title": "Cash Change"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLegOut"
+            },
+            "type": "array",
+            "title": "Legs"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reject Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "filled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filled At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "currency",
+          "side",
+          "type",
+          "quantity",
+          "limit_price",
+          "status",
+          "fill_price",
+          "fx_rate",
+          "amount",
+          "realized_pnl",
+          "charges",
+          "charges_total",
+          "trade_id",
+          "origin",
+          "cash_change",
+          "legs",
+          "note",
+          "reject_reason",
+          "created_at",
+          "filled_at"
+        ],
+        "title": "OrderOut"
+      },
+      "OrderPreviewOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "price": {
+            "type": "string",
+            "title": "Price"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "fx_rate": {
+            "type": "string",
+            "title": "Fx Rate"
+          },
+          "value_account": {
+            "type": "string",
+            "title": "Value Account"
+          },
+          "charges": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeOut"
+            },
+            "type": "array",
+            "title": "Charges"
+          },
+          "charges_total": {
+            "type": "string",
+            "title": "Charges Total"
+          },
+          "cash_change": {
+            "type": "string",
+            "title": "Cash Change"
+          },
+          "margin_change": {
+            "type": "string",
+            "title": "Margin Change"
+          },
+          "realized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realized Pnl"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLegOut"
+            },
+            "type": "array",
+            "title": "Legs"
+          },
+          "fifo": {
+            "type": "boolean",
+            "title": "Fifo"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "broker": {
+            "$ref": "#/components/schemas/BrokerRefOut"
+          },
+          "market": {
+            "$ref": "#/components/schemas/BrokerRefOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "side",
+          "quantity",
+          "price",
+          "value",
+          "currency",
+          "fx_rate",
+          "value_account",
+          "charges",
+          "charges_total",
+          "cash_change",
+          "margin_change",
+          "realized_pnl",
+          "legs",
+          "fifo",
+          "note",
+          "broker",
+          "market"
+        ],
+        "title": "OrderPreviewOut",
+        "description": "What an order would cost, from the same calculation that charges it."
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "filled",
+          "cancelled",
+          "rejected"
+        ],
+        "title": "OrderStatus"
+      },
+      "PayoutOut": {
+        "properties": {
+          "trade_id": {
+            "type": "integer",
+            "title": "Trade Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "market_code": {
+            "type": "string",
+            "title": "Market Code"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Direction"
+          },
+          "product": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "intraday",
+              "margin"
+            ],
+            "title": "Product"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Opened At"
+          },
+          "closed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Closed At"
+          },
+          "closed_how": {
+            "type": "string",
+            "enum": [
+              "exit",
+              "sell",
+              "cover",
+              "square_off",
+              "stop_loss",
+              "target"
+            ],
+            "title": "Closed How"
+          },
+          "entry_price": {
+            "type": "string",
+            "title": "Entry Price"
+          },
+          "entry_value": {
+            "type": "string",
+            "title": "Entry Value"
+          },
+          "brought_in": {
+            "type": "string",
+            "title": "Brought In"
+          },
+          "exit_value": {
+            "type": "string",
+            "title": "Exit Value"
+          },
+          "entry_charge_lines": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeOut"
+            },
+            "type": "array",
+            "title": "Entry Charge Lines"
+          },
+          "entry_charges_total": {
+            "type": "string",
+            "title": "Entry Charges Total"
+          },
+          "exit_charge_lines": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeOut"
+            },
+            "type": "array",
+            "title": "Exit Charge Lines"
+          },
+          "exit_charges_total": {
+            "type": "string",
+            "title": "Exit Charges Total"
+          },
+          "financing_paid": {
+            "type": "string",
+            "title": "Financing Paid"
+          },
+          "realized_pnl": {
+            "type": "string",
+            "title": "Realized Pnl"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "description": "IANA zone of the exchange, so times can be shown on its clock.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "trade_id",
+          "symbol",
+          "name",
+          "currency",
+          "market_code",
+          "direction",
+          "product",
+          "quantity",
+          "opened_at",
+          "closed_at",
+          "closed_how",
+          "entry_price",
+          "entry_value",
+          "brought_in",
+          "exit_value",
+          "entry_charge_lines",
+          "entry_charges_total",
+          "exit_charge_lines",
+          "exit_charges_total",
+          "financing_paid",
+          "realized_pnl",
+          "timezone"
+        ],
+        "title": "PayoutOut",
+        "description": "One closed trade, start to finish. Every figure comes from the orders' immutable legs (and\nthe trade's accumulated exit totals), never from the fields that shrink as a trade is exited."
+      },
+      "PayoutTotalsOut": {
+        "properties": {
+          "trades_closed": {
+            "type": "integer",
+            "title": "Trades Closed"
+          },
+          "brought_in": {
+            "type": "string",
+            "title": "Brought In"
+          },
+          "charges": {
+            "type": "string",
+            "title": "Charges"
+          },
+          "financing": {
+            "type": "string",
+            "title": "Financing"
+          },
+          "net_profit": {
+            "type": "string",
+            "title": "Net Profit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trades_closed",
+          "brought_in",
+          "charges",
+          "financing",
+          "net_profit"
+        ],
+        "title": "PayoutTotalsOut"
+      },
+      "PayoutsOut": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PayoutTotalsOut"
+          },
+          "payouts": {
+            "items": {
+              "$ref": "#/components/schemas/PayoutOut"
+            },
+            "type": "array",
+            "title": "Payouts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency",
+          "totals",
+          "payouts"
+        ],
+        "title": "PayoutsOut"
+      },
+      "PortfolioOut": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "cash": {
+            "type": "string",
+            "title": "Cash"
+          },
+          "margin_used": {
+            "type": "string",
+            "title": "Margin Used"
+          },
+          "available_cash": {
+            "type": "string",
+            "title": "Available Cash"
+          },
+          "starting_cash": {
+            "type": "string",
+            "title": "Starting Cash"
+          },
+          "invested": {
+            "type": "string",
+            "title": "Invested"
+          },
+          "market_value": {
+            "type": "string",
+            "title": "Market Value"
+          },
+          "short_value": {
+            "type": "string",
+            "title": "Short Value"
+          },
+          "total_value": {
+            "type": "string",
+            "title": "Total Value"
+          },
+          "realized_pnl": {
+            "type": "string",
+            "title": "Realized Pnl"
+          },
+          "unrealized_pnl": {
+            "type": "string",
+            "title": "Unrealized Pnl"
+          },
+          "total_pnl": {
+            "type": "string",
+            "title": "Total Pnl"
+          },
+          "financing_paid": {
+            "type": "string",
+            "title": "Financing Paid"
+          },
+          "charges_paid": {
+            "$ref": "#/components/schemas/ChargesPaidOut"
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingOut"
+            },
+            "type": "array",
+            "title": "Holdings"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/TradeOut"
+            },
+            "type": "array",
+            "title": "Trades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency",
+          "cash",
+          "margin_used",
+          "available_cash",
+          "starting_cash",
+          "invested",
+          "market_value",
+          "short_value",
+          "total_value",
+          "realized_pnl",
+          "unrealized_pnl",
+          "total_pnl",
+          "financing_paid",
+          "charges_paid",
+          "holdings",
+          "trades"
+        ],
+        "title": "PortfolioOut"
+      },
+      "ProtectionIn": {
+        "properties": {
+          "stop_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Price"
+          },
+          "target_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Price"
+          }
+        },
+        "type": "object",
+        "title": "ProtectionIn"
+      },
+      "ProtectionOutcomeOut": {
+        "properties": {
+          "price": {
+            "type": "string",
+            "title": "Price"
+          },
+          "exit_value": {
+            "type": "string",
+            "title": "Exit Value"
+          },
+          "charges_total": {
+            "type": "string",
+            "title": "Charges Total"
+          },
+          "realized_pnl": {
+            "type": "string",
+            "title": "Realized Pnl"
+          },
+          "cash_change": {
+            "type": "string",
+            "title": "Cash Change"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "exit_value",
+          "charges_total",
+          "realized_pnl",
+          "cash_change"
+        ],
+        "title": "ProtectionOutcomeOut",
+        "description": "What closing the trade's open part at `price` would leave you with, after every charge."
+      },
+      "ProtectionPreviewOut": {
+        "properties": {
+          "current_price": {
+            "type": "string",
+            "title": "Current Price"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "stop_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Error"
+          },
+          "target_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Error"
+          },
+          "stop_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProtectionOutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProtectionOutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_price",
+          "currency",
+          "stop_error",
+          "target_error",
+          "stop_outcome",
+          "target_outcome"
+        ],
+        "title": "ProtectionPreviewOut",
+        "description": "Checks a stop-loss and target and shows what each would leave you with. Saves nothing."
+      },
+      "QuoteOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "tradable": {
+            "type": "boolean",
+            "title": "Tradable"
+          },
+          "price": {
+            "type": "string",
+            "title": "Price"
+          },
+          "previous_close": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Close"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "change_percent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Percent"
+          },
+          "as_of": {
+            "type": "integer",
+            "title": "As Of"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketStatusOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "type",
+          "currency",
+          "tradable",
+          "price",
+          "previous_close",
+          "change",
+          "change_percent",
+          "as_of",
+          "market"
+        ],
+        "title": "QuoteOut"
+      },
+      "SegmentBrokersOut": {
+        "properties": {
+          "segment": {
+            "type": "string",
+            "title": "Segment"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "brokers": {
+            "items": {
+              "$ref": "#/components/schemas/BrokerOut"
+            },
+            "type": "array",
+            "title": "Brokers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "segment",
+          "label",
+          "brokers"
+        ],
+        "title": "SegmentBrokersOut"
+      },
+      "SettingsIn": {
+        "properties": {
+          "broker_india": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker India"
+          },
+          "broker_international": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker International"
+          },
+          "broker_crypto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Crypto"
+          }
+        },
+        "type": "object",
+        "title": "SettingsIn"
+      },
+      "SettingsOut": {
+        "properties": {
+          "broker_india": {
+            "type": "string",
+            "title": "Broker India"
+          },
+          "broker_international": {
+            "type": "string",
+            "title": "Broker International"
+          },
+          "broker_crypto": {
+            "type": "string",
+            "title": "Broker Crypto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "broker_india",
+          "broker_international",
+          "broker_crypto"
+        ],
+        "title": "SettingsOut"
+      },
+      "ShortRuleOut": {
+        "properties": {
+          "style": {
+            "type": "string",
+            "enum": [
+              "intraday",
+              "overnight",
+              "margin"
+            ],
+            "title": "Style"
+          },
+          "margin_percent": {
+            "type": "string",
+            "title": "Margin Percent"
+          },
+          "borrow_percent_year": {
+            "type": "string",
+            "title": "Borrow Percent Year"
+          },
+          "square_off_minutes_before_close": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Square Off Minutes Before Close"
+          },
+          "min_shortable_step": {
+            "type": "string",
+            "title": "Min Shortable Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "style",
+          "margin_percent",
+          "borrow_percent_year",
+          "square_off_minutes_before_close",
+          "min_shortable_step"
+        ],
+        "title": "ShortRuleOut",
+        "description": "How shorting works on a market, for the ticket to explain it. Absent where it isn't offered."
+      },
+      "TradeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "market_code": {
+            "type": "string",
+            "title": "Market Code"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Direction"
+          },
+          "product": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "intraday",
+              "margin"
+            ],
+            "title": "Product"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "open_quantity": {
+            "type": "string",
+            "title": "Open Quantity"
+          },
+          "entry_price": {
+            "type": "string",
+            "title": "Entry Price"
+          },
+          "entry_fx_rate": {
+            "type": "string",
+            "title": "Entry Fx Rate"
+          },
+          "entry_value": {
+            "type": "string",
+            "title": "Entry Value"
+          },
+          "entry_charges": {
+            "type": "string",
+            "title": "Entry Charges"
+          },
+          "entry_charges_paid": {
+            "type": "string",
+            "title": "Entry Charges Paid"
+          },
+          "cost_basis": {
+            "type": "string",
+            "title": "Cost Basis"
+          },
+          "margin_blocked": {
+            "type": "string",
+            "title": "Margin Blocked"
+          },
+          "financing_paid": {
+            "type": "string",
+            "title": "Financing Paid"
+          },
+          "financing_accrued_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Financing Accrued Until"
+          },
+          "exit_value": {
+            "type": "string",
+            "title": "Exit Value"
+          },
+          "exit_charges": {
+            "type": "string",
+            "title": "Exit Charges"
+          },
+          "realized_pnl": {
+            "type": "string",
+            "title": "Realized Pnl"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "closed_how": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed How"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Opened At"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "opened_by_order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened By Order Id"
+          },
+          "lot_exits": {
+            "type": "string",
+            "enum": [
+              "specific",
+              "fifo"
+            ],
+            "title": "Lot Exits"
+          },
+          "last_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Price"
+          },
+          "market_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Value"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pnl"
+          },
+          "unrealized_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pct"
+          },
+          "price_unavailable": {
+            "type": "boolean",
+            "title": "Price Unavailable"
+          },
+          "stop_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Price"
+          },
+          "target_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Price"
+          },
+          "protection_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protection Expires At"
+          },
+          "stop_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProtectionOutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProtectionOutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "description": "IANA zone of the exchange, so times can be shown on its clock.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "currency",
+          "market_code",
+          "direction",
+          "product",
+          "quantity",
+          "open_quantity",
+          "entry_price",
+          "entry_fx_rate",
+          "entry_value",
+          "entry_charges",
+          "entry_charges_paid",
+          "cost_basis",
+          "margin_blocked",
+          "financing_paid",
+          "financing_accrued_until",
+          "exit_value",
+          "exit_charges",
+          "realized_pnl",
+          "status",
+          "closed_how",
+          "opened_at",
+          "closed_at",
+          "opened_by_order_id",
+          "lot_exits",
+          "last_price",
+          "market_value",
+          "unrealized_pnl",
+          "unrealized_pct",
+          "price_unavailable",
+          "stop_price",
+          "target_price",
+          "protection_expires_at",
+          "stop_outcome",
+          "target_outcome",
+          "timezone"
+        ],
+        "title": "TradeOut"
+      },
+      "TradeStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ],
+        "title": "TradeStatus"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WatchlistIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "WatchlistIn"
+      },
+      "WatchlistItemOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "change_percent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Percent"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "created_at"
+        ],
+        "title": "WatchlistItemOut"
+      }
+    }
+  }
+}

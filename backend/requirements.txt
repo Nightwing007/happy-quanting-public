@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+yfinance
+pandas
+sqlalchemy
+cachetools
+pydantic-settings
+alembic
+exchange_calendars

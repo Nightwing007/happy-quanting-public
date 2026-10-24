@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "real_calendar: use the real exchange calendars instead of treating every market as open",
+]
