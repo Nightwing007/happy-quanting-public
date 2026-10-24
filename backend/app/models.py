@@ -278,6 +278,21 @@ class SimSession(Base):
     cursor: Mapped[datetime] = mapped_column(UTCDateTime)
     status: Mapped[str] = mapped_column(String, default=SimStatus.READY)  # SimStatus
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    # The strategy this session runs, if any (`library|mine|source|listing`), copied at create so
+    # later edits change nothing. Server-only: a listing sim keeps just the listing and its pinned
+    # version here (its code and settings are read from `ListingVersion`), and no schema carries
+    # `source` or `params`.
+    strategy_kind: Mapped[str | None] = mapped_column(String, nullable=True)
+    strategy_key: Mapped[str | None] = mapped_column(String, nullable=True)  # library / mine
+    user_algo_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_algos.id", name="fk_sim_sessions_user_algo_id", ondelete="SET NULL"), nullable=True
+    )
+    listing_id: Mapped[int | None] = mapped_column(
+        ForeignKey("algo_listings.id", name="fk_sim_sessions_listing_id", ondelete="SET NULL"), nullable=True
+    )
+    listing_version: Mapped[int | None] = mapped_column(nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # decimals as strings
 
 
 class BacktestStatus(StrEnum):
@@ -301,6 +316,7 @@ class Backtest(Base):
         ForeignKey("users.id", name="fk_backtests_owner_user_id"), nullable=True
     )
     strategy_key: Mapped[str] = mapped_column(String)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)  # code under test; never in a schema
     params: Mapped[dict] = mapped_column(JSON)  # as given, decimals as strings
     symbols: Mapped[list] = mapped_column(JSON)
     interval: Mapped[str] = mapped_column(String)
@@ -317,7 +333,8 @@ class Backtest(Base):
 
 
 class UserAlgo(Base):
-    """A saved algorithm: one of the predefined strategies plus the settings the person tuned."""
+    """A saved algorithm: one of the predefined strategies plus the settings the person tuned, or
+    code written in the editor (`source` set, `strategy_key` empty)."""
 
     __tablename__ = "user_algos"
 
@@ -327,8 +344,157 @@ class UserAlgo(Base):
     )
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(String, default="")
-    strategy_key: Mapped[str] = mapped_column(String)  # a key of the predefined library
+    strategy_key: Mapped[str] = mapped_column(String)  # a key of the predefined library; "" for source
     params: Mapped[dict] = mapped_column(JSON)  # every setting, decimals as strings
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)  # editor code, owner-only
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class ListingStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    RETIRED = "retired"
+
+
+class PerformanceStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    UNAVAILABLE = "unavailable"  # the interval's history can't cover the window
+
+
+class AlgoListing(Base):
+    """An algorithm offered on the marketplace. `source` or `strategy_key` + `params` is the
+    server-only code reference: exactly one form is set, and no public view carries either."""
+
+    __tablename__ = "algo_listings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_algo_listings_owner_user_id"))
+    name: Mapped[str] = mapped_column(String)
+    tagline: Mapped[str] = mapped_column(String(140), default="")
+    description: Mapped[str] = mapped_column(Text, default="")  # markets, style, risk, assumptions
+    markets: Mapped[list] = mapped_column(JSON)  # segment ("india") or market codes ("NSE")
+    test_symbols: Mapped[list] = mapped_column(JSON)  # what the performance is measured on
+    interval: Mapped[str] = mapped_column(String)
+    fee_percent: Mapped[Decimal] = mapped_column(DecimalString)  # of net profit, 0-50
+    status: Mapped[str] = mapped_column(String, default=ListingStatus.DRAFT)  # ListingStatus
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    strategy_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    params: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # decimals as strings
+    version: Mapped[int] = mapped_column(default=1)  # bumped when the code or its settings change
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class ListingVersion(Base):
+    """The code of one version of a listing, kept server-side forever so a subscriber pinned to it
+    keeps running it after the creator uploads a newer one. Like the listing's own code reference
+    it never appears in a public schema: only version numbers and changelogs do."""
+
+    __tablename__ = "listing_versions"
+    __table_args__ = (UniqueConstraint("listing_id", "version", name="uq_listing_versions"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("algo_listings.id", name="fk_listing_versions_listing_id")
+    )
+    version: Mapped[int] = mapped_column()
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    strategy_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    params: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # decimals as strings
+    interval: Mapped[str] = mapped_column(String)
+    changelog: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class ListingPerformance(Base):
+    """What a listing earned over one standard window, computed by the server. `results` holds
+    totals and curves only: never trades, orders or logs, which could reveal entry rules."""
+
+    __tablename__ = "listing_performance"
+    __table_args__ = (UniqueConstraint("listing_id", "window", "version", name="uq_listing_performance"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("algo_listings.id", name="fk_listing_performance_listing_id")
+    )
+    window: Mapped[str] = mapped_column(String)  # 3mo | 1y | 3y
+    version: Mapped[int] = mapped_column()  # the listing version it was measured for
+    start: Mapped[date] = mapped_column(Date)
+    end: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String, default=PerformanceStatus.QUEUED)  # PerformanceStatus
+    results: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # PerformanceResultsOut
+    note: Mapped[str | None] = mapped_column(String, nullable=True)  # why unavailable / failed
+    computed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+
+
+class SubscriptionStatus(StrEnum):
+    ACTIVE = "active"
+    STOPPING = "stopping"  # exits are waiting (market closed); the loop finishes it once flat
+    STOPPED = "stopped"
+
+
+class Subscription(Base):
+    """A subscriber running a listing's algorithm on a dedicated `kind="algo"` paper account."""
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    subscriber_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", name="fk_subscriptions_subscriber_user_id")
+    )
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("algo_listings.id", name="fk_subscriptions_listing_id")
+    )
+    listing_version: Mapped[int] = mapped_column()  # the version the run was last built from
+    symbols: Mapped[list] = mapped_column(JSON)
+    capital: Mapped[Decimal] = mapped_column(DecimalString)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", name="fk_subscriptions_account_id"))
+    # The fee the subscriber agreed to when subscribing; a later edit of the listing's fee doesn't apply.
+    fee_percent: Mapped[Decimal] = mapped_column(DecimalString)
+    high_water_mark: Mapped[Decimal] = mapped_column(DecimalString, default=Decimal(0))
+    fees_paid: Mapped[Decimal] = mapped_column(DecimalString, default=Decimal(0))
+    status: Mapped[str] = mapped_column(String, default=SubscriptionStatus.ACTIVE)  # SubscriptionStatus
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    stopped_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+
+
+class FeeLedger(Base):
+    """One profit-share payment: both the creator and the subscriber can read their rows."""
+
+    __tablename__ = "fee_ledger"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", name="fk_fee_ledger_subscription_id")
+    )
+    creator_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_fee_ledger_creator_user_id"))
+    subscriber_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", name="fk_fee_ledger_subscriber_user_id")
+    )
+    amount: Mapped[Decimal] = mapped_column(DecimalString)  # what actually moved
+    shortfall: Mapped[Decimal] = mapped_column(DecimalString, default=Decimal(0))  # owed but not payable
+    profit_before: Mapped[Decimal] = mapped_column(DecimalString)
+    profit_after: Mapped[Decimal] = mapped_column(DecimalString)
+    hwm_before: Mapped[Decimal] = mapped_column(DecimalString)
+    hwm_after: Mapped[Decimal] = mapped_column(DecimalString)
+    fee_percent: Mapped[Decimal] = mapped_column(DecimalString)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class CashTransfer(Base):
+    """Capital moving between a subscriber's live account and the subscription's account."""
+
+    __tablename__ = "cash_transfers"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", name="fk_cash_transfers_subscription_id")
+    )
+    kind: Mapped[str] = mapped_column(String)  # "fund" (live -> sub-account) or "return" (back)
+    amount: Mapped[Decimal] = mapped_column(DecimalString)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 

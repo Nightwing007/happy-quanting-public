@@ -41,7 +41,7 @@ def test_migrations_match_models(file_engine: Engine) -> None:
         ctx = MigrationContext.configure(conn, opts={"compare_type": True, "render_as_batch": True})
         diffs = compare_metadata(ctx, Base.metadata)
     assert diffs == [], f"models and migrations differ: {diffs}"
-    assert _version(file_engine) == "0011"
+    assert _version(file_engine) == "0016"
 
 
 def test_pre_migration_database_is_stamped_and_upgraded(file_engine: Engine) -> None:
@@ -54,10 +54,10 @@ def test_pre_migration_database_is_stamped_and_upgraded(file_engine: Engine) -> 
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0011"
+    assert _version(file_engine) == "0016"
     # Running again is a no-op, not an error.
     upgrade_database(file_engine)
-    assert _version(file_engine) == "0011"
+    assert _version(file_engine) == "0016"
 
 
 def test_0001_database_with_data_upgrades_to_default_brokers(file_engine: Engine) -> None:
@@ -80,7 +80,7 @@ def test_0001_database_with_data_upgrades_to_default_brokers(file_engine: Engine
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0011"
+    assert _version(file_engine) == "0016"
     with Session(file_engine) as session:
         account = session.query(Account).one()
         assert (account.broker_india, account.broker_international, account.broker_crypto) == (
@@ -276,7 +276,7 @@ def test_0004_adds_empty_protection_columns_and_keeps_existing_trades(file_engin
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0011"
+    assert _version(file_engine) == "0016"
     with Session(file_engine) as session:
         trade = session.query(Trade).one()
         assert (trade.symbol, trade.open_quantity) == ("AAPL", Decimal("10"))
@@ -297,7 +297,7 @@ def test_0005_makes_every_existing_account_live(file_engine: Engine) -> None:
 
     upgrade_database(file_engine)
 
-    assert _version(file_engine) == "0011"
+    assert _version(file_engine) == "0016"
     with Session(file_engine) as session:
         account = session.query(Account).one()
         # 0010 later hands every ownerless account to the demo user (id 1 here).

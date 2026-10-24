@@ -16,6 +16,8 @@ const NAV = [
   { href: "/trade", label: "Trade" },
   { href: "/sim", label: "Sim" },
   { href: "/algos", label: "Algos" },
+  { href: "/marketplace", label: "Market" },
+  { href: "/create", label: "Create" },
   { href: "/orders", label: "Orders" },
   { href: "/payouts", label: "Payouts" },
   { href: "/settings", label: "Settings" },
@@ -94,10 +96,21 @@ function UserMenu() {
         <UserAvatar name={name} url={user.avatar_url} />
         <span className="hidden max-w-32 truncate sm:inline">{name}</span>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-44 gap-1 p-1">
+      <PopoverContent align="end" className="w-48 gap-1 p-1">
         <Link href="/profile" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
           Profile
         </Link>
+        <Link href="/marketplace/subscriptions" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+          My subscriptions
+        </Link>
+        <Link href="/create" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+          Create
+        </Link>
+        {user.is_creator && (
+          <Link href="/marketplace/earnings" className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+            My earnings
+          </Link>
+        )}
         <button
           type="button"
           disabled={logout.isPending}

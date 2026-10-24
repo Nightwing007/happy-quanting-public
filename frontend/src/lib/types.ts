@@ -46,9 +46,27 @@ export type BacktestMetrics = Schemas["BacktestMetricsOut"];
 export type BacktestTrade = Schemas["BacktestTradeOut"];
 export type WatchlistItem = Schemas["WatchlistItemOut"];
 export type User = Schemas["UserOut"];
+export type Listing = Schemas["ListingPublicOut"];
+export type ListingDetail = Schemas["ListingDetailOut"];
+export type ListingPerformance = Schemas["ListingPerformanceOut"];
+export type PerformanceResults = Schemas["PerformanceResultsOut"];
+export type ListingCreator = Schemas["ListingCreatorOut"];
+export type CreatorProfile = Schemas["CreatorProfileOut"];
+export type Subscription = Schemas["SubscriptionOut"];
+export type SubscribeIn = Schemas["SubscribeIn"];
+export type Earnings = Schemas["EarningsOut"];
+export type ListingEarnings = Schemas["ListingEarningsOut"];
 export type SignupIn = Schemas["SignupIn"];
 export type LoginIn = Schemas["LoginIn"];
 export type ProfileIn = Schemas["ProfileIn"];
+export type Rules = Schemas["RulesOut"];
+export type ValidationReport = Schemas["ValidationReportOut"];
+export type CodeProblem = Schemas["ProblemOut"];
+export type StrategyMeta = Schemas["StrategyMetaOut"];
+export type ListingOwner = Schemas["ListingOwnerOut"];
+export type ListingIn = Schemas["ListingIn"];
+export type ListingUpdateIn = Schemas["ListingUpdateIn"];
+export type ListingVersion = Schemas["ListingVersionOut"];
 
 // /api/health is declared as a loose string map in the schema; pin down the real shape.
 export type Health = {

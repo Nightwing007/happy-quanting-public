@@ -29,7 +29,13 @@ from app.algos.runner import _EngineBackend, run_strategy_on
 from app.algos.sandbox import load_strategy
 from app.market_data.base import TRADABLE_TYPES, Bar, Instrument, MarketDataProvider
 from app.market_data.fx import get_fx_rate
-from app.market_data.history import HistoryRangeError, get_history, today_utc, validate_range
+from app.market_data.history import (
+    HistoryRangeError,
+    earliest_date,
+    get_history,
+    today_utc,
+    validate_range,
+)
 from app.market_data.replay import ReplayProvider
 from app.models import Account, AccountKind, Order, OrderStatus, Trade, TradeDirection, TradeStatus
 from app.schemas import (
@@ -380,8 +386,10 @@ def _load(
     end: date,
     currency: str,
     today: date,
-) -> tuple[dict[str, list[Bar]], dict[str, list[Bar]]]:
+    warmup_bars: int = 0,
+) -> tuple[dict[str, list[Bar]], dict[str, list[Bar]], dict[str, list[Bar]]]:
     bars = {s: get_history(db, provider, s, interval, start, end, today) for s in names}
+    warm = _load_warmup(db, provider, names, interval, start, warmup_bars, today)
     empty = [s for s, series in bars.items() if not series]
     if len(empty) == len(names):
         raise HistoryRangeError(
@@ -395,7 +403,53 @@ def _load(
         pair: get_history(db, provider, pair, "1d", fx_start, end, today)
         for pair in fx_pairs(instruments, currency)
     }
-    return bars, fx
+    return bars, warm, fx
+
+
+# Seconds in the shortest trading day we pad for: intraday bars are spread over at least this many
+# hours a day (US and India sessions are 6.5 and 6.25 hours; crypto runs all day).
+_MIN_SESSION_SECONDS = 6 * 3600
+_INTERVAL_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "30m": 1800, "1h": 3600}
+
+
+def warmup_start(interval: str, start: date, warmup_bars: int, today: date) -> date:
+    """The first day to load so that `warmup_bars` closed bars exist before `start`.
+
+    Calendar days are padded for weekends and holidays (daily: ~1.5x plus a week; weekly and
+    monthly: a fifth more plus a period; intraday: sessions of at least six hours, 7/5 for
+    weekends, plus a few days). Clamped to the earliest date the interval's history reaches, so a
+    1h strategy near the 730-day limit loads what exists and `_run_backtest` says if it is short.
+    """
+    need = max(1, warmup_bars)
+    if interval == "1d":
+        days = math.ceil(need * 1.5) + 7
+    elif interval == "1wk":
+        days = math.ceil(need * 7 * 1.2) + 14
+    elif interval == "1mo":
+        days = need * 31 + 31
+    else:
+        sessions = math.ceil(need * _INTERVAL_SECONDS[interval] / _MIN_SESSION_SECONDS)
+        days = math.ceil(sessions * 7 / 5) + 4
+    first = start - timedelta(days=days)
+    earliest = earliest_date(interval, today)
+    return max(first, earliest) if earliest is not None else first
+
+
+def _load_warmup(
+    db: Session,
+    provider: MarketDataProvider,
+    names: list[str],
+    interval: str,
+    start: date,
+    warmup_bars: int,
+    today: date,
+) -> dict[str, list[Bar]]:
+    """Closed bars from before `start`, which the strategy sees as history but cannot trade on."""
+    first = warmup_start(interval, start, warmup_bars, today)
+    last = start - timedelta(days=1)
+    if first > last:
+        return {s: [] for s in names}
+    return {s: get_history(db, provider, s, interval, first, last, today) for s in names}
 
 
 @dataclass
@@ -513,7 +567,10 @@ def _run_backtest(
     key, cls, values, names = req.key, req.cls, req.values, req.names
     instruments, markets, chosen, today = req.instruments, req.markets, req.brokers, req.today
 
-    bars, fx = _load(db, provider, names, instruments, interval, start, end, account_currency, today)
+    warmup_bars = (strategy if strategy is not None else cls).warmup_bars
+    bars, warm, fx = _load(
+        db, provider, names, instruments, interval, start, end, account_currency, today, warmup_bars
+    )
 
     replay = ReplayProvider(
         datetime.now(UTC),  # replaced below, before anything reads it
@@ -526,12 +583,20 @@ def _run_backtest(
         replay.load(symbol, interval, series)
     for pair, series in fx.items():
         replay.load(pair, "1d", series)
+    # The window alone decides where the replay starts and which moments are visited and measured;
+    # the warmup bars are added after, so they are closed history from the first step but no
+    # moment before `start` is ever visited (nothing can trade there).
     first_cursor = replay.first_cursor(names, interval)
     assert first_cursor is not None
     replay.cursor = first_cursor
     visits = replay.visit_times(names, interval)
     closes = replay.close_times(names, interval)
     n_bars = len(closes)
+    for symbol, series in warm.items():
+        if series:
+            replay.load(symbol, interval, [*series, *bars[symbol]])
+    available = min(len(warm[s]) + len(bars[s]) for s in names)
+    warm_loaded = min(len(warm[s]) for s in names)
 
     account = _new_account(
         db, currency=account_currency, cash=starting_cash, brokers=chosen, owner=owner_user_id
@@ -545,16 +610,22 @@ def _run_backtest(
         hold_ctx = TradingContext(db, hold_account, replay, lambda: replay.cursor)
         strategy = strategy or cls()
         run = run_strategy_on(ctx, strategy, values, names)
-        if n_bars < strategy.warmup_bars:
+        if available < strategy.warmup_bars:
             raise BacktestError(
-                f"{cls.name or key} needs {strategy.warmup_bars} bars before it can act, but "
-                f"{start:%d %b %Y} to {end:%d %b %Y} holds only {n_bars}. Pick a longer range."
+                f"{cls.name or key} needs {strategy.warmup_bars} bars before it can act, but only "
+                f"{available} {interval} bars exist up to {end:%d %b %Y} ({warm_loaded} before "
+                f"{start:%d %b %Y} and {n_bars} in the range). Pick a longer range or a later end date."
             )
         hold = _BuyAndHold(hold_ctx, strategy, names, starting_cash)
 
         points: list[_Point] = []
         hold_points: list[_Point] = []
         report_every = max(1, len(visits) // 100)
+        if any(warm.values()):
+            # The warmup bars are already closed, so a strategy can decide on them before the first
+            # session opens; its order then fills at that first open, as a trader's would, not a
+            # bar later. Nothing is measured here and no price before `start` can fill.
+            run.step()
         for index, stamp in enumerate(visits):
             replay.cursor = datetime.fromtimestamp(stamp, UTC)
             hold.try_buying()
@@ -569,7 +640,7 @@ def _run_backtest(
 
         results = _results(
             db, ctx, hold_ctx, run, key, cls, values, instruments, markets, interval, start, end,
-            starting_cash, account_currency, points, hold_points, hold, n_bars,
+            starting_cash, account_currency, points, hold_points, hold, n_bars, warm_loaded,
         )  # fmt: skip
         if store is not None:
             store(results)
@@ -611,7 +682,7 @@ class _BuyAndHold:
 
 def _results(
     db, ctx, hold_ctx, run, key, cls, values, instruments, markets, interval, start, end,
-    starting_cash, currency, points, hold_points, hold, n_bars,
+    starting_cash, currency, points, hold_points, hold, n_bars, warm_loaded,
 ) -> BacktestResultsOut:  # fmt: skip
     account, hold_account = ctx.account, hold_ctx.account
     trades = list(db.scalars(select(Trade).where(Trade.account_id == account.id).order_by(Trade.id)))
@@ -698,10 +769,18 @@ def _results(
         for c, d, h in zip(curve, drawdown, hold_drawdown, strict=True)
     ]
 
-    notes = [
-        f"{cls.name or key} needs {run.strategy.warmup_bars} bars before it can act, so the first "
-        f"{run.strategy.warmup_bars} of the {n_bars} bars only feed its indicators.",
-    ]
+    needed = run.strategy.warmup_bars
+    if warm_loaded >= needed:
+        notes = [
+            f"{cls.name or key} needs {needed} bars before it can act. They were loaded from before "
+            f"{start:%d %b %Y}, so it can act from the first bar of the range; nothing is traded before it."
+        ]
+    else:
+        notes = [
+            f"{cls.name or key} needs {needed} bars before it can act. Only {warm_loaded} exist before "
+            f"{start:%d %b %Y}, so the first {needed - warm_loaded} of the {n_bars} bars in the range "
+            "only feed its indicators."
+        ]
     if interval in ("1d", "1wk", "1mo"):
         notes.append(
             "Daily bars give two prices a day, the open and the close. Orders decided at a close "

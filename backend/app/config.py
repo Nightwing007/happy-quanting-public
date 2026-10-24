@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     run_migrations: bool = True
     # The 60-second loop that fills limit orders. Tests switch it off.
     background_jobs: bool = True
+    # Five demo creators with listings, made at startup (needs background_jobs to measure them).
+    seed_demo_marketplace: bool = True
     # Set true behind HTTPS so the session cookie is never sent over plain HTTP.
     cookie_secure: bool = False
     database_url: str = f"sqlite:///{(DATA_DIR / 'app.db').as_posix()}"

@@ -5,7 +5,7 @@ import * as api from "./api";
 import { LIVE_BASE } from "./api";
 import type { OrderFilters, TradeFilters } from "./api";
 import { useTradingBase } from "./trading-scope";
-import type { BacktestIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, UserAlgoIn } from "./types";
+import type { BacktestIn, ListingIn, ListingUpdateIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, SubscribeIn, UserAlgoIn } from "./types";
 
 const THIRTY_SECONDS = 30_000;
 
@@ -41,6 +41,13 @@ export const queryKeys = {
   myAlgos: ["my-algos"] as const,
   backtests: ["backtests"] as const,
   backtest: (id: number) => ["backtest", id] as const,
+  listings: (market: string | null, creator: string | null) => ["listings", market, creator] as const,
+  listing: (id: number) => ["listing", id] as const,
+  creator: (username: string) => ["creator", username] as const,
+  subscriptions: ["subscriptions"] as const,
+  earnings: ["earnings"] as const,
+  algoRules: ["algo-rules"] as const,
+  myListings: ["my-listings"] as const,
 };
 
 export const useHealth = () =>
@@ -397,6 +404,14 @@ export function useCreateMyAlgo() {
   });
 }
 
+export function useUpdateMyAlgo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UserAlgoIn & { id: number }) => api.updateMyAlgo(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.myAlgos }),
+  });
+}
+
 export function useDeleteMyAlgo() {
   const qc = useQueryClient();
   return useMutation({
@@ -439,5 +454,107 @@ export function useDeleteBacktest() {
   return useMutation({
     mutationFn: (id: number) => api.deleteBacktest(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.backtests }),
+  });
+}
+
+// Marketplace. Performance is measured on the server and changes rarely, so no polling here.
+export const useListings = (market: string | null = null, creator: string | null = null) =>
+  useQuery({
+    queryKey: queryKeys.listings(market, creator),
+    queryFn: () => api.listListings({ market: market ?? undefined, creator: creator ?? undefined }),
+    staleTime: THIRTY_SECONDS,
+  });
+
+export const useListing = (id: number) =>
+  useQuery({ queryKey: queryKeys.listing(id), queryFn: () => api.getListing(id), staleTime: THIRTY_SECONDS });
+
+export const useCreator = (username: string) =>
+  useQuery({ queryKey: queryKeys.creator(username), queryFn: () => api.getCreator(username), retry: false });
+
+// A stopping subscription is waiting for markets to open, so it is polled a little faster.
+export const useSubscriptions = () =>
+  useQuery({
+    queryKey: queryKeys.subscriptions,
+    queryFn: api.listSubscriptions,
+    refetchInterval: (q) => (q.state.data?.some((s) => s.status === "stopping") ? 10_000 : THIRTY_SECONDS),
+  });
+
+// Subscribing and stopping move cash between the live account and the sub-account.
+function invalidateAfterSubscriptionChange(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: queryKeys.subscriptions });
+  qc.invalidateQueries({ queryKey: queryKeys.portfolio });
+  qc.invalidateQueries({ queryKey: queryKeys.earnings });
+}
+
+export function useSubscribe(listingId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SubscribeIn) => api.subscribeToListing(listingId, body),
+    onSuccess: () => invalidateAfterSubscriptionChange(qc),
+  });
+}
+
+export function useStopSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.stopSubscription(id),
+    onSuccess: () => invalidateAfterSubscriptionChange(qc),
+  });
+}
+
+export const useEarnings = (enabled = true) =>
+  useQuery({ queryKey: queryKeys.earnings, queryFn: api.getEarnings, enabled, refetchInterval: THIRTY_SECONDS });
+
+// Creator side. The rules are static text, so they are fetched once.
+export const useAlgoRules = () =>
+  useQuery({ queryKey: queryKeys.algoRules, queryFn: api.getAlgoRules, staleTime: Infinity });
+
+export const useValidateCode = () => useMutation({ mutationFn: (source: string) => api.validateCode(source) });
+
+export const useMyListings = () => useQuery({ queryKey: queryKeys.myListings, queryFn: api.listMyListings });
+
+function invalidateAfterListingChange(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: queryKeys.myListings });
+  qc.invalidateQueries({ queryKey: ["listings"] });
+  qc.invalidateQueries({ queryKey: ["listing"] });
+}
+
+export function useCreateListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ListingIn) => api.createListing(body),
+    onSuccess: () => invalidateAfterListingChange(qc),
+  });
+}
+
+export function useUpdateListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { id: number } & ListingUpdateIn) => api.updateListing(body),
+    onSuccess: () => invalidateAfterListingChange(qc),
+  });
+}
+
+export function usePublishListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.publishListing(id),
+    onSuccess: () => invalidateAfterListingChange(qc),
+  });
+}
+
+export function useRetireListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.retireListing(id),
+    onSuccess: () => invalidateAfterListingChange(qc),
+  });
+}
+
+export function useUpgradeSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.upgradeSubscription(id),
+    onSuccess: () => invalidateAfterSubscriptionChange(qc),
   });
 }

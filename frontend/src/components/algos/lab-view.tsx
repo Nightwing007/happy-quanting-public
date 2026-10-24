@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { algoIntervalWords, historyLimitsText, MARKET_LABELS, paramPayload, paramProblem } from "@/lib/algo-format";
+import { algoIntervalWords, historyLimitsText, MARKET_LABELS, paramPayload, paramProblem, yearBefore } from "@/lib/algo-format";
 import {
   useAlgoLibrary,
   useBacktest,
@@ -30,12 +30,6 @@ import { initialValues, ParamForm, type ParamValues } from "./param-form";
 
 const MAX_SYMBOLS = 10;
 const SEGMENT_FIELD = { india: "broker_india", international: "broker_international", crypto: "broker_crypto" } as const;
-
-const yearBefore = (day: string) => {
-  const d = new Date(`${day}T00:00:00Z`);
-  d.setUTCFullYear(d.getUTCFullYear() - 1);
-  return d.toISOString().slice(0, 10);
-};
 
 type Chosen = Partial<Record<keyof typeof SEGMENT_FIELD, string>>;
 
@@ -309,11 +303,16 @@ export function LabView() {
       {!waiting && !error && !algo && (
         <Alert>
           <AlertDescription>
-            {wantsMine && !mine
-              ? "That saved algorithm no longer exists."
-              : "Pick an algorithm to open in the lab."}{" "}
-            <Link href="/algos" className="underline underline-offset-2">
-              Choose one
+            {mine?.source != null
+              ? "That saved algorithm is your own code, so it opens in the editor."
+              : wantsMine && !mine
+                ? "That saved algorithm no longer exists."
+                : "Pick an algorithm to open in the lab."}{" "}
+            <Link
+              href={mine?.source != null ? `/algos/editor?mine=${mine.id}` : "/algos"}
+              className="underline underline-offset-2"
+            >
+              {mine?.source != null ? "Open in the editor" : "Choose one"}
             </Link>
           </AlertDescription>
         </Alert>

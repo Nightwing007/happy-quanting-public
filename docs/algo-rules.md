@@ -8,9 +8,12 @@ the numbers below live in `backend/app/algos/rules.py` and a test keeps this pag
 - One `.py` file, at most **50 KB**.
 - Exactly one class that subclasses `hq.Strategy`. Other helper classes and functions are fine.
 - The class sets these in its body, written as plain values (no calculations, no variables):
-  `name`, `description`, `markets`, `interval`, `PARAMETERS`.
+  `name`, `description`, `markets`, `interval`, `warmup_bars`, `PARAMETERS`.
   - `interval` is one of `1m` `5m` `15m` `1h` `1d` `1wk`.
   - `markets` lists segments or market codes, e.g. `("india", "crypto")`.
+  - `warmup_bars` is a whole number from 0 to **1000**: the most bars your strategy needs before it can
+    trade. The site loads that many bars from before the test window so the strategy can act on day one.
+    Write the number itself (`warmup_bars = 30`); if your settings change what you need, write the largest.
   - `PARAMETERS` is a dict of `hq.Param(...)`; `Decimal("1.5")` counts as a plain value.
 - Top-level code is limited to imports, constants (plain values), functions and classes.
 
@@ -38,6 +41,7 @@ MAX_SOURCE_BYTES = 51200
 CPU_SECONDS_PER_HOOK = 2
 WALL_SECONDS_PER_RUN = 30
 MEMORY_MB = 256
+MAX_WARMUP_BARS = 1000
 MAX_LOG_LINES = 500
 MAX_LOG_CHARS = 200
 ```
@@ -61,6 +65,7 @@ class BuyAndWait(hq.Strategy):
     description = "Buys once with a tenth of the cash and holds."
     markets = ("india", "international", "crypto")
     interval = "1d"
+    warmup_bars = 1
     PARAMETERS = {
         "percent_of_cash": hq.Param("int", 10, min=1, max=100, label="Cash to spend (%)"),
     }

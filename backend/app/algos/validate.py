@@ -51,6 +51,7 @@ from app.algos.rules import (
     FORBIDDEN_NAMES,
     INTERVALS,
     MAX_SOURCE_BYTES,
+    MAX_WARMUP_BARS,
 )
 
 # --- results ----------------------------------------------------------------------------
@@ -74,6 +75,7 @@ class StrategyMeta:
     markets: tuple[str, ...]
     interval: str
     parameters: dict[str, Param]
+    warmup_bars: int = 0
 
 
 @dataclass(frozen=True)
@@ -438,6 +440,37 @@ def extract_meta(tree: ast.Module) -> tuple[StrategyMeta | None, list[Problem]]:
         )
         broken = True
 
+    warmup = 0
+    warmup_node = assigned.get("warmup_bars")
+    warmup_sentence = (
+        "Declare `warmup_bars = <number>` on the class: the most bars your strategy needs "
+        "before it can trade."
+    )
+    if warmup_node is None:
+        problems.append(_problem(cls, "meta_missing", warmup_sentence))
+        broken = True
+    else:
+        try:
+            literal = _lit(warmup_node)
+        except _NotLiteral as bad:
+            problems.append(_problem(bad.node, "meta_not_literal", warmup_sentence))
+            broken = True
+        else:
+            if isinstance(literal, bool) or not isinstance(literal, int):
+                problems.append(_problem(warmup_node, "meta_not_literal", warmup_sentence))
+                broken = True
+            elif not 0 <= literal <= MAX_WARMUP_BARS:
+                problems.append(
+                    _problem(
+                        warmup_node,
+                        "meta_invalid",
+                        f"`warmup_bars` must be between 0 and {MAX_WARMUP_BARS}, not {literal}.",
+                    )
+                )
+                broken = True
+            else:
+                warmup = literal
+
     parameters: dict[str, Param] = {}
     declared = assigned.get("PARAMETERS")
     if declared is not None:
@@ -475,7 +508,7 @@ def extract_meta(tree: ast.Module) -> tuple[StrategyMeta | None, list[Problem]]:
     if broken:
         return None, problems
     return (
-        StrategyMeta(name.strip(), description.strip(), tuple(markets), interval, parameters),  # type: ignore[union-attr,arg-type]
+        StrategyMeta(name.strip(), description.strip(), tuple(markets), interval, parameters, warmup),  # type: ignore[union-attr,arg-type]
         problems,
     )
 

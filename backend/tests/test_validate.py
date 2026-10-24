@@ -28,7 +28,7 @@ class S(hq.Strategy):
     name = "S"
     description = "d"
     markets = ("crypto",)
-    interval = "1d"
+    interval = "1d"; warmup_bars = 0  # one line so the tests below keep their line numbers
     PARAMETERS = {}
 
 """
@@ -99,7 +99,11 @@ BAD = [
         "PARAMETERS",
     ),
     ("non-literal markets", with_head_line('("crypto",)', "tuple(['a'])"), "meta_not_literal", "markets"),
-    ("missing interval", in_bar("pass").replace('    interval = "1d"\n', ""), "meta_missing", "class S"),
+    ("missing interval", in_bar("pass").replace('interval = "1d"; ', ""), "meta_missing", "class S"),
+    ("missing warmup_bars", in_bar("pass").replace("; warmup_bars = 0", ""), "meta_missing", "class S"),
+    ("sum as warmup_bars", with_head_line("warmup_bars = 0", "warmup_bars = 5 + 1"), "meta_not_literal", "5"),
+    ("float warmup_bars", with_head_line("warmup_bars = 0", "warmup_bars = 2.5"), "meta_not_literal", "2.5"),
+    ("too many warmup_bars", with_head_line("warmup_bars = 0", "warmup_bars = 5000"), "meta_invalid", "5000"),
     ("bad interval", with_head_line('"1d"', '"2d"'), "bad_interval", "interval ="),
     (
         "bad parameter",
@@ -254,3 +258,9 @@ def test_validate_route_returns_the_report(client: TestClient):
 
 def test_validate_route_needs_a_login(anon_client: TestClient):
     assert anon_client.post("/api/algos/validate", json={"source": ""}).status_code == 401
+
+
+def test_rules_route_is_public_and_serves_the_one_doc(anon_client: TestClient):
+    body = anon_client.get("/api/algos/rules").json()
+    assert body["markdown"] == DOC.read_text(encoding="utf-8")
+    assert body["limits"] == rules.DOCUMENTED_LIMITS

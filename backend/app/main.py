@@ -16,7 +16,7 @@ from app.algos import jobs as backtest_jobs
 from app.algos.api import ParameterError
 from app.algos.backtest import BacktestError
 from app.algos.runner import StrategyRunError
-from app.api import algos, backtests, market, sim, trading, watchlist
+from app.api import algos, backtests, market, marketplace, sim, trading, watchlist
 from app.api import auth as auth_api
 from app.api import settings as settings_api
 from app.api.deps import Provider
@@ -26,6 +26,9 @@ from app.db import SessionLocal
 from app.market_data import get_provider
 from app.market_data.base import DataUnavailable, MarketDataError, SymbolNotFound
 from app.market_data.history import HistoryRangeError
+from app.marketplace.listings import MarketplaceError
+from app.marketplace.live import drop_all, run_subscriptions_once
+from app.marketplace.seed import seed_marketplace
 from app.migrate import upgrade_database
 from app.sim.driver import drive_loop
 from app.sim.runner import SimError
@@ -53,6 +56,9 @@ def _fill_once() -> None:
             provider = get_provider()
             for account in live_accounts(db):
                 run_tick(TradingContext(db, account, provider, lambda: clock.now()))
+            # Subscriptions trade on their own accounts, after the live tick so both see one clock.
+            # This loop only exists when background jobs are on.
+            run_subscriptions_once(db, provider)
     except Exception:  # noqa: BLE001 - the loop must survive any single failure
         logger.exception("Background tick failed; will retry")
 
@@ -85,6 +91,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 if account.user_id is not None:
                     ctx = live_context(db, get_provider(), account.user_id)
                     convert_account_currency(ctx, settings.base_currency)
+            if settings.seed_demo_marketplace and settings.background_jobs:
+                try:
+                    seed_marketplace(db, get_provider())
+                except Exception:  # noqa: BLE001 - e.g. offline: the demo listings are not worth a failed start
+                    logger.exception("Seeding the demo marketplace failed; it will be retried next start")
     tasks = (
         [asyncio.create_task(_fill_loop()), asyncio.create_task(drive_loop())]
         if settings.background_jobs
@@ -96,6 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         if worker is not None:
             backtest_jobs.stop_worker(*worker)
+        drop_all()  # close any subscription sandbox children
         for task in tasks:
             task.cancel()
         for task in tasks:
@@ -111,6 +123,7 @@ app.include_router(trading.router)
 app.include_router(sim.router)
 app.include_router(sim.trading_router)
 app.include_router(backtests.router)
+app.include_router(marketplace.router)
 app.include_router(settings_api.router)
 app.include_router(watchlist.router)
 
@@ -160,6 +173,18 @@ def _backtest_error(request: Request, exc: BacktestError) -> JSONResponse:
 
 
 app.add_exception_handler(BacktestError, _backtest_error)
+
+
+def _marketplace_error(request: Request, exc: MarketplaceError) -> JSONResponse:
+    content: dict = {"detail": exc.message, "code": exc.code}
+    if exc.problems:
+        content["problems"] = [
+            {"line": p.line, "col": p.col, "code": p.code, "message": p.message} for p in exc.problems
+        ]
+    return JSONResponse(status_code=exc.status_code, content=content)
+
+
+app.add_exception_handler(MarketplaceError, _marketplace_error)
 
 
 def _bad_settings(request: Request, exc: ParameterError | StrategyRunError) -> JSONResponse:

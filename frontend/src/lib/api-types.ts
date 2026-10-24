@@ -90,6 +90,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/algos/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Algo Rules
+         * @description The rules page and its numbers, from the one doc and the one constants module (public).
+         */
+        get: operations["algo_rules_api_algos_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/algos/validate": {
         parameters: {
             query?: never;
@@ -680,6 +700,212 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/marketplace/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Listings */
+        get: operations["list_listings_api_marketplace_listings_get"];
+        put?: never;
+        /** Create Listing */
+        post: operations["create_listing_api_marketplace_listings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/creators/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Creator */
+        get: operations["get_creator_api_marketplace_creators__username__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/listings/{listing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Listing */
+        get: operations["get_listing_api_marketplace_listings__listing_id__get"];
+        /** Update Listing */
+        put: operations["update_listing_api_marketplace_listings__listing_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Listings */
+        get: operations["my_listings_api_marketplace_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/listings/{listing_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Listing */
+        post: operations["publish_listing_api_marketplace_listings__listing_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/listings/{listing_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire Listing */
+        post: operations["retire_listing_api_marketplace_listings__listing_id__retire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/listings/{listing_id}/refresh-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Performance */
+        post: operations["refresh_performance_api_marketplace_listings__listing_id__refresh_performance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/listings/{listing_id}/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subscribe */
+        post: operations["subscribe_api_marketplace_listings__listing_id__subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Subscriptions */
+        get: operations["my_subscriptions_api_marketplace_subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/subscriptions/{subscription_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop Subscription */
+        post: operations["stop_subscription_api_marketplace_subscriptions__subscription_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/subscriptions/{subscription_id}/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upgrade Subscription */
+        post: operations["upgrade_subscription_api_marketplace_subscriptions__subscription_id__upgrade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketplace/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Earnings */
+        get: operations["my_earnings_api_marketplace_earnings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -896,6 +1122,11 @@ export interface components {
              * @description A saved algorithm from /api/algos/mine; `params` is laid over its saved settings
              */
             algo_id?: number | null;
+            /**
+             * Source
+             * @description Uploaded strategy code to test before publishing; checked against the code rules. The result is visible only to the requester
+             */
+            source?: string | null;
             /** Params */
             params?: {
                 [key: string]: string | number | boolean;
@@ -1257,6 +1488,31 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /**
+         * CreatorProfileOut
+         * @description A creator's public face. Built field by field: never the password hash or sessions.
+         */
+        CreatorProfileOut: {
+            /** Username */
+            username: string;
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Bio */
+            bio: string;
+            /** Listing Count */
+            listing_count: number;
+        };
+        /** EarningsOut */
+        EarningsOut: {
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: string;
+            /** Listings */
+            listings: components["schemas"]["ListingEarningsOut"][];
+        };
         /** ExitIn */
         ExitIn: {
             /** Quantity */
@@ -1362,6 +1618,240 @@ export interface components {
             currency: string;
             /** Tradable */
             tradable: boolean;
+        };
+        /** ListingCreatorOut */
+        ListingCreatorOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+        };
+        /** ListingDetailOut */
+        ListingDetailOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Tagline */
+            tagline: string;
+            /** Description */
+            description: string;
+            /** Markets */
+            markets: string[];
+            /** Interval */
+            interval: string;
+            /** Fee Percent */
+            fee_percent: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "published" | "retired";
+            creator: components["schemas"]["ListingCreatorOut"];
+            headline: components["schemas"]["ListingPerformanceOut"] | null;
+            /** Performance */
+            performance: components["schemas"]["ListingPerformanceOut"][];
+            /** Versions */
+            versions: components["schemas"]["ListingVersionOut"][];
+        };
+        /** ListingEarningsOut */
+        ListingEarningsOut: {
+            /** Listing Id */
+            listing_id: number;
+            /** Name */
+            name: string;
+            /** Subscribers */
+            subscribers: number;
+            /** Active Subscribers */
+            active_subscribers: number;
+            /** Fees Received */
+            fees_received: string;
+        };
+        /** ListingIn */
+        ListingIn: {
+            /** Name */
+            name: string;
+            /**
+             * Tagline
+             * @default
+             */
+            tagline: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Markets */
+            markets: string[];
+            /** Test Symbols */
+            test_symbols?: string[];
+            /** Interval */
+            interval?: string | null;
+            /** Fee Percent */
+            fee_percent: number | string;
+            /** Source */
+            source?: string | null;
+            /** User Algo Id */
+            user_algo_id?: number | null;
+        };
+        /**
+         * ListingOwnerOut
+         * @description Everything, including the code reference. Served only to the owner.
+         */
+        ListingOwnerOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Tagline */
+            tagline: string;
+            /** Description */
+            description: string;
+            /** Markets */
+            markets: string[];
+            /** Interval */
+            interval: string;
+            /** Fee Percent */
+            fee_percent: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "published" | "retired";
+            creator: components["schemas"]["ListingCreatorOut"];
+            headline: components["schemas"]["ListingPerformanceOut"] | null;
+            /** Performance */
+            performance: components["schemas"]["ListingPerformanceOut"][];
+            /** Versions */
+            versions: components["schemas"]["ListingVersionOut"][];
+            /** Test Symbols */
+            test_symbols: string[];
+            /** Source */
+            source: string | null;
+            /** Strategy Key */
+            strategy_key: string | null;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ListingPerformanceOut */
+        ListingPerformanceOut: {
+            /**
+             * Window
+             * @enum {string}
+             */
+            window: "3mo" | "1y" | "3y";
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed" | "unavailable";
+            /** Note */
+            note: string | null;
+            /** Computed At */
+            computed_at: string | null;
+            results: components["schemas"]["PerformanceResultsOut"] | null;
+        };
+        /** ListingPublicOut */
+        ListingPublicOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Tagline */
+            tagline: string;
+            /** Description */
+            description: string;
+            /** Markets */
+            markets: string[];
+            /** Interval */
+            interval: string;
+            /** Fee Percent */
+            fee_percent: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "published" | "retired";
+            creator: components["schemas"]["ListingCreatorOut"];
+            headline: components["schemas"]["ListingPerformanceOut"] | null;
+        };
+        /**
+         * ListingUpdateIn
+         * @description Only the fields sent change. A new `source` or `params` makes a new version.
+         */
+        ListingUpdateIn: {
+            /** Name */
+            name?: string | null;
+            /** Tagline */
+            tagline?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Markets */
+            markets?: string[] | null;
+            /** Test Symbols */
+            test_symbols?: string[] | null;
+            /** Interval */
+            interval?: string | null;
+            /** Fee Percent */
+            fee_percent?: number | string | null;
+            /** Source */
+            source?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Changelog
+             * @description Notes for the new version
+             */
+            changelog?: string | null;
+        };
+        /**
+         * ListingVersionOut
+         * @description A version's number, date and notes. Never its code: that stays on the server.
+         */
+        ListingVersionOut: {
+            /** Version */
+            version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Changelog */
+            changelog: string | null;
         };
         /** LoginIn */
         LoginIn: {
@@ -1734,6 +2224,86 @@ export interface components {
             /** Payouts */
             payouts: components["schemas"]["PayoutOut"][];
         };
+        /** PerformanceBuyHoldOut */
+        PerformanceBuyHoldOut: {
+            /** Final Equity */
+            final_equity: string;
+            /** Total Return Pct */
+            total_return_pct: string;
+            /** Cagr Pct */
+            cagr_pct: string | null;
+            /** Max Drawdown Pct */
+            max_drawdown_pct: string;
+            /** Total Charges */
+            total_charges: string;
+        };
+        /** PerformanceDrawdownOut */
+        PerformanceDrawdownOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Strategy Pct */
+            strategy_pct: string;
+            /** Buy Hold Pct */
+            buy_hold_pct: string;
+        };
+        /** PerformanceMetricsOut */
+        PerformanceMetricsOut: {
+            /** Starting Cash */
+            starting_cash: string;
+            /** Final Equity */
+            final_equity: string;
+            /** Total Return Pct */
+            total_return_pct: string;
+            /** Cagr Pct */
+            cagr_pct: string | null;
+            /** Cagr Note */
+            cagr_note: string | null;
+            /** Max Drawdown Pct */
+            max_drawdown_pct: string;
+            /** Sharpe */
+            sharpe: string | null;
+            /** Sharpe Note */
+            sharpe_note: string | null;
+            /** Win Rate Pct */
+            win_rate_pct: string | null;
+            /** Profit Factor */
+            profit_factor: string | null;
+            /** Trade Count */
+            trade_count: number;
+            /** Total Charges */
+            total_charges: string;
+            /** Exposure Pct */
+            exposure_pct: string;
+        };
+        /** PerformancePointOut */
+        PerformancePointOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Equity */
+            equity: string;
+            /** Buy Hold Equity */
+            buy_hold_equity: string;
+        };
+        /**
+         * PerformanceResultsOut
+         * @description Totals and curves only. This is also what is stored for a listing.
+         */
+        PerformanceResultsOut: {
+            /** Account Currency */
+            account_currency: string;
+            metrics: components["schemas"]["PerformanceMetricsOut"];
+            /** Equity Curve */
+            equity_curve: components["schemas"]["PerformancePointOut"][];
+            /** Drawdown */
+            drawdown: components["schemas"]["PerformanceDrawdownOut"][];
+            buy_and_hold: components["schemas"]["PerformanceBuyHoldOut"];
+        };
         /** PortfolioOut */
         PortfolioOut: {
             /** Currency */
@@ -1853,6 +2423,15 @@ export interface components {
             as_of: number;
             market: components["schemas"]["MarketStatusOut"] | null;
         };
+        /** RulesOut */
+        RulesOut: {
+            /** Markdown */
+            markdown: string;
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+        };
         /** SegmentBrokersOut */
         SegmentBrokersOut: {
             /** Segment */
@@ -1938,15 +2517,25 @@ export interface components {
              */
             local_time: string;
         };
+        /** SimLogOut */
+        SimLogOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Text */
+            text: string;
+        };
         /** SimSessionIn */
         SimSessionIn: {
             /** Symbols */
             symbols: string[];
             /**
              * Interval
-             * @default 1m
+             * @description Bar size; the strategy's own when there is one, else 1m
              */
-            interval: string;
+            interval?: string | null;
             /**
              * Start Date
              * Format: date
@@ -1963,6 +2552,7 @@ export interface components {
              * @default 60
              */
             speed: number;
+            strategy?: components["schemas"]["SimStrategyIn"] | null;
         };
         /** SimSessionOut */
         SimSessionOut: {
@@ -2047,10 +2637,59 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            strategy?: components["schemas"]["SimStrategyOut"] | null;
+            /**
+             * Strategy Log
+             * @default []
+             */
+            strategy_log: components["schemas"]["SimLogOut"][];
             /** Bars */
             bars: {
                 [key: string]: components["schemas"]["BarOut"][];
             };
+        };
+        /**
+         * SimStrategyIn
+         * @description What a sim runs. `library`: `key` (+ `params`); `mine`: `algo_id` of your saved algorithm;
+         *     `source`: uploaded code (+ `params`); `listing`: a published marketplace listing, whose code and
+         *     settings stay hidden from the tester.
+         */
+        SimStrategyIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "library" | "mine" | "source" | "listing";
+            /** Key */
+            key?: string | null;
+            /** Algo Id */
+            algo_id?: number | null;
+            /** Source */
+            source?: string | null;
+            /** Listing Id */
+            listing_id?: number | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * SimStrategyOut
+         * @description Who is trading in this sim. For a marketplace listing, `name` is the listing's and `creator`
+         *     its creator's username; nothing else about it is shown.
+         */
+        SimStrategyOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "library" | "mine" | "source" | "listing";
+            /** Name */
+            name: string;
+            /** Interval */
+            interval: string;
+            /** Creator */
+            creator?: string | null;
         };
         /** StrategyMetaOut */
         StrategyMetaOut: {
@@ -2064,6 +2703,67 @@ export interface components {
             interval: string;
             /** Parameters */
             parameters: components["schemas"]["AlgoParamOut"][];
+            /**
+             * Warmup Bars
+             * @default 0
+             */
+            warmup_bars: number;
+        };
+        /** SubscribeIn */
+        SubscribeIn: {
+            /** Symbols */
+            symbols: string[];
+            /** Capital */
+            capital: number | string;
+        };
+        /**
+         * SubscriptionOut
+         * @description A subscriber's view of their own subscription: figures from the sub-account, never the
+         *     algorithm's code or settings.
+         */
+        SubscriptionOut: {
+            /** Id */
+            id: number;
+            /** Listing Id */
+            listing_id: number;
+            /** Listing Name */
+            listing_name: string;
+            /** Listing Version */
+            listing_version: number;
+            /** Latest Version */
+            latest_version: number;
+            /** Upgrade Available */
+            upgrade_available: boolean;
+            /** Symbols */
+            symbols: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "stopping" | "stopped";
+            /** Currency */
+            currency: string;
+            /** Capital */
+            capital: string;
+            /** Equity */
+            equity: string;
+            /** Realized Pnl */
+            realized_pnl: string;
+            /** Unrealized Pnl */
+            unrealized_pnl: string;
+            /** Fee Percent */
+            fee_percent: string;
+            /** Fees Paid */
+            fees_paid: string;
+            /** High Water Mark */
+            high_water_mark: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Stopped At */
+            stopped_at: string | null;
         };
         /** TradeOut */
         TradeOut: {
@@ -2181,7 +2881,12 @@ export interface components {
              * Strategy
              * @description Key of the predefined algorithm this is built on
              */
-            strategy: string;
+            strategy?: string | null;
+            /**
+             * Source
+             * @description Code written in the editor, checked against the code rules; instead of `strategy`
+             */
+            source?: string | null;
             /** Params */
             params?: {
                 [key: string]: string | number | boolean;
@@ -2207,6 +2912,8 @@ export interface components {
             params: {
                 [key: string]: string | number | boolean;
             };
+            /** Source */
+            source?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -2444,6 +3151,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlgoOut"][];
+                };
+            };
+        };
+    };
+    algo_rules_api_algos_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RulesOut"];
                 };
             };
         };
@@ -3792,6 +4519,420 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_listings_api_marketplace_listings_get: {
+        parameters: {
+            query?: {
+                /** @description A segment (india) or market code (NSE) */
+                market?: string | null;
+                /** @description Only this creator's listings (username) */
+                creator?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPublicOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_listing_api_marketplace_listings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_creator_api_marketplace_creators__username__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_listing_api_marketplace_listings__listing_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_listing_api_marketplace_listings__listing_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListingUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_listings_api_marketplace_mine_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingOwnerOut"][];
+                };
+            };
+        };
+    };
+    publish_listing_api_marketplace_listings__listing_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retire_listing_api_marketplace_listings__listing_id__retire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_performance_api_marketplace_listings__listing_id__refresh_performance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscribe_api_marketplace_listings__listing_id__subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_subscriptions_api_marketplace_subscriptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"][];
+                };
+            };
+        };
+    };
+    stop_subscription_api_marketplace_subscriptions__subscription_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_subscription_api_marketplace_subscriptions__subscription_id__upgrade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_earnings_api_marketplace_earnings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EarningsOut"];
                 };
             };
         };

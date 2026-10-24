@@ -28,7 +28,7 @@ class S(hq.Strategy):
     name = "S"
     description = "d"
     markets = ("crypto",)
-    interval = "1d"
+    interval = "1d"; warmup_bars = 0  # one line so the tests below keep their line numbers
     PARAMETERS = {}
 
 """

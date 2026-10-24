@@ -71,8 +71,8 @@ function Mine() {
       {isPending && <Skeleton className="h-24 w-full" />}
       {data && data.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          Nothing saved yet. Tune an algorithm in the lab, run a backtest, then choose &ldquo;Save as my
-          algorithm&rdquo; on the results.
+          Nothing saved yet. Tune an algorithm in the lab and choose &ldquo;Save as my algorithm&rdquo; on the
+          results, or write your own in the editor.
         </p>
       )}
       {remove.error && (
@@ -87,16 +87,24 @@ function Mine() {
               <CardTitle>{a.name}</CardTitle>
             </CardHeader>
             <CardContent className="grid min-w-0 gap-3">
-              <p className="text-xs text-muted-foreground">Built on {a.strategy_name}</p>
+              <p className="text-xs text-muted-foreground">
+                {a.source !== null ? "Your own code" : `Built on ${a.strategy_name}`}
+              </p>
               {a.description && <p className="text-sm text-muted-foreground">{a.description}</p>}
               <div className="flex flex-wrap items-center gap-2">
                 <Markets markets={a.markets} />
                 <Badge variant="outline">{algoIntervalWords(a.interval)} bars</Badge>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" nativeButton={false} render={<Link href={`/algos/lab?mine=${a.id}`} />}>
-                  Open in lab
-                </Button>
+                {a.source !== null ? (
+                  <Button size="sm" nativeButton={false} render={<Link href={`/algos/editor?mine=${a.id}`} />}>
+                    Edit in editor
+                  </Button>
+                ) : (
+                  <Button size="sm" nativeButton={false} render={<Link href={`/algos/lab?mine=${a.id}`} />}>
+                    Open in lab
+                  </Button>
+                )}
                 {confirming === a.id ? (
                   <>
                     <Button
@@ -136,9 +144,14 @@ export function AlgoGallery() {
             take.
           </p>
         </div>
-        <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/backtests" />}>
-          Backtest history
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" nativeButton={false} render={<Link href="/algos/editor" />}>
+            Code editor
+          </Button>
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/backtests" />}>
+            Backtest history
+          </Button>
+        </div>
       </div>
       <Library />
       <Mine />

@@ -104,3 +104,10 @@ export function paramPayload(p: AlgoParam, raw: ParamValue): string | number | b
   if (p.kind === "decimal") return String(raw).trim();
   return raw;
 }
+
+/** The same calendar day one year earlier, as YYYY-MM-DD. */
+export function yearBefore(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCFullYear(d.getUTCFullYear() - 1);
+  return d.toISOString().slice(0, 10);
+}

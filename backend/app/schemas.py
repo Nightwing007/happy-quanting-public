@@ -622,12 +622,28 @@ class MetricsOut(BaseModel):
 # --- simulation ---------------------------------------------------------------------------
 
 
+class SimStrategyIn(BaseModel):
+    """What a sim runs. `library`: `key` (+ `params`); `mine`: `algo_id` of your saved algorithm;
+    `source`: uploaded code (+ `params`); `listing`: a published marketplace listing, whose code and
+    settings stay hidden from the tester."""
+
+    kind: Literal["library", "mine", "source", "listing"]
+    key: str | None = None
+    algo_id: int | None = None
+    source: str | None = None
+    listing_id: int | None = None
+    params: dict | None = None
+
+
 class SimSessionIn(BaseModel):
     symbols: list[str] = Field(min_length=1, max_length=10)
-    interval: str = "1m"
+    interval: str | None = Field(
+        default=None, description="Bar size; the strategy's own when there is one, else 1m"
+    )
     start_date: date
     end_date: date
     speed: int = Field(default=60, ge=1, le=200, description="Bars per second while running")
+    strategy: SimStrategyIn | None = None
 
     @field_validator("symbols")
     @classmethod
@@ -662,7 +678,26 @@ class SimSessionOut(BaseModel):
     created_at: datetime
 
 
+class SimLogOut(BaseModel):
+    at: datetime
+    text: str
+
+
+class SimStrategyOut(BaseModel):
+    """Who is trading in this sim. For a marketplace listing, `name` is the listing's and `creator`
+    its creator's username; nothing else about it is shown."""
+
+    kind: Literal["library", "mine", "source", "listing"]
+    name: str
+    interval: str
+    creator: str | None = None
+
+
 class SimSessionStateOut(SimSessionOut):
+    strategy: SimStrategyOut | None = None
+    # The strategy's last 100 log lines, only for code the requester may see (library, saved,
+    # their own source); always empty for a listing.
+    strategy_log: list[SimLogOut] = []
     # Only bars that had finished by the cursor, so the chart can never show the future. The
     # last `bars_limit` of each symbol, oldest first, stamped like a live chart (exchange-local).
     bars: dict[str, list[BarOut]]
@@ -708,6 +743,12 @@ class StrategyMetaOut(BaseModel):
     markets: list[str]
     interval: str
     parameters: list[AlgoParamOut]
+    warmup_bars: int = 0
+
+
+class RulesOut(BaseModel):
+    markdown: str
+    limits: dict[str, int]
 
 
 class ValidationReportOut(BaseModel):
@@ -730,7 +771,11 @@ class BacktestBrokersIn(BaseModel):
 class UserAlgoIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     description: str = Field(default="", max_length=500)
-    strategy: str = Field(description="Key of the predefined algorithm this is built on")
+    strategy: str | None = Field(default=None, description="Key of the predefined algorithm this is built on")
+    source: str | None = Field(
+        default=None,
+        description="Code written in the editor, checked against the code rules; instead of `strategy`",
+    )
     params: dict[str, str | int | float | bool] = Field(default_factory=dict)
 
     @field_validator("name", "description")
@@ -755,6 +800,7 @@ class UserAlgoOut(BaseModel):
     interval: str
     markets: list[str]
     params: dict[str, str | int | bool]
+    source: str | None = None  # the owner's own code (these routes are owner-only)
     created_at: datetime
 
 
@@ -765,6 +811,11 @@ class BacktestIn(BaseModel):
     algo_id: int | None = Field(
         default=None,
         description="A saved algorithm from /api/algos/mine; `params` is laid over its saved settings",
+    )
+    source: str | None = Field(
+        default=None,
+        description="Uploaded strategy code to test before publishing; checked against the code rules. "
+        "The result is visible only to the requester",
     )
     params: dict[str, str | int | float | bool] = Field(default_factory=dict)
     symbols: list[str] = Field(min_length=1, max_length=10)
@@ -948,3 +999,190 @@ class ProfileIn(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=60)
     bio: str | None = Field(default=None, max_length=500)
     avatar_url: str | None = Field(default=None, max_length=500)
+
+
+# --- marketplace ---------------------------------------------------------------------------
+# Public listing models carry no code, settings, base algorithm or per-trade data, by design: a
+# test walks their OpenAPI schemas for those names. `ListingOwnerOut` is the one that does, and
+# only `/api/marketplace/mine` returns it.
+
+
+class PerformanceMetricsOut(BaseModel):
+    starting_cash: Money
+    final_equity: Money
+    total_return_pct: Money
+    cagr_pct: Money | None
+    cagr_note: str | None
+    max_drawdown_pct: Money
+    sharpe: Money | None
+    sharpe_note: str | None
+    win_rate_pct: Money | None
+    profit_factor: Money | None
+    trade_count: int  # closed trades; the trades themselves are never shown
+    total_charges: Money
+    exposure_pct: Money
+
+
+class PerformancePointOut(BaseModel):
+    at: datetime
+    equity: Money
+    buy_hold_equity: Money
+
+
+class PerformanceDrawdownOut(BaseModel):
+    at: datetime
+    strategy_pct: Money
+    buy_hold_pct: Money
+
+
+class PerformanceBuyHoldOut(BaseModel):
+    final_equity: Money
+    total_return_pct: Money
+    cagr_pct: Money | None
+    max_drawdown_pct: Money
+    total_charges: Money
+
+
+class PerformanceResultsOut(BaseModel):
+    """Totals and curves only. This is also what is stored for a listing."""
+
+    account_currency: str
+    metrics: PerformanceMetricsOut
+    equity_curve: list[PerformancePointOut]
+    drawdown: list[PerformanceDrawdownOut]
+    buy_and_hold: PerformanceBuyHoldOut
+
+
+class ListingPerformanceOut(BaseModel):
+    window: Literal["3mo", "1y", "3y"]
+    start: date
+    end: date
+    status: Literal["queued", "running", "done", "failed", "unavailable"]
+    note: str | None
+    computed_at: datetime | None
+    results: PerformanceResultsOut | None
+
+
+class ListingCreatorOut(BaseModel):
+    id: int
+    username: str
+    display_name: str
+    avatar_url: str | None
+
+
+class CreatorProfileOut(BaseModel):
+    """A creator's public face. Built field by field: never the password hash or sessions."""
+
+    username: str
+    display_name: str
+    avatar_url: str | None
+    bio: str
+    listing_count: int  # published listings
+
+
+class ListingPublicOut(BaseModel):
+    id: int
+    name: str
+    tagline: str
+    description: str
+    markets: list[str]
+    interval: str
+    fee_percent: Money
+    version: int
+    status: Literal["draft", "published", "retired"]
+    creator: ListingCreatorOut
+    headline: ListingPerformanceOut | None  # 1y when done, else the best window that is
+
+
+class ListingVersionOut(BaseModel):
+    """A version's number, date and notes. Never its code: that stays on the server."""
+
+    version: int
+    created_at: datetime
+    changelog: str | None
+
+
+class ListingDetailOut(ListingPublicOut):
+    performance: list[ListingPerformanceOut]  # every window of the latest version
+    versions: list[ListingVersionOut]
+
+
+class ListingOwnerOut(ListingDetailOut):
+    """Everything, including the code reference. Served only to the owner."""
+
+    test_symbols: list[str]
+    source: str | None
+    strategy_key: str | None
+    params: dict | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ListingIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    tagline: str = Field(default="", max_length=140)
+    description: str = Field(default="", max_length=5000)
+    markets: list[str] = Field(min_length=1)
+    test_symbols: list[str] = Field(default_factory=list)
+    interval: str | None = None  # the algorithm's own interval when left out
+    fee_percent: Decimal
+    source: str | None = None  # uploaded code, or...
+    user_algo_id: int | None = None  # ...one of the owner's saved algorithms
+
+
+class ListingUpdateIn(BaseModel):
+    """Only the fields sent change. A new `source` or `params` makes a new version."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    tagline: str | None = Field(default=None, max_length=140)
+    description: str | None = Field(default=None, max_length=5000)
+    markets: list[str] | None = Field(default=None, min_length=1)
+    test_symbols: list[str] | None = None
+    interval: str | None = None
+    fee_percent: Decimal | None = None
+    source: str | None = None
+    params: dict | None = None
+    changelog: str | None = Field(default=None, max_length=500, description="Notes for the new version")
+
+
+class SubscribeIn(BaseModel):
+    symbols: list[str] = Field(min_length=1)
+    capital: Decimal
+
+
+class SubscriptionOut(BaseModel):
+    """A subscriber's view of their own subscription: figures from the sub-account, never the
+    algorithm's code or settings."""
+
+    id: int
+    listing_id: int
+    listing_name: str
+    listing_version: int  # the version this subscription runs
+    latest_version: int  # the listing's newest
+    upgrade_available: bool  # newer, published and the subscription is running: opt in with /upgrade
+    symbols: list[str]
+    status: Literal["active", "stopping", "stopped"]
+    currency: str
+    capital: Money
+    equity: Money  # what the sub-account is worth now (once stopped: what came back)
+    realized_pnl: Money
+    unrealized_pnl: Money
+    fee_percent: Money
+    fees_paid: Money
+    high_water_mark: Money
+    created_at: datetime
+    stopped_at: datetime | None
+
+
+class ListingEarningsOut(BaseModel):
+    listing_id: int
+    name: str
+    subscribers: int  # a count; who they are is never shown
+    active_subscribers: int
+    fees_received: Money
+
+
+class EarningsOut(BaseModel):
+    currency: str
+    total: Money
+    listings: list[ListingEarningsOut]

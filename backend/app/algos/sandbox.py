@@ -356,7 +356,9 @@ class SandboxedStrategy:
         self.markets = meta.markets
         self.interval = meta.interval
         self.PARAMETERS = meta.parameters
-        self.warmup_bars = 0
+        # The class's literal is known before anything runs, so the backtester and the sim can
+        # preload it; the child's own value (set in on_start) replaces it once the strategy runs.
+        self.warmup_bars = meta.warmup_bars
         self.failure: SandboxError | None = None  # set when a limit stopped the run
         self.process = None  # the child, kept after close so callers can check it is gone
         self._conn = None

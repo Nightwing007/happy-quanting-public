@@ -7,7 +7,7 @@ import type { BacktestDetail } from "@/lib/types";
 import { ResultsView } from "./results-view";
 
 /** A backtest as it stands: how far it has got, why it failed, or its results. */
-export function BacktestOutcome({ detail }: { detail: BacktestDetail }) {
+export function BacktestOutcome({ detail, actions = true }: { detail: BacktestDetail; actions?: boolean }) {
   if (detail.status === "failed") {
     return (
       <Alert variant="destructive">
@@ -38,5 +38,5 @@ export function BacktestOutcome({ detail }: { detail: BacktestDetail }) {
       </Card>
     );
   }
-  return <ResultsView detail={detail} />;
+  return <ResultsView detail={detail} actions={actions} />;
 }

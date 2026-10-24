@@ -110,6 +110,7 @@ def test_another_users_sim_session_is_a_404(
 PUBLIC_EXACT = {
     "/api/health",
     "/api/algos/library",
+    "/api/algos/rules",
     "/api/brokers",  # static reference data, no user rows
     "/api/auth/signup",
     "/api/auth/login",

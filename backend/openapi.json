@@ -186,6 +186,28 @@
         }
       }
     },
+    "/api/algos/rules": {
+      "get": {
+        "tags": [
+          "algos"
+        ],
+        "summary": "Algo Rules",
+        "description": "The rules page and its numbers, from the one doc and the one constants module (public).",
+        "operationId": "algo_rules_api_algos_rules_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulesOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/algos/validate": {
       "post": {
         "tags": [
@@ -2284,6 +2306,585 @@
         }
       }
     },
+    "/api/marketplace/listings": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "List Listings",
+        "operationId": "list_listings_api_marketplace_listings_get",
+        "parameters": [
+          {
+            "name": "market",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A segment (india) or market code (NSE)",
+              "title": "Market"
+            },
+            "description": "A segment (india) or market code (NSE)"
+          },
+          {
+            "name": "creator",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this creator's listings (username)",
+              "title": "Creator"
+            },
+            "description": "Only this creator's listings (username)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListingPublicOut"
+                  },
+                  "title": "Response List Listings Api Marketplace Listings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Create Listing",
+        "operationId": "create_listing_api_marketplace_listings_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/creators/{username}": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Get Creator",
+        "operationId": "get_creator_api_marketplace_creators__username__get",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Username"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/listings/{listing_id}": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Get Listing",
+        "operationId": "get_listing_api_marketplace_listings__listing_id__get",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Listing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Update Listing",
+        "operationId": "update_listing_api_marketplace_listings__listing_id__put",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Listing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListingUpdateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/mine": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "My Listings",
+        "operationId": "my_listings_api_marketplace_mine_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ListingOwnerOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Listings Api Marketplace Mine Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/listings/{listing_id}/publish": {
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Publish Listing",
+        "operationId": "publish_listing_api_marketplace_listings__listing_id__publish_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Listing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/listings/{listing_id}/retire": {
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Retire Listing",
+        "operationId": "retire_listing_api_marketplace_listings__listing_id__retire_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Listing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/listings/{listing_id}/refresh-performance": {
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Refresh Performance",
+        "operationId": "refresh_performance_api_marketplace_listings__listing_id__refresh_performance_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Listing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/listings/{listing_id}/subscribe": {
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Subscribe",
+        "operationId": "subscribe_api_marketplace_listings__listing_id__subscribe_post",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Listing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/subscriptions": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "My Subscriptions",
+        "operationId": "my_subscriptions_api_marketplace_subscriptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Subscriptions Api Marketplace Subscriptions Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/subscriptions/{subscription_id}/stop": {
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Stop Subscription",
+        "operationId": "stop_subscription_api_marketplace_subscriptions__subscription_id__stop_post",
+        "parameters": [
+          {
+            "name": "subscription_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/subscriptions/{subscription_id}/upgrade": {
+      "post": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Upgrade Subscription",
+        "operationId": "upgrade_subscription_api_marketplace_subscriptions__subscription_id__upgrade_post",
+        "parameters": [
+          {
+            "name": "subscription_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/earnings": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "My Earnings",
+        "operationId": "my_earnings_api_marketplace_earnings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EarningsOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/settings": {
       "get": {
         "tags": [
@@ -2874,6 +3475,18 @@
             ],
             "title": "Algo Id",
             "description": "A saved algorithm from /api/algos/mine; `params` is laid over its saved settings"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Uploaded strategy code to test before publishing; checked against the code rules. The result is visible only to the requester"
           },
           "params": {
             "additionalProperties": {
@@ -3876,6 +4489,73 @@
         ],
         "title": "ChargesPaidOut"
       },
+      "CreatorProfileOut": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "bio": {
+            "type": "string",
+            "title": "Bio"
+          },
+          "listing_count": {
+            "type": "integer",
+            "title": "Listing Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "display_name",
+          "avatar_url",
+          "bio",
+          "listing_count"
+        ],
+        "title": "CreatorProfileOut",
+        "description": "A creator's public face. Built field by field: never the password hash or sessions."
+      },
+      "EarningsOut": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "listings": {
+            "items": {
+              "$ref": "#/components/schemas/ListingEarningsOut"
+            },
+            "type": "array",
+            "title": "Listings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency",
+          "total",
+          "listings"
+        ],
+        "title": "EarningsOut"
+      },
       "ExitIn": {
         "properties": {
           "quantity": {
@@ -4177,6 +4857,724 @@
           "tradable"
         ],
         "title": "InstrumentOut"
+      },
+      "ListingCreatorOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "avatar_url"
+        ],
+        "title": "ListingCreatorOut"
+      },
+      "ListingDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "tagline": {
+            "type": "string",
+            "title": "Tagline"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "fee_percent": {
+            "type": "string",
+            "title": "Fee Percent"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "retired"
+            ],
+            "title": "Status"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ListingCreatorOut"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingPerformanceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "performance": {
+            "items": {
+              "$ref": "#/components/schemas/ListingPerformanceOut"
+            },
+            "type": "array",
+            "title": "Performance"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ListingVersionOut"
+            },
+            "type": "array",
+            "title": "Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "tagline",
+          "description",
+          "markets",
+          "interval",
+          "fee_percent",
+          "version",
+          "status",
+          "creator",
+          "headline",
+          "performance",
+          "versions"
+        ],
+        "title": "ListingDetailOut"
+      },
+      "ListingEarningsOut": {
+        "properties": {
+          "listing_id": {
+            "type": "integer",
+            "title": "Listing Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "subscribers": {
+            "type": "integer",
+            "title": "Subscribers"
+          },
+          "active_subscribers": {
+            "type": "integer",
+            "title": "Active Subscribers"
+          },
+          "fees_received": {
+            "type": "string",
+            "title": "Fees Received"
+          }
+        },
+        "type": "object",
+        "required": [
+          "listing_id",
+          "name",
+          "subscribers",
+          "active_subscribers",
+          "fees_received"
+        ],
+        "title": "ListingEarningsOut"
+      },
+      "ListingIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "tagline": {
+            "type": "string",
+            "maxLength": 140,
+            "title": "Tagline",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Description",
+            "default": ""
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Markets"
+          },
+          "test_symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Test Symbols"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval"
+          },
+          "fee_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Fee Percent"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "user_algo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Algo Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "markets",
+          "fee_percent"
+        ],
+        "title": "ListingIn"
+      },
+      "ListingOwnerOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "tagline": {
+            "type": "string",
+            "title": "Tagline"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "fee_percent": {
+            "type": "string",
+            "title": "Fee Percent"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "retired"
+            ],
+            "title": "Status"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ListingCreatorOut"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingPerformanceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "performance": {
+            "items": {
+              "$ref": "#/components/schemas/ListingPerformanceOut"
+            },
+            "type": "array",
+            "title": "Performance"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ListingVersionOut"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "test_symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Test Symbols"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "strategy_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Key"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "tagline",
+          "description",
+          "markets",
+          "interval",
+          "fee_percent",
+          "version",
+          "status",
+          "creator",
+          "headline",
+          "performance",
+          "versions",
+          "test_symbols",
+          "source",
+          "strategy_key",
+          "params",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ListingOwnerOut",
+        "description": "Everything, including the code reference. Served only to the owner."
+      },
+      "ListingPerformanceOut": {
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": [
+              "3mo",
+              "1y",
+              "3y"
+            ],
+            "title": "Window"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceResultsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "window",
+          "start",
+          "end",
+          "status",
+          "note",
+          "computed_at",
+          "results"
+        ],
+        "title": "ListingPerformanceOut"
+      },
+      "ListingPublicOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "tagline": {
+            "type": "string",
+            "title": "Tagline"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "fee_percent": {
+            "type": "string",
+            "title": "Fee Percent"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "retired"
+            ],
+            "title": "Status"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ListingCreatorOut"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingPerformanceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "tagline",
+          "description",
+          "markets",
+          "interval",
+          "fee_percent",
+          "version",
+          "status",
+          "creator",
+          "headline"
+        ],
+        "title": "ListingPublicOut"
+      },
+      "ListingUpdateIn": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 140
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tagline"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "markets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markets"
+          },
+          "test_symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Symbols"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval"
+          },
+          "fee_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fee Percent"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          },
+          "changelog": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changelog",
+            "description": "Notes for the new version"
+          }
+        },
+        "type": "object",
+        "title": "ListingUpdateIn",
+        "description": "Only the fields sent change. A new `source` or `params` makes a new version."
+      },
+      "ListingVersionOut": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "changelog": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changelog"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "created_at",
+          "changelog"
+        ],
+        "title": "ListingVersionOut",
+        "description": "A version's number, date and notes. Never its code: that stays on the server."
       },
       "LoginIn": {
         "properties": {
@@ -5207,6 +6605,247 @@
         ],
         "title": "PayoutsOut"
       },
+      "PerformanceBuyHoldOut": {
+        "properties": {
+          "final_equity": {
+            "type": "string",
+            "title": "Final Equity"
+          },
+          "total_return_pct": {
+            "type": "string",
+            "title": "Total Return Pct"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "max_drawdown_pct": {
+            "type": "string",
+            "title": "Max Drawdown Pct"
+          },
+          "total_charges": {
+            "type": "string",
+            "title": "Total Charges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "final_equity",
+          "total_return_pct",
+          "cagr_pct",
+          "max_drawdown_pct",
+          "total_charges"
+        ],
+        "title": "PerformanceBuyHoldOut"
+      },
+      "PerformanceDrawdownOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "strategy_pct": {
+            "type": "string",
+            "title": "Strategy Pct"
+          },
+          "buy_hold_pct": {
+            "type": "string",
+            "title": "Buy Hold Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "strategy_pct",
+          "buy_hold_pct"
+        ],
+        "title": "PerformanceDrawdownOut"
+      },
+      "PerformanceMetricsOut": {
+        "properties": {
+          "starting_cash": {
+            "type": "string",
+            "title": "Starting Cash"
+          },
+          "final_equity": {
+            "type": "string",
+            "title": "Final Equity"
+          },
+          "total_return_pct": {
+            "type": "string",
+            "title": "Total Return Pct"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "cagr_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Note"
+          },
+          "max_drawdown_pct": {
+            "type": "string",
+            "title": "Max Drawdown Pct"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "sharpe_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe Note"
+          },
+          "win_rate_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Rate Pct"
+          },
+          "profit_factor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profit Factor"
+          },
+          "trade_count": {
+            "type": "integer",
+            "title": "Trade Count"
+          },
+          "total_charges": {
+            "type": "string",
+            "title": "Total Charges"
+          },
+          "exposure_pct": {
+            "type": "string",
+            "title": "Exposure Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starting_cash",
+          "final_equity",
+          "total_return_pct",
+          "cagr_pct",
+          "cagr_note",
+          "max_drawdown_pct",
+          "sharpe",
+          "sharpe_note",
+          "win_rate_pct",
+          "profit_factor",
+          "trade_count",
+          "total_charges",
+          "exposure_pct"
+        ],
+        "title": "PerformanceMetricsOut"
+      },
+      "PerformancePointOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "equity": {
+            "type": "string",
+            "title": "Equity"
+          },
+          "buy_hold_equity": {
+            "type": "string",
+            "title": "Buy Hold Equity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "equity",
+          "buy_hold_equity"
+        ],
+        "title": "PerformancePointOut"
+      },
+      "PerformanceResultsOut": {
+        "properties": {
+          "account_currency": {
+            "type": "string",
+            "title": "Account Currency"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/PerformanceMetricsOut"
+          },
+          "equity_curve": {
+            "items": {
+              "$ref": "#/components/schemas/PerformancePointOut"
+            },
+            "type": "array",
+            "title": "Equity Curve"
+          },
+          "drawdown": {
+            "items": {
+              "$ref": "#/components/schemas/PerformanceDrawdownOut"
+            },
+            "type": "array",
+            "title": "Drawdown"
+          },
+          "buy_and_hold": {
+            "$ref": "#/components/schemas/PerformanceBuyHoldOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_currency",
+          "metrics",
+          "equity_curve",
+          "drawdown",
+          "buy_and_hold"
+        ],
+        "title": "PerformanceResultsOut",
+        "description": "Totals and curves only. This is also what is stored for a listing."
+      },
       "PortfolioOut": {
         "properties": {
           "currency": {
@@ -5593,6 +7232,27 @@
         ],
         "title": "QuoteOut"
       },
+      "RulesOut": {
+        "properties": {
+          "markdown": {
+            "type": "string",
+            "title": "Markdown"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Limits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "markdown",
+          "limits"
+        ],
+        "title": "RulesOut"
+      },
       "SegmentBrokersOut": {
         "properties": {
           "segment": {
@@ -5827,6 +7487,25 @@
         ],
         "title": "SimExchangeTimeOut"
       },
+      "SimLogOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "text"
+        ],
+        "title": "SimLogOut"
+      },
       "SimSessionIn": {
         "properties": {
           "symbols": {
@@ -5839,9 +7518,16 @@
             "title": "Symbols"
           },
           "interval": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Interval",
-            "default": "1m"
+            "description": "Bar size; the strategy's own when there is one, else 1m"
           },
           "start_date": {
             "type": "string",
@@ -5860,6 +7546,16 @@
             "title": "Speed",
             "description": "Bars per second while running",
             "default": 60
+          },
+          "strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimStrategyIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6020,6 +7716,24 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimStrategyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "strategy_log": {
+            "items": {
+              "$ref": "#/components/schemas/SimLogOut"
+            },
+            "type": "array",
+            "title": "Strategy Log",
+            "default": []
+          },
           "bars": {
             "additionalProperties": {
               "items": {
@@ -6049,6 +7763,123 @@
         ],
         "title": "SimSessionStateOut"
       },
+      "SimStrategyIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "library",
+              "mine",
+              "source",
+              "listing"
+            ],
+            "title": "Kind"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "algo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algo Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "SimStrategyIn",
+        "description": "What a sim runs. `library`: `key` (+ `params`); `mine`: `algo_id` of your saved algorithm;\n`source`: uploaded code (+ `params`); `listing`: a published marketplace listing, whose code and\nsettings stay hidden from the tester."
+      },
+      "SimStrategyOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "library",
+              "mine",
+              "source",
+              "listing"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "creator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "interval"
+        ],
+        "title": "SimStrategyOut",
+        "description": "Who is trading in this sim. For a marketplace listing, `name` is the listing's and `creator`\nits creator's username; nothing else about it is shown."
+      },
       "StrategyMetaOut": {
         "properties": {
           "name": {
@@ -6076,6 +7907,11 @@
             },
             "type": "array",
             "title": "Parameters"
+          },
+          "warmup_bars": {
+            "type": "integer",
+            "title": "Warmup Bars",
+            "default": 0
           }
         },
         "type": "object",
@@ -6087,6 +7923,151 @@
           "parameters"
         ],
         "title": "StrategyMetaOut"
+      },
+      "SubscribeIn": {
+        "properties": {
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Symbols"
+          },
+          "capital": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Capital"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbols",
+          "capital"
+        ],
+        "title": "SubscribeIn"
+      },
+      "SubscriptionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "listing_id": {
+            "type": "integer",
+            "title": "Listing Id"
+          },
+          "listing_name": {
+            "type": "string",
+            "title": "Listing Name"
+          },
+          "listing_version": {
+            "type": "integer",
+            "title": "Listing Version"
+          },
+          "latest_version": {
+            "type": "integer",
+            "title": "Latest Version"
+          },
+          "upgrade_available": {
+            "type": "boolean",
+            "title": "Upgrade Available"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "stopping",
+              "stopped"
+            ],
+            "title": "Status"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "capital": {
+            "type": "string",
+            "title": "Capital"
+          },
+          "equity": {
+            "type": "string",
+            "title": "Equity"
+          },
+          "realized_pnl": {
+            "type": "string",
+            "title": "Realized Pnl"
+          },
+          "unrealized_pnl": {
+            "type": "string",
+            "title": "Unrealized Pnl"
+          },
+          "fee_percent": {
+            "type": "string",
+            "title": "Fee Percent"
+          },
+          "fees_paid": {
+            "type": "string",
+            "title": "Fees Paid"
+          },
+          "high_water_mark": {
+            "type": "string",
+            "title": "High Water Mark"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "stopped_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stopped At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "listing_id",
+          "listing_name",
+          "listing_version",
+          "latest_version",
+          "upgrade_available",
+          "symbols",
+          "status",
+          "currency",
+          "capital",
+          "equity",
+          "realized_pnl",
+          "unrealized_pnl",
+          "fee_percent",
+          "fees_paid",
+          "high_water_mark",
+          "created_at",
+          "stopped_at"
+        ],
+        "title": "SubscriptionOut",
+        "description": "A subscriber's view of their own subscription: figures from the sub-account, never the\nalgorithm's code or settings."
       },
       "TradeOut": {
         "properties": {
@@ -6414,9 +8395,28 @@
             "default": ""
           },
           "strategy": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Strategy",
             "description": "Key of the predefined algorithm this is built on"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Code written in the editor, checked against the code rules; instead of `strategy`"
           },
           "params": {
             "additionalProperties": {
@@ -6441,8 +8441,7 @@
         },
         "type": "object",
         "required": [
-          "name",
-          "strategy"
+          "name"
         ],
         "title": "UserAlgoIn"
       },
@@ -6495,6 +8494,17 @@
             },
             "type": "object",
             "title": "Params"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
           },
           "created_at": {
             "type": "string",

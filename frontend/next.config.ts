@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // A second dev stack needs its own build folder, or Next refuses to start beside the first.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // The browser only ever talks to this origin; Next forwards /api/* to the FastAPI server.
   // That is why there is no CORS configuration anywhere.
   async rewrites() {

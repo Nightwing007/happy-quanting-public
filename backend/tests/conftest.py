@@ -82,6 +82,7 @@ def offline_market_data(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     # The app lifespan would otherwise migrate the real dev database.
     monkeypatch.setenv("RUN_MIGRATIONS", "false")
     monkeypatch.setenv("BACKGROUND_JOBS", "false")
+    monkeypatch.setenv("SEED_DEMO_MARKETPLACE", "false")
     # Expected figures in the tests assume this account, whatever a developer's .env says.
     monkeypatch.setenv("BASE_CURRENCY", "USD")
     monkeypatch.setenv("STARTING_CASH", "100000")

@@ -8,6 +8,8 @@ from app.algos.api import MAX_LOG_CHARS, MAX_LOG_LINES
 
 MAX_SOURCE_BYTES = 50 * 1024
 INTERVALS = ("1m", "5m", "15m", "1h", "1d", "1wk")
+# Upper bound for the class-level `warmup_bars` literal (the backtester and the sim preload that many bars).
+MAX_WARMUP_BARS = 1000
 
 # The only modules uploaded code may import. `hq` is the strategy API (`algos/hq.py`).
 ALLOWED_IMPORTS = ("hq", "math", "statistics", "decimal")
@@ -52,6 +54,7 @@ DOCUMENTED_LIMITS = {
     "CPU_SECONDS_PER_HOOK": CPU_SECONDS_PER_HOOK,
     "WALL_SECONDS_PER_RUN": WALL_SECONDS_PER_RUN,
     "MEMORY_MB": MEMORY_MB,
+    "MAX_WARMUP_BARS": MAX_WARMUP_BARS,
     "MAX_LOG_LINES": MAX_LOG_LINES,
     "MAX_LOG_CHARS": MAX_LOG_CHARS,
 }

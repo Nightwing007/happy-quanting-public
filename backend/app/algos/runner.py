@@ -17,8 +17,9 @@ day t+1's open, which is what a real broker gives you.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
@@ -36,7 +37,7 @@ from app.algos.api import (
 from app.market_data.base import MarketDataError
 from app.market_data.fx import get_fx_rate
 from app.models import OrderSide, OrderType, Trade, TradeDirection, TradeStatus
-from app.trading import engine
+from app.trading import engine, hours
 from app.trading import markets as market_data
 from app.trading.context import TradingContext
 from app.trading.engine import protection_price_step
@@ -48,6 +49,7 @@ D = Decimal
 ZERO = Decimal(0)
 # Enough range for any bar count a strategy can ask for; the cap on `bars()` is what limits it.
 _ALL_HISTORY = "10y"
+_BAR_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "30m": 1800, "1h": 3600, "1d": 86400, "1wk": 604800}
 
 
 class StrategyRunError(Exception):
@@ -92,8 +94,11 @@ class _Pending:
 class _EngineBackend:
     """The `Backend` over a real context. Imports the engine so the facade need not."""
 
-    def __init__(self, ctx: TradingContext, strategy: Strategy, symbols: tuple[str, ...]):
+    def __init__(
+        self, ctx: TradingContext, strategy: Strategy, symbols: tuple[str, ...], closed_only: bool = False
+    ):
         self.ctx = ctx
+        self.closed_only = closed_only
         self.interval = strategy.interval
         self.symbols = symbols
         self.pending: list[_Pending] = []
@@ -116,12 +121,39 @@ class _EngineBackend:
             return ()
         provider = self.ctx.provider
         recent = getattr(provider, "recent_bars", None)  # the replay can skip building the past
-        raw = (
-            recent(symbol, self.interval, n)
-            if recent is not None
-            else provider.get_bars(symbol, self.interval, _ALL_HISTORY)[-n:]
-        )
+        if self.closed_only:
+            raw = provider.get_bars(symbol, self.interval, _ALL_HISTORY)[-(n + 1) :]
+            if raw and self._forming(symbol, raw[-1]):
+                raw = raw[:-1]
+            raw = raw[-n:]
+        else:
+            raw = (
+                recent(symbol, self.interval, n)
+                if recent is not None
+                else provider.get_bars(symbol, self.interval, _ALL_HISTORY)[-n:]
+            )
         return tuple(Bar(b.time, b.open, b.high, b.low, b.close, b.volume) for b in raw)
+
+    def _forming(self, symbol: str, bar) -> bool:
+        """Whether `bar` is still being drawn at `ctx.now()`. A live source includes the current
+        bar, whose close is only the latest price, so a live run must not decide on it."""
+        seconds = _BAR_SECONDS.get(self.interval)
+        if seconds is None:
+            return False
+        try:
+            market = market_data.market_for(symbol, self.ctx.provider.get_quote(symbol).type)
+        except TradingError:
+            return False
+        now = self.ctx.now()
+        # Bar times are exchange-local wall clock, so compare against the local wall clock too.
+        local_now = now.astimezone(ZoneInfo(hours.timezone_of(market))).replace(tzinfo=None)
+        if isinstance(bar.time, str):
+            start = datetime.fromisoformat(bar.time)
+        else:
+            start = datetime.fromtimestamp(bar.time, UTC).replace(tzinfo=None)
+        if self.interval == "1d":  # complete once the session is over, not at midnight
+            return start.date() == local_now.date() and hours.is_open(market, now)
+        return local_now < start + timedelta(seconds=seconds)
 
     def quote_stamp(self, symbol: str) -> int | None:
         """When the symbol's current price came into being; changes only when a new price does."""
@@ -288,12 +320,19 @@ class _EngineBackend:
 class StrategyRun:
     """One strategy trading one account. Call `step()` after each bar closes."""
 
-    def __init__(self, ctx: TradingContext, strategy: Strategy, params: dict, symbols: tuple[str, ...]):
+    def __init__(
+        self,
+        ctx: TradingContext,
+        strategy: Strategy,
+        params: dict,
+        symbols: tuple[str, ...],
+        closed_only: bool = False,
+    ):
         self.trading = ctx
         self.strategy = strategy
         self.params = params
         self.symbols = symbols
-        self._backend = _EngineBackend(ctx, strategy, symbols)
+        self._backend = _EngineBackend(ctx, strategy, symbols, closed_only)
         self.api = StrategyContext(self._backend, params)  # type: ignore[arg-type]
         self.errors: list[str] = []
         self._last_bars: tuple | None = None
@@ -302,6 +341,12 @@ class StrategyRun:
     @property
     def logs(self) -> list[LogLine]:
         return self._backend.logs
+
+    def rebind(self, ctx: TradingContext) -> None:
+        """Carry on with a fresh context for the same account. A run that outlives its database
+        session (a live subscription, stepped once a minute) needs the new session each time."""
+        self.trading = ctx
+        self._backend.ctx = ctx
 
     def _guard(self, hook: str, call, *args) -> None:
         # A strategy's own bug ends that bar's work, not the run: it is recorded where the
@@ -354,12 +399,18 @@ class StrategyRun:
 
 
 def run_strategy_on(
-    ctx: TradingContext, strategy: Strategy | type[Strategy], params: dict | None, symbols: list[str]
+    ctx: TradingContext,
+    strategy: Strategy | type[Strategy],
+    params: dict | None,
+    symbols: list[str],
+    closed_only: bool = False,
 ) -> StrategyRun:
     """Validate the settings, check the data exists, call `on_start` and return the run.
 
     `strategy` may be a class (a fresh instance is made) or an instance. The same function serves
     the sim and the backtester: neither is special-cased, both move `ctx.now()` and call `step()`.
+    `closed_only` is for a live source (marketplace subscriptions), whose newest bar may still be
+    forming: that bar is hidden from the strategy until it ends.
     """
     instance = strategy() if isinstance(strategy, type) else strategy
     # The instance, not its class: a sandboxed strategy keeps its settings per instance.
@@ -367,13 +418,13 @@ def run_strategy_on(
     names = tuple(dict.fromkeys(s.strip().upper() for s in symbols if s.strip()))
     if not names:
         raise StrategyRunError("Pick at least one symbol to run the algorithm on.")
-    probe = _EngineBackend(ctx, instance, names)
+    probe = _EngineBackend(ctx, instance, names, closed_only)
     for symbol in names:
         try:
             probe.bars(symbol, 1)
         except MarketDataError as why:
             raise StrategyRunError(f"No {instance.interval} bars for {symbol}: {why}") from why
-    run = StrategyRun(ctx, instance, values, names)
+    run = StrategyRun(ctx, instance, values, names, closed_only)
     run.start()
     return run
 

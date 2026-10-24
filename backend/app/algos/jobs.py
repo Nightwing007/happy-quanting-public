@@ -22,7 +22,7 @@ from app.algos.backtest import (
     run_backtest,
     sweep_scratch_accounts,
 )
-from app.algos.sandbox import SandboxError, UserCodeError
+from app.algos.sandbox import SandboxError, UserCodeError, load_strategy
 from app.config import get_settings
 from app.db import SessionLocal
 from app.market_data import get_provider
@@ -35,6 +35,11 @@ logger = logging.getLogger(__name__)
 
 IDLE_SECONDS = 2.0
 _wake = threading.Event()
+
+
+def wake() -> None:
+    """Tell the worker there is something new to do (a backtest, or a listing to measure)."""
+    _wake.set()
 
 
 def _plain(value):
@@ -54,10 +59,18 @@ def queue_backtest(
     settings = get_settings()
     cash = body.starting_cash if body.starting_cash is not None else settings.starting_cash
     strategy, params = body.strategy, body.params
+    source = body.source
+    if source is not None:
+        if body.strategy is not None or body.algo_id is not None:
+            raise BacktestError("Give one of: a library key, a saved algorithm, or code.")
+        return _queue_source(db, provider, body, source, cash, owner_user_id, today)
     if body.algo_id is not None:
         saved = db.get(UserAlgo, body.algo_id)
         if saved is None or saved.owner_user_id != owner_user_id:
             raise BacktestNotFound(f"There is no saved algorithm {body.algo_id}.")
+        if saved.source is not None:  # editor code runs like an uploaded `source`
+            merged = body.model_copy(update={"params": {**saved.params, **body.params}})
+            return _queue_source(db, provider, merged, saved.source, cash, owner_user_id, today)
         # The saved settings are the starting point; anything sent with the request wins.
         strategy, params = saved.strategy_key, {**saved.params, **body.params}
     elif strategy is None:
@@ -82,6 +95,37 @@ def queue_backtest(
         progress=0,
         created_at=clock.now(),
     )
+    db.add(row)
+    db.commit()
+    _wake.set()
+    return row
+
+
+def _queue_source(
+    db: Session, provider: MarketDataProvider, body: BacktestIn, source: str, cash: Decimal,
+    owner_user_id: int | None, today: date | None,
+) -> Backtest:
+    """Queue a backtest of the requester's uploaded code. The code is stored on the row (never in a
+    response) for the worker; a break of the code rules is refused here with every problem."""
+    from app.marketplace.listings import check_source  # imported here: listings reads this module's package
+
+    check_source(source)  # raises MarketplaceError("invalid_source") carrying the problems
+    strategy = load_strategy(source)  # starts nothing until a hook runs
+    try:
+        req = check_request(
+            db, provider, strategy_key=strategy.name, strategy_cls=strategy, params=body.params,  # type: ignore[arg-type]
+            symbols=body.symbols, interval=body.interval, start=body.start_date, end=body.end_date,
+            starting_cash=cash, brokers=body.brokers, today=today,
+        )  # fmt: skip
+    finally:
+        strategy.close()
+    row = Backtest(
+        owner_user_id=owner_user_id, strategy_key=strategy.name, source=source,
+        params={name: _plain(v) for name, v in req.values.items()}, symbols=req.names,
+        interval=body.interval, start_date=body.start_date, end_date=body.end_date, starting_cash=cash,
+        account_currency=get_settings().base_currency, brokers=req.brokers, status=BacktestStatus.QUEUED,
+        progress=0, created_at=clock.now(),
+    )  # fmt: skip
     db.add(row)
     db.commit()
     _wake.set()
@@ -152,8 +196,8 @@ def run_backtest_job(
 
     try:
         run_backtest(
-            db, provider, strategy_key=row.strategy_key, params=row.params, symbols=row.symbols,
-            interval=row.interval, start=row.start_date, end=row.end_date,
+            db, provider, strategy_key=row.strategy_key, source=row.source, params=row.params,
+            symbols=row.symbols, interval=row.interval, start=row.start_date, end=row.end_date,
             starting_cash=row.starting_cash, brokers=row.brokers,
             account_currency=row.account_currency, today=today, progress=report, store=keep,
             owner_user_id=row.owner_user_id,
@@ -182,9 +226,12 @@ def _recover(db: Session) -> None:
 
 
 def _work(stop: threading.Event) -> None:
+    from app.marketplace import performance  # imported here: performance uses this module's helpers
+
     try:
         with SessionLocal() as db:
             _recover(db)
+            performance.recover_interrupted(db)
     except Exception:  # noqa: BLE001 - the worker must come up regardless
         logger.exception("Backtest recovery failed")
     while not stop.is_set():
@@ -193,6 +240,8 @@ def _work(stop: threading.Event) -> None:
                 job = _next_queued(db)
                 if job is not None:
                     run_backtest_job(db, job)
+                    continue
+                if performance.run_next_queued(db):
                     continue
         except Exception:  # noqa: BLE001 - the worker must survive any single failure
             logger.exception("Backtest worker failed; will retry")

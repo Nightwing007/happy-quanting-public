@@ -15,19 +15,22 @@ import {
 } from "@/components/ui/command";
 import { useSearch } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
+import type { Instrument } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const DEBOUNCE_MS = 250;
 
 type Props = {
   /** Picks a symbol for the caller instead of opening its trade page; also drops the Ctrl+K shortcut. */
-  onSelect?: (symbol: string) => void;
+  onSelect?: (symbol: string, instrument?: Instrument) => void;
+  /** Keeps only results it accepts and drops the "open as typed" row, which could not be checked. */
+  filter?: (instrument: Instrument) => boolean;
   /** Button content when `onSelect` is set. */
   label?: React.ReactNode;
   className?: string;
 };
 
-export function SymbolSearch({ onSelect, label, className }: Props = {}) {
+export function SymbolSearch({ onSelect, filter, label, className }: Props = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -54,7 +57,8 @@ export function SymbolSearch({ onSelect, label, className }: Props = {}) {
   const search = useSearch(debounced);
   // True from the first keystroke until results for the current text have arrived.
   const waiting = typed !== "" && (debounced.trim() !== typed || search.isFetching);
-  const results = debounced.trim() === typed ? (search.data ?? []) : [];
+  const found = debounced.trim() === typed ? (search.data ?? []) : [];
+  const results = filter ? found.filter(filter) : found;
   const errorMessage = search.isError
     ? search.error instanceof ApiError
       ? search.error.message
@@ -69,9 +73,9 @@ export function SymbolSearch({ onSelect, label, className }: Props = {}) {
     }
   }
 
-  function go(symbol: string) {
+  function go(symbol: string, instrument?: Instrument) {
     handleOpenChange(false);
-    if (onSelect) onSelect(symbol);
+    if (onSelect) onSelect(symbol, instrument);
     else router.push(`/trade?symbol=${encodeURIComponent(symbol)}`);
   }
 
@@ -123,7 +127,7 @@ export function SymbolSearch({ onSelect, label, className }: Props = {}) {
             {results.length > 0 && (
               <CommandGroup heading="Results">
                 {results.map((r) => (
-                  <CommandItem key={`${r.symbol}-${r.exchange}`} value={r.symbol} onSelect={() => go(r.symbol)}>
+                  <CommandItem key={`${r.symbol}-${r.exchange}`} value={r.symbol} onSelect={() => go(r.symbol, r)}>
                     <span className="w-24 shrink-0 truncate font-medium">{r.symbol}</span>
                     <span className="min-w-0 flex-1 truncate text-muted-foreground">{r.name}</span>
                     <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{r.exchange}</span>
@@ -136,7 +140,7 @@ export function SymbolSearch({ onSelect, label, className }: Props = {}) {
             )}
 
             {/* Below the results on purpose: Enter must pick a real result, not a symbol that may not exist. */}
-            {typed !== "" && (
+            {typed !== "" && !filter && (
               <CommandGroup>
                 <CommandItem value="__open-literal__" disabled={waiting} onSelect={() => go(typed.toUpperCase())}>
                   <span className="min-w-0 truncate">Open &ldquo;{typed}&rdquo; as a symbol</span>

@@ -12,11 +12,12 @@ from app.schemas import (
     BarOut,
     SimControlIn,
     SimExchangeTimeOut,
+    SimLogOut,
     SimSessionIn,
     SimSessionOut,
     SimSessionStateOut,
 )
-from app.sim import runner
+from app.sim import runner, strategies
 
 router = APIRouter(prefix="/api/sim/sessions", tags=["sim"])
 
@@ -72,6 +73,7 @@ def create_session(body: SimSessionIn, db: DbSession, provider: Provider, user: 
         end_date=body.end_date,
         speed=body.speed,
         owner_user_id=user.id,
+        strategy=body.strategy,
     )
     return _session_out(db, session, provider)
 
@@ -89,8 +91,16 @@ def get_state(
     user: CurrentUser,
     bars_limit: Annotated[int, Query(ge=0, le=20000)] = 1000,
 ):
-    run = runner.build_run(db, runner.get_session(db, session_id, user.id), provider)
-    return SimSessionStateOut(**_out(run), bars=_revealed(run, bars_limit))
+    session = runner.get_session(db, session_id, user.id)
+    run = runner.build_run(db, session, provider)
+    # strategy_log is empty for a listing (the tester may not see how it behaves), by construction.
+    log = [SimLogOut(at=line.at, text=line.text) for line in strategies.log_lines(session)]
+    return SimSessionStateOut(
+        **_out(run),
+        bars=_revealed(run, bars_limit),
+        strategy=strategies.describe(db, session),
+        strategy_log=log,
+    )
 
 
 @router.post("/{session_id}/control", response_model=SimSessionOut)

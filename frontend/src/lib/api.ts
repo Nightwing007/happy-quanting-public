@@ -5,9 +5,16 @@ import type {
   BacktestSummary,
   Bars,
   BrokerGroup,
+  CreatorProfile,
+  Earnings,
   Health,
   HistoryLimits,
   Instrument,
+  Listing,
+  ListingDetail,
+  ListingIn,
+  ListingOwner,
+  ListingUpdateIn,
   Metrics,
   Order,
   OrderIn,
@@ -17,17 +24,21 @@ import type {
   ProtectionIn,
   ProtectionPreview,
   Quote,
+  Rules,
   Settings,
   SettingsIn,
   SimControl,
   SimSession,
   SimSessionIn,
   SimSessionState,
+  SubscribeIn,
+  Subscription,
   LoginIn,
   ProfileIn,
   SignupIn,
   Trade,
   User,
+  ValidationReport,
   UserAlgo,
   UserAlgoIn,
   WatchlistItem,
@@ -229,10 +240,22 @@ export const deleteSimSession = (id: number) => request<void>(`/api/sim/sessions
 
 export const getAlgoLibrary = () => request<Algo[]>("/api/algos/library");
 
+export const getAlgoRules = () => request<Rules>("/api/algos/rules");
+
+export const validateCode = (source: string) =>
+  request<ValidationReport>("/api/algos/validate", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ source }),
+  });
+
 export const listMyAlgos = () => request<UserAlgo[]>("/api/algos/mine");
 
 export const createMyAlgo = (body: UserAlgoIn) =>
   request<UserAlgo>("/api/algos/mine", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const updateMyAlgo = ({ id, ...body }: { id: number } & UserAlgoIn) =>
+  request<UserAlgo>(`/api/algos/mine/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(body) });
 
 export const deleteMyAlgo = (id: number) => request<void>(`/api/algos/mine/${id}`, { method: "DELETE" });
 
@@ -244,3 +267,47 @@ export const listBacktests = () => request<BacktestSummary[]>("/api/backtests");
 export const getBacktest = (id: number) => request<BacktestDetail>(`/api/backtests/${id}`);
 
 export const deleteBacktest = (id: number) => request<void>(`/api/backtests/${id}`, { method: "DELETE" });
+
+// Marketplace. Public views never carry a listing's code or settings.
+export const listListings = (filters: { market?: string; creator?: string } = {}) =>
+  request<Listing[]>(`/api/marketplace/listings${qs(filters)}`);
+
+export const getListing = (id: number) => request<ListingDetail>(`/api/marketplace/listings/${id}`);
+
+export const getCreator = (username: string) =>
+  request<CreatorProfile>(`/api/marketplace/creators/${encodeURIComponent(username)}`);
+
+export const subscribeToListing = (id: number, body: SubscribeIn) =>
+  request<Subscription>(`/api/marketplace/listings/${id}/subscribe`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+
+export const listSubscriptions = () => request<Subscription[]>("/api/marketplace/subscriptions");
+
+export const stopSubscription = (id: number) =>
+  request<Subscription>(`/api/marketplace/subscriptions/${id}/stop`, { method: "POST" });
+
+export const getEarnings = () => request<Earnings>("/api/marketplace/earnings");
+
+export const listMyListings = () => request<ListingOwner[]>("/api/marketplace/mine");
+
+export const createListing = (body: ListingIn) =>
+  request<ListingDetail>("/api/marketplace/listings", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const updateListing = ({ id, ...body }: { id: number } & ListingUpdateIn) =>
+  request<ListingDetail>(`/api/marketplace/listings/${id}`, {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+
+export const publishListing = (id: number) =>
+  request<ListingDetail>(`/api/marketplace/listings/${id}/publish`, { method: "POST" });
+
+export const retireListing = (id: number) =>
+  request<ListingDetail>(`/api/marketplace/listings/${id}/retire`, { method: "POST" });
+
+export const upgradeSubscription = (id: number) =>
+  request<Subscription>(`/api/marketplace/subscriptions/${id}/upgrade`, { method: "POST" });

@@ -21,11 +21,11 @@ from app.market_data.base import TRADABLE_TYPES, Bar, Instrument, MarketDataProv
 from app.market_data.history import HistoryRangeError, get_history
 from app.market_data.replay import ReplayProvider, SessionBounds
 from app.models import Account, AccountKind, Order, SimSession, SimStatus, Trade
+from app.schemas import SimStrategyIn
 from app.trading import hours
 from app.trading.context import TradingContext
 from app.trading.engine import ZERO, account_for_user, get_account, reset_account
 from app.trading.markets import Market, market_for
-from app.trading.tick import run_tick
 
 MIN_SPEED, MAX_SPEED = 1, 200
 MAX_SYMBOLS = 10
@@ -66,6 +66,7 @@ class SimRun:
     first_cursor: datetime  # the start of the first bar: nothing has finished yet
     timezones: dict[str, str]  # symbol -> exchange zone
     markets: list[Market]
+    warmed: bool = False  # warmup bars from before the start date are loaded as history
 
 
 class _NoFetch:
@@ -150,11 +151,18 @@ def build_run(db: Session, session: SimSession, provider: MarketDataProvider | N
     for pair, series in fx.items():
         replay.load(pair, "1d", series)
 
+    # The window alone decides the moments visited and where the replay starts; a strategy's
+    # warmup bars are added after, as in the backtester, so they are closed history but no moment
+    # before the start date is ever visited.
     ends = replay.visit_times(session.symbols, session.interval)
     first = replay.first_cursor(session.symbols, session.interval) or session.cursor
+    warm = strategies.load_warmup(db, _NoFetch(), session)  # type: ignore[arg-type]
+    for symbol, series in warm.items():
+        if series:
+            replay.load(symbol, session.interval, [*series, *bars[symbol]])
     # The context's clock is the replay's cursor: one value, moved only by `_advance_locked`.
     ctx = TradingContext(db, account, replay, lambda: replay.cursor)
-    return SimRun(session, replay, ctx, ends, first, timezones, markets)
+    return SimRun(session, replay, ctx, ends, first, timezones, markets, any(warm.values()))
 
 
 def build_context(
@@ -169,19 +177,30 @@ def create_session(
     provider: MarketDataProvider,
     *,
     symbols: list[str],
-    interval: str,
+    interval: str | None,
     start_date: date,
     end_date: date,
     speed: int,
     owner_user_id: int | None = None,
+    strategy: SimStrategyIn | None = None,
 ) -> SimSession:
     """Validate the range against what Yahoo serves, fetch and cache the bars, then make the
-    session and its account. Nothing is created if any step fails."""
+    session and its account. Nothing is created if any step fails.
+
+    `strategy` makes the session run an algorithm; the interval then defaults to the strategy's
+    and must equal it. Without one the interval defaults to 1m."""
     symbols = list(dict.fromkeys(symbols))
     if not symbols or len(symbols) > MAX_SYMBOLS:
         raise SimError(f"Pick between 1 and {MAX_SYMBOLS} symbols.")
     if not MIN_SPEED <= speed <= MAX_SPEED:
         raise SimError(f"Speed must be between {MIN_SPEED} and {MAX_SPEED} bars a second.")
+    chosen = strategies.resolve(db, strategy, owner_user_id) if strategy is not None else None
+    if chosen is not None:
+        if interval is None:
+            interval = chosen.interval
+        elif interval != chosen.interval:
+            raise SimError(strategies.mismatch_message(chosen.name, chosen.interval, interval))
+    interval = interval or "1m"
     instruments = [_instrument(provider, s) for s in symbols]
     for inst in instruments:
         if inst.type not in TRADABLE_TYPES:
@@ -202,6 +221,7 @@ def create_session(
         cursor=now,
         status=SimStatus.READY,
         owner_user_id=owner_user_id,
+        **(chosen.fields if chosen is not None else {}),
     )
     bars, _ = load_bars(db, provider, draft, instruments, settings.base_currency)
     empty = [s for s, series in bars.items() if not series]
@@ -233,6 +253,7 @@ def create_session(
     draft.account_id = account.id
     db.add(draft)
     db.flush()
+    strategies.load_warmup(db, provider, draft)  # caches the history before the start date
     draft.cursor = build_run(db, draft, provider).first_cursor
     db.commit()
     return draft
@@ -313,6 +334,9 @@ def _next_stop(run: SimRun, cursor: datetime) -> int | None:
 
 def _advance_locked(db: Session, run: SimRun, n_bars: int | None, until: datetime | None) -> int:
     session, replay = run.session, run.replay
+    # Same order as the backtester: the strategy is started (and, with warmup, steps once before
+    # the first open), then each bar moves the cursor and steps the strategy, whose step ticks.
+    live = strategies.ensure(run)
     steps = 0
     while n_bars is None or steps < n_bars:
         stop = _next_stop(run, replay.cursor)
@@ -329,9 +353,10 @@ def _advance_locked(db: Session, run: SimRun, n_bars: int | None, until: datetim
         # Committed before the tick: a tick step that fails rolls back, and the session's cursor
         # must not slip behind the replay's clock.
         db.commit()
-        run_tick(run.ctx)
+        strategies.tick(run, live)
         steps += 1
         if finished:
+            strategies.drop(session.id, keep_log=True)  # nothing left to play: no child may linger
             break
     return steps
 
@@ -359,6 +384,7 @@ def reset_session(db: Session, session: SimSession, provider: MarketDataProvider
     with _lock_for(session.id):
         db.refresh(session)
         run = build_run(db, session, provider)
+        strategies.drop(session.id)  # rebuilt on the next step, from the start
         reset_account(run.ctx)
         session.cursor = run.first_cursor
         session.status = SimStatus.READY
@@ -375,5 +401,10 @@ def delete_session(db: Session, session: SimSession) -> None:
         db.execute(delete(Trade).where(Trade.account_id == account_id))
         db.execute(delete(Account).where(Account.id == account_id))
         db.commit()
+        strategies.drop(session_id)
     with _locks_guard:
         _locks.pop(session_id, None)
+
+
+# Last, because strategies imports the backtester, which imports this module's names above.
+from app.sim import strategies  # noqa: E402

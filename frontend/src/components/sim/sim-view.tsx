@@ -26,6 +26,7 @@ import { formatDayRange, intervalWords } from "@/lib/sim-format";
 import { TradingScope } from "@/lib/trading-scope";
 import type { Quote } from "@/lib/types";
 import { PlayerBar } from "./player-bar";
+import { StrategyPanel } from "./strategy-panel";
 
 function Summary() {
   const payouts = usePayouts();
@@ -142,6 +143,8 @@ function SimBody({ id }: { id: number }) {
       </div>
 
       <PlayerBar session={data} symbol={symbol} />
+
+      <StrategyPanel session={data} />
 
       {data.status === "finished" && <Summary />}
 

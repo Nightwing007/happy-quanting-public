@@ -297,7 +297,7 @@ def test_the_live_loop_and_the_runner_share_one_step_function(
         ("Charging borrow and funding", engine.accrue_financing),
     ]
     # Neither module has a sequence of its own.
-    assert main.run_tick is tick.run_tick and runner.run_tick is tick.run_tick
+    assert main.run_tick is tick.run_tick and runner.strategies.run_tick is tick.run_tick
     assert "fill_open_orders" not in inspect.getsource(main._fill_once)
     assert "fill_open_orders" not in inspect.getsource(runner)
 
@@ -315,7 +315,7 @@ def test_the_live_loop_and_the_runner_share_one_step_function(
 
     sim = make_sim(db, fake_provider)
     monkeypatch.setattr(main, "run_tick", spy)
-    monkeypatch.setattr(runner, "run_tick", spy)
+    monkeypatch.setattr(runner.strategies, "run_tick", spy)
     monkeypatch.setattr(main, "SessionLocal", Keep)
     monkeypatch.setattr(main, "get_provider", lambda: fake_provider)
     main._fill_once()

@@ -88,6 +88,8 @@ def backtest(db: Session, provider, strategy, params=None, *, symbols=(SYMBOL,),
         starting_cash=D(100000), account_currency="INR", today=TODAY,
     )  # fmt: skip
     args.update(kw)
+    if strategy is None:
+        return run_backtest(db, provider, **args)  # uploaded code comes in `source=`
     if isinstance(strategy, str):
         return run_backtest(db, provider, strategy_key=strategy, **args)
     return run_backtest(db, provider, strategy_cls=strategy, **args)
@@ -499,8 +501,12 @@ def test_requests_that_cannot_run_are_refused_in_a_sentence(db: Session):
         run_backtest(
             db, provider, strategy_key="sma_crossover", interval="1d", **{**kw, "symbols": ["^GSPC"]}
         )
-    with pytest.raises(BacktestError, match="needs 31 bars"):
-        run_backtest(db, provider, strategy_key="sma_crossover", interval="1d", **kw)
+    # Only the ten window sessions exist (the fixture holds nothing earlier), so the 31 bars of
+    # warmup can't be had: 0 before the start and 10 in the range.
+    thin = FixtureProvider()
+    thin.set_daily("AAPL", DAYS, SMA_OPENS, SMA_CLOSES)
+    with pytest.raises(BacktestError, match=r"needs 31 bars.*only 10 1d bars exist"):
+        run_backtest(db, thin, strategy_key="sma_crossover", interval="1d", **kw)
     assert scratch_accounts(db) == []
 
 
@@ -740,3 +746,133 @@ def test_a_backtest_can_start_from_a_saved_algorithm(client, db_session: Session
     assert missing.status_code == 404 and "no saved algorithm 999" in missing.json()["detail"]
     neither = client.post("/api/backtests", json=body)
     assert neither.status_code == 400 and "Say which algorithm" in neither.json()["detail"]
+
+
+# --- warmup history is loaded before the window ---------------------------------------------------
+
+
+class Warm5(hq.Strategy):
+    """Needs 5 bars, buys 10% of cash once as soon as it may act."""
+
+    name = "Warm5"
+    interval = "1d"
+    warmup_bars = 5
+
+    def on_bar(self, ctx):
+        if not ctx.open_trades(SYMBOL) and not ctx.position(SYMBOL).quantity:
+            ctx.buy(SYMBOL, percent_of_cash=10)
+
+
+WARM_DAYS = [date(2026, 1, d) for d in (19, 20, 21, 22, 23)]  # Mon-Fri before the window
+WARM_OPENS = [100 + i for i in range(10)]  # window days 0..9 open at 100, 101, ... 109
+WARM_CLOSES = [101 + i for i in range(10)]  # and close one rupee higher
+
+
+@pytest.fixture
+def warm_world() -> FixtureProvider:
+    provider = FixtureProvider()
+    # Five warmup sessions at 50, then the ten window sessions. A fill at 50 would be a trade
+    # made before the window started.
+    provider.set_daily(SYMBOL, WARM_DAYS + DAYS, [50] * 5 + WARM_OPENS, [50] * 5 + WARM_CLOSES)
+    return provider
+
+
+@pytest.mark.real_calendar
+@pytest.mark.usefixtures("zero_costs")
+def test_warmup_bars_come_from_before_the_window_so_the_first_day_can_trade(
+    db: Session, warm_world: FixtureProvider
+):
+    # Window 2-13 Feb, Warm5 needs 5 bars. The five sessions 19-23 Jan are loaded before the
+    # window (the span is ceil(5 x 1.5) + 7 = 15 days back from 2 Feb, i.e. from 18 Jan), so they
+    # are already closed when the first session opens. The strategy decides on them, and the order
+    # fills at the first price after that: day 0's open, 100 (not 50, and not 5 days in).
+    #   10% of 100,000 = 10,000 / 100 = 100 shares, no charges; cash 90,000.
+    #   day 0 close 101: equity 90,000 + 100 x 101 = 100,100 (the curve's first point)
+    #   day 9 close 110: equity 90,000 + 100 x 110 = 101,000
+    results = backtest(db, warm_world, Warm5)
+
+    (trade,) = results.trades
+    assert trade.entry_at == open_of(DAYS[0])
+    assert trade.entry_price == D(100) and trade.quantity == D(100)
+    assert results.errors == []
+    assert "loaded from before 02 Feb 2026" in results.notes[0]
+
+    # Everything measured covers the window only: ten sessions, from day 0's close.
+    assert results.bars == 10 and len(results.equity_curve) == 10
+    assert results.equity_curve[0].at == close_of(DAYS[0])
+    assert results.equity_curve[0].equity == D(100100)
+    assert results.equity_curve[-1].equity == D(101000)
+    assert results.first_bar == close_of(DAYS[0])
+    assert results.metrics.final_equity == D(101000)
+    # Buy-and-hold is bought on day 0's open too: 1,000 shares at 100 -> day 9's close 110 x 1,000.
+    assert results.buy_and_hold.final_equity == D(110000)
+    assert results.buy_and_hold.purchases[0].at == open_of(DAYS[0])
+
+
+@pytest.mark.real_calendar
+@pytest.mark.usefixtures("zero_costs")
+def test_nothing_fills_before_the_start_date(db: Session, warm_world: FixtureProvider):
+    # Starting a day later (3 Feb) the warmup is 2 Feb's session plus the five from January, but
+    # the window still opens on 3 Feb: no order, trade or curve point may be dated earlier.
+    results = backtest(db, warm_world, Warm5, start=DAYS[1])
+    begin = open_of(DAYS[1])
+    assert all(o.filled_at >= begin for o in results.orders if o.filled_at is not None)
+    assert [t.entry_at for t in results.trades] == [begin]
+    assert results.trades[0].entry_price == D(101)  # day 1's open, not 50 or day 0's 100
+    assert results.equity_curve[0].at == close_of(DAYS[1])
+    assert results.bars == 9
+
+
+WARM5_SOURCE = """from app.algos import hq
+
+
+class Warm5Src(hq.Strategy):
+    name = "Warm5 source"
+    description = "Needs 5 bars, buys 10% of cash once as soon as it may act."
+    markets = ("india",)
+    interval = "1d"
+    warmup_bars = 5
+    PARAMETERS = {}
+
+    def on_bar(self, ctx):
+        for symbol in ctx.symbols:
+            if not ctx.open_trades(symbol) and not ctx.position(symbol).quantity:
+                ctx.buy(symbol, percent_of_cash=10)
+"""
+
+
+@pytest.mark.real_calendar
+@pytest.mark.usefixtures("zero_costs")
+def test_uploaded_code_gets_its_declared_warmup_before_the_window(db: Session, warm_world: FixtureProvider):
+    # Same world and hand figures as Warm5 above: the class literal `warmup_bars = 5` is read
+    # without running the code, so the five January sessions are loaded before the window and the
+    # first order fills at day 0's open, 100 (a strategy counted as 0 warmup would fill on day 1 at 101).
+    #   10% of 100,000 = 10,000 / 100 = 100 shares; day 9 close 110 -> 90,000 + 11,000 = 101,000.
+    results = backtest(db, warm_world, None, source=WARM5_SOURCE)
+    (trade,) = results.trades
+    assert trade.entry_at == open_of(DAYS[0])
+    assert trade.entry_price == D(100) and trade.quantity == D(100)
+    assert results.warmup_bars == 5 and results.errors == []
+    assert "loaded from before 02 Feb 2026" in results.notes[0]
+    assert results.metrics.final_equity == D(101000)
+
+
+def test_a_three_month_window_runs_a_41_week_strategy(db: Session):
+    # Slowking-shaped: weekly bars, 41 of warmup. The window 1 Dec 2025 - 1 Mar 2026 holds 13
+    # Monday-stamped weekly bars (1, 8, 15, 22, 29 Dec; 5, 12, 19, 26 Jan; 2, 9, 16, 23 Feb), far
+    # fewer than 41, so before this the run was refused. The warmup reaches back
+    # ceil(41 x 7 x 1.2) + 14 = 359 days from 1 Dec 2025, which covers the 41 weeks.
+    class Slow(hq.Strategy):
+        name = "Slow"
+        interval = "1wk"
+        warmup_bars = 41
+
+    results = run_backtest(
+        db, FakeProvider(), strategy_cls=Slow, symbols=["AAPL"], interval="1wk",
+        start=date(2025, 12, 1), end=date(2026, 3, 1), starting_cash=D(100000),
+        account_currency="USD", today=TODAY,
+    )  # fmt: skip
+    assert results.bars == 13 and results.errors == []
+    assert results.warmup_bars == 41
+    assert "loaded from before 01 Dec 2025" in results.notes[0]
+    assert scratch_accounts(db) == []

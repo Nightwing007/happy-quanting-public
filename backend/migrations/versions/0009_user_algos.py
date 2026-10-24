@@ -21,15 +21,16 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.create_table("user_algos",
-    sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column("owner_user_id", sa.Integer(), nullable=True),
-    sa.Column("name", sa.String(), nullable=False),
-    sa.Column("description", sa.String(), nullable=False),
-    sa.Column("strategy_key", sa.String(), nullable=False),
-    sa.Column("params", sa.JSON(), nullable=False),
-    sa.Column("created_at", app.db.UTCDateTime(), nullable=False),
-    sa.PrimaryKeyConstraint("id", name=op.f("pk_user_algos"))
+    op.create_table(
+        "user_algos",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("owner_user_id", sa.Integer(), nullable=True),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=False),
+        sa.Column("strategy_key", sa.String(), nullable=False),
+        sa.Column("params", sa.JSON(), nullable=False),
+        sa.Column("created_at", app.db.UTCDateTime(), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_user_algos")),
     )
 
 

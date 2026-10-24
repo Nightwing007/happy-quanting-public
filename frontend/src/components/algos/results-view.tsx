@@ -437,7 +437,8 @@ function LogSection({ results }: { results: BacktestResults }) {
   );
 }
 
-export function ResultsView({ detail }: { detail: BacktestDetail }) {
+/** `actions={false}` hides the save / run-in-sim buttons (they need a library strategy, not code). */
+export function ResultsView({ detail, actions = true }: { detail: BacktestDetail; actions?: boolean }) {
   const results = detail.results;
   if (!results) return null;
   return (
@@ -451,7 +452,7 @@ export function ResultsView({ detail }: { detail: BacktestDetail }) {
             starting cash {formatMoney(detail.starting_cash, results.account_currency)}
           </p>
         </div>
-        <ResultsActions results={results} />
+        {actions && <ResultsActions results={results} />}
       </div>
 
       {results.notes.length > 0 && (
