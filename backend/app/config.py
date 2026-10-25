@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     seed_demo_marketplace: bool = True
     # Set true behind HTTPS so the session cookie is never sent over plain HTTP.
     cookie_secure: bool = False
+    # A public deployment: nobody may bring their own code (see app/hosted.py). Library algorithms,
+    # the lab and block graphs without code blocks still work.
+    hosted_mode: bool = False
+    # Hosted only: at most this many sandbox child processes at once (each imports pandas).
+    max_sandboxes: int = 2
+    # Behind a proxy (Vercel -> Hugging Face) every request comes from the proxy's address, so the
+    # login limiter needs the forwarded client IP. Off by default: when the server is reachable
+    # directly anyone can send these headers, and trusting them would let a caller pick a fresh
+    # "IP" per attempt and walk past the limiter.
+    trust_proxy_headers: bool = False
     database_url: str = f"sqlite:///{(DATA_DIR / 'app.db').as_posix()}"
 
 

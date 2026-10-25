@@ -19,6 +19,7 @@ export function SaveAlgoDialog({
   initialName,
   initialDescription,
   publishing,
+  deploying = false,
   what = "code",
   pending,
   error,
@@ -28,6 +29,8 @@ export function SaveAlgoDialog({
   initialName: string;
   initialDescription: string;
   publishing: boolean;
+  /** Saving so it can be deployed next (a deployment runs a saved algorithm). */
+  deploying?: boolean;
   /** What is being kept, in the dialog's words: "code" or "blocks". */
   what?: "code" | "blocks";
   pending: boolean;
@@ -49,11 +52,12 @@ export function SaveAlgoDialog({
           className="grid gap-4"
         >
           <DialogHeader>
-            <DialogTitle>{publishing ? "Save, then publish" : "Save to My algorithms"}</DialogTitle>
+            <DialogTitle>{publishing ? "Save, then publish" : deploying ? "Save, then deploy" : "Save to My algorithms"}</DialogTitle>
             <DialogDescription>
               Keeps {what === "blocks" ? "these blocks" : "this code"} under My algorithms, where you can reopen{" "}
               {what === "blocks" ? "them" : "it"} in the {what === "blocks" ? "block editor" : "editor"}.
               {publishing ? " Next you choose how to list it in the marketplace." : ""}
+              {deploying ? " Next you choose symbols and capital." : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">
@@ -76,7 +80,7 @@ export function SaveAlgoDialog({
           )}
           <DialogFooter>
             <Button type="submit" disabled={!name.trim() || pending}>
-              {pending ? "Saving..." : publishing ? "Save and continue" : "Save"}
+              {pending ? "Saving..." : publishing || deploying ? "Save and continue" : "Save"}
             </Button>
           </DialogFooter>
         </form>

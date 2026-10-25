@@ -34,6 +34,7 @@ import type { ListingOwner, StrategyMeta, ValidationReport } from "@/lib/types";
 import { CodeInput, type CodeInputHandle } from "./code-input";
 import { ProblemsList } from "./problems-list";
 import { RulesPanel } from "./rules-panel";
+import { PageHeader } from "@/components/motion/page-header";
 
 const MAX_SYMBOLS = 10;
 
@@ -231,7 +232,7 @@ export function Preview({
 function MetaSummary({ meta }: { meta: StrategyMeta }) {
   return (
     <div className="grid gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-      <p className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
+      <p className="flex items-center gap-2 font-medium text-up">
         <CheckCircle2Icon className="size-4" />
         Your code passes every check.
       </p>
@@ -583,16 +584,15 @@ export function UploadFlow() {
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {updating ? `New version of ${updating.name}` : "Upload a strategy"}
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          <Link href="/create" className="underline underline-offset-2">
+      <PageHeader
+        title={updating ? `New version of ${updating.name}` : "Upload a strategy"}
+        eyebrow="HFT · Create"
+        description={
+          <Link href="/create" className="text-xs underline underline-offset-2">
             My listings
           </Link>
-        </p>
-      </div>
+        }
+      />
       {listingId !== null && mine.error && <QueryError error={mine.error} title="Couldn't load your listings" onRetry={() => mine.refetch()} />}
       {waitingForListing && !mine.error && <Skeleton className="h-64 w-full" />}
       {listingId !== null && !mine.isPending && !mine.error && !updating && (

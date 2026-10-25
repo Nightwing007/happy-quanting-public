@@ -1,12 +1,12 @@
 "use client";
 
+import { NumberRoll } from "@/components/motion/number-roll";
 import { QueryError } from "@/components/query-error";
-import { Pnl } from "@/components/pnl";
+import { Pnl, pnlClass } from "@/components/pnl";
 import { Term } from "@/components/term";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatMoney, isZero, toNumber } from "@/lib/format";
+import { formatMoney, formatPercent, isZero, toNumber } from "@/lib/format";
 import type { TermId } from "@/lib/glossary";
 import { usePortfolio } from "@/lib/queries";
 
@@ -25,30 +25,26 @@ function Stat({
   term?: TermId;
 }) {
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {term ? (
-            <Term id={term}>{title}</Term>
-          ) : help ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={<span tabIndex={0} className="cursor-help underline decoration-dotted underline-offset-4" />}
-              >
-                {title}
-              </TooltipTrigger>
-              <TooltipContent>{help}</TooltipContent>
-            </Tooltip>
-          ) : (
-            title
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="min-w-0">
-        <div className="truncate text-2xl font-semibold tabular-nums">{children}</div>
-        <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
-      </CardContent>
-    </Card>
+    <div className="grid min-w-0 content-start gap-1.5 p-4">
+      <div className="t-meta text-muted-foreground">
+        {term ? (
+          <Term id={term}>{title}</Term>
+        ) : help ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={<span tabIndex={0} className="cursor-help underline decoration-dotted underline-offset-4" />}
+            >
+              {title}
+            </TooltipTrigger>
+            <TooltipContent>{help}</TooltipContent>
+          </Tooltip>
+        ) : (
+          title
+        )}
+      </div>
+      <div className="t-data truncate text-2xl font-medium">{children}</div>
+      <div className="text-xs text-muted-foreground">{sub}</div>
+    </div>
   );
 }
 
@@ -61,7 +57,7 @@ export function SummaryCards() {
 
   if (isPending || !p) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="ledger grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <Skeleton key={i} className="h-28 w-full" />
         ))}
@@ -73,34 +69,37 @@ export function SummaryCards() {
   // Percent of the cash the account started with; guard the division.
   const pnlPercent = isZero(p.starting_cash) ? null : (toNumber(p.total_pnl) / toNumber(p.starting_cash)) * 100;
 
+  const money = (v: string) => <NumberRoll value={toNumber(v)} format={(n) => formatMoney(n, c)} />;
+  const pnl = toNumber(p.total_pnl);
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="ledger grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       <Stat title="Total value" sub={`Started with ${formatMoney(p.starting_cash, c)}`}>
-        {formatMoney(p.total_value, c)}
+        {money(p.total_value)}
       </Stat>
       <Stat
         title="Cash"
         sub="Includes any margin held for shorts"
         help="All the cash in your account, including the part blocked as margin for open shorts."
       >
-        {formatMoney(p.cash, c)}
+        {money(p.cash)}
       </Stat>
       <Stat
         title="Margin used"
         sub="Held against your open shorts"
         term="margin"
       >
-        {formatMoney(p.margin_used, c)}
+        {money(p.margin_used)}
       </Stat>
       <Stat
         title="Available cash"
         sub="Cash minus margin"
         term="available_cash"
       >
-        {formatMoney(p.available_cash, c)}
+        {money(p.available_cash)}
       </Stat>
       <Stat title="Invested (cost)" sub={`Market value ${formatMoney(p.market_value, c)}`}>
-        {formatMoney(p.invested, c)}
+        {money(p.invested)}
       </Stat>
       <Stat
         title="Profit / loss"
@@ -111,7 +110,13 @@ export function SummaryCards() {
           </>
         }
       >
-        <Pnl value={p.total_pnl} currency={c} percent={pnlPercent} />
+        <span className={pnlClass(p.total_pnl)}>
+          <NumberRoll
+            value={pnl}
+            format={(n) => `${isZero(n) ? "" : n > 0 ? "+" : "-"}${formatMoney(Math.abs(n), c)}`}
+          />
+          {pnlPercent !== null && ` (${formatPercent(pnlPercent)})`}
+        </span>
       </Stat>
     </div>
   );

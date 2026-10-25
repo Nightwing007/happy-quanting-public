@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Anton, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
@@ -8,14 +8,20 @@ import { BackendStatusBanner } from "@/components/backend-status-banner";
 import { DataNotice } from "@/components/data-notice";
 import { BadgeWatcher } from "@/components/badges/badge-watcher";
 
-// The variable is named --font-sans because globals.css (shadcn) reads that name.
-const geistSans = Geist({
-  variable: "--font-sans",
+// Display: Anton (400, uppercase) for page titles only. Body: Inter. Labels and numbers: JetBrains Mono.
+const display = Anton({
+  variable: "--font-display-face",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const body = Inter({
+  variable: "--font-body",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const mono = JetBrains_Mono({
+  variable: "--font-mono-face",
   subsets: ["latin"],
 });
 
@@ -29,12 +35,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>
           {/* The header reads the path, which on a dynamic route (/sim/[id]) is only known per request. */}
-          <Suspense fallback={<header className="sticky top-0 z-40 h-14 border-b bg-background/90" />}>
+          <Suspense fallback={<header className="sticky top-0 z-40 h-14 border-b border-transparent" />}>
             <SiteHeader />
           </Suspense>
           <BadgeWatcher />

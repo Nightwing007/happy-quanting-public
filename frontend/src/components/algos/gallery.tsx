@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { algoIntervalWords, MARKET_LABELS } from "@/lib/algo-format";
-import { useAlgoLibrary, useDeleteMyAlgo, useMyAlgos } from "@/lib/queries";
+import { useAlgoLibrary, useDeleteMyAlgo, useHosted, useMyAlgos } from "@/lib/queries";
+import { DeployButton } from "@/components/deployments/deploy-dialog";
+import { PageHeader } from "@/components/motion/page-header";
+import { useDirectionalHover } from "@/components/motion/directional-hover";
+import type { Algo } from "@/lib/types";
 
 function Markets({ markets }: { markets: string[] }) {
   return (
@@ -33,32 +37,40 @@ function Library() {
       {isPending && <Skeleton className="h-40 w-full" />}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {data?.map((a) => (
-          <Card key={a.key}>
-            <CardHeader>
-              <CardTitle>{a.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex min-w-0 flex-1 flex-col gap-3">
-              <p className="text-sm text-muted-foreground">{a.description}</p>
-              <div className="mt-auto grid gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Markets markets={a.markets} />
-                  <Badge variant="outline">{algoIntervalWords(a.interval)} bars</Badge>
-                </div>
-                <div>
-                  <Button size="sm" nativeButton={false} render={<Link href={`/algos/lab?algo=${a.key}`} />}>
-                    Open in lab
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <LibraryCard key={a.key} a={a} />
         ))}
       </div>
     </section>
   );
 }
 
+function LibraryCard({ a }: { a: Algo }) {
+  const dh = useDirectionalHover({ flood: true });
+  return (
+    <Card className={dh.className} onPointerEnter={dh.onPointerEnter} onPointerLeave={dh.onPointerLeave}>
+      <CardHeader>
+        <CardTitle>{a.name}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-1 flex-col gap-3">
+        <p className="text-sm text-muted-foreground">{a.description}</p>
+        <div className="mt-auto grid gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Markets markets={a.markets} />
+            <Badge variant="outline">{algoIntervalWords(a.interval)} bars</Badge>
+          </div>
+          <div>
+            <Button size="sm" nativeButton={false} render={<Link href={`/algos/lab?algo=${a.key}`} />}>
+              Open in lab
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Mine() {
+  const hosted = useHosted();
   const { data, isPending, error, refetch } = useMyAlgos();
   const remove = useDeleteMyAlgo();
   const [confirming, setConfirming] = useState<number | null>(null);
@@ -97,17 +109,29 @@ function Mine() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {a.graph ? (
-                  <Button size="sm" nativeButton={false} render={<Link href={`/algos/blocks?mine=${a.id}`} />}>
+                  <Button size="sm" nativeButton={false} render={<Link href={`/create/blocks?mine=${a.id}`} />}>
                     Edit in block editor
                   </Button>
                 ) : a.source !== null ? (
-                  <Button size="sm" nativeButton={false} render={<Link href={`/algos/editor?mine=${a.id}`} />}>
-                    Edit in editor
-                  </Button>
+                  hosted ? (
+                    <span className="text-xs text-muted-foreground">Code upload is turned off on this hosted demo</span>
+                  ) : (
+                    <Button size="sm" nativeButton={false} render={<Link href={`/create/editor?mine=${a.id}`} />}>
+                      Edit in editor
+                    </Button>
+                  )
                 ) : (
                   <Button size="sm" nativeButton={false} render={<Link href={`/algos/lab?mine=${a.id}`} />}>
                     Open in lab
                   </Button>
+                )}
+                {!(hosted && !a.graph && a.source !== null) && (
+                <DeployButton
+                  name={a.name}
+                  markets={a.markets}
+                  what={{ algo_id: a.id }}
+                  source={`${a.name}, ${a.graph ? "built with blocks" : a.source !== null ? "your own code" : `built on ${a.strategy_name}`}`}
+                />
                 )}
                 {confirming === a.id ? (
                   <>
@@ -138,28 +162,29 @@ function Mine() {
 }
 
 export function AlgoGallery() {
+  const hosted = useHosted();
   return (
     <div className="grid min-w-0 grid-cols-1 gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Algorithms</h1>
-          <p className="text-sm text-muted-foreground">
-            Choose one, change its settings, and test it on past prices with the real charges your broker would
-            take.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" nativeButton={false} render={<Link href="/algos/blocks" />}>
-            Block editor
-          </Button>
-          <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/editor" />}>
-            Code editor
-          </Button>
-          <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/backtests" />}>
-            Backtest history
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Algorithms"
+        eyebrow="HFT · Algo"
+        description="Choose one, change its settings, and test it on past prices with the real charges your broker would take."
+        actions={
+          <>
+            <Button size="sm" nativeButton={false} render={<Link href="/create/blocks" />}>
+              Block editor
+            </Button>
+            {!hosted && (
+              <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/create/editor" />}>
+                Code editor
+              </Button>
+            )}
+            <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/algos/backtests" />}>
+              Backtest history
+            </Button>
+          </>
+        }
+      />
       <Library />
       <Mine />
     </div>

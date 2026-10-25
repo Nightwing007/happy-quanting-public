@@ -287,7 +287,15 @@ class _EngineBackend:
                 return None
         quantity = round_down_to_step(raw, step)
         if kind == "buy" and allotted is not None and quantity > 0:
-            quantity = self._fit_charges(symbol, quantity, step, allotted)
+            fitted = self._fit_charges(symbol, quantity, step, allotted)
+            if fitted <= 0:
+                # Not a matter of the step: even the smallest purchase plus its charges is over.
+                self.log(
+                    f"Skipped buy {symbol}: the smallest purchase ({step:f}) plus its charges costs "
+                    f"more than the {allotted:.2f} set aside."
+                )
+                return None
+            quantity = fitted
         if quantity <= 0:
             self.log(f"Skipped {kind} {symbol}: {raw:f} is less than the smallest tradable step, {step:f}.")
             return None
@@ -341,6 +349,16 @@ class StrategyRun:
     @property
     def logs(self) -> list[LogLine]:
         return self._backend.logs
+
+    def drain_logs(self) -> list[LogLine]:
+        """Hand over the log and start it empty, so a run that never ends (a deployment) keeps its
+        own bounded buffer instead of hitting the per-run cap. Errors are in the log too, so they
+        are cleared as well."""
+        lines = list(self.logs)
+        self.logs.clear()
+        self.errors.clear()
+        self._backend._log_full = False
+        return lines
 
     def rebind(self, ctx: TradingContext) -> None:
         """Carry on with a fresh context for the same account. A run that outlives its database

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "cn"
+import { useDirectionalHover } from "@/components/motion/directional-hover"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -22,7 +23,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      className={cn("bg-ink [&_tr]:border-b", className)}
       {...props}
     />
   )
@@ -43,7 +44,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        "border-t bg-ink font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}
@@ -52,13 +53,17 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+  const dh = useDirectionalHover()
   return (
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        dh.className,
+        "border-b data-[state=selected]:bg-muted",
         className
       )}
+      onPointerEnter={dh.onPointerEnter}
+      onPointerLeave={dh.onPointerLeave}
       {...props}
     />
   )
@@ -69,7 +74,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-9 px-2 text-left align-middle t-meta font-medium whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

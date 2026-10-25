@@ -265,7 +265,7 @@ def test_sma_crossover_fills_at_the_next_days_open(db: Session, sma_world: Fixtu
     assert [d.strategy_pct for d in results.drawdown][7:] == [D("0.00"), D("-23.06"), D("-26.90")]
     assert m.trades_closed == 1 and m.trades_open == 0
     assert m.win_rate_pct == D("0.00") and m.average_win is None
-    assert m.average_loss == D(-15164) and m.profit_factor is None
+    assert m.average_loss == D(-15164) and m.profit_factor == D("0.00")  # lost money, won none: a factor of 0
     assert m.exposure_pct == D("30.00")  # a position at the close of days 6, 7, 8 of 10
     assert m.total_charges == 0 and m.charges_pct_of_gross_profit is None
     assert m.sharpe is None and "at least 20 days" in m.sharpe_note

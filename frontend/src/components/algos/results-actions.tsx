@@ -16,7 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateMyAlgo, useCreateSimSession, useHistoryLimits } from "@/lib/queries";
+import { DeployButton, settingLabel } from "@/components/deployments/deploy-dialog";
+import { useAlgoLibrary, useCreateMyAlgo, useCreateSimSession, useHistoryLimits } from "@/lib/queries";
 import type { BacktestResults } from "@/lib/types";
 
 const DAY_MS = 86_400_000;
@@ -110,8 +111,11 @@ export function ResultsActions({ results }: { results: BacktestResults }) {
   const router = useRouter();
   const limits = useHistoryLimits();
   const createSim = useCreateSimSession();
+  const library = useAlgoLibrary();
   const [saving, setSaving] = useState(false);
   const first = results.instruments[0];
+  // Only a ready-made algorithm can be deployed from its key; a code backtest is deployed from the editor.
+  const algo = library.data?.find((a) => a.key === results.strategy_key);
 
   function openInSim() {
     if (!limits.data || !first) return;
@@ -138,6 +142,17 @@ export function ResultsActions({ results }: { results: BacktestResults }) {
         >
           {createSim.isPending ? "Opening..." : "Run in the virtual sim"}
         </Button>
+        {algo && (
+          <DeployButton
+            label="Deploy these settings"
+            name={algo.name}
+            markets={algo.markets}
+            what={{ library_key: algo.key, params: results.params }}
+            source={`${algo.name}, a ready-made algorithm`}
+            settings={Object.entries(results.params).map(([k, v]) => [settingLabel(k), String(v)])}
+            initialSymbols={results.instruments.map((i) => i.symbol)}
+          />
+        )}
         <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/algos/backtests" />}>
           Backtest history
         </Button>

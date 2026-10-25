@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, go } from "./fixtures";
 
 async function loadRsiTemplate(page: Page) {
-  await go(page, "/algos/blocks");
+  await go(page, "/create/blocks");
   await page.getByRole("button", { name: "RSI dip-buyer" }).first().click();
   await expect(page.locator(".react-flow__node")).toHaveCount(6);
   await expect(page.getByText("No problems.")).toBeVisible({ timeout: 30_000 });
@@ -73,7 +73,7 @@ test.describe("blocks", () => {
     const card = page.locator("[data-slot=card]").filter({ hasText: "E2E blocks algo" });
     await expect(card).toContainText("Built with blocks");
     await card.locator("a", { hasText: "Edit in block editor" }).click();
-    await expect(page).toHaveURL(/\/algos\/blocks\?mine=\d+/);
+    await expect(page).toHaveURL(/\/create\/blocks\?mine=\d+/);
     await expect(page.getByRole("heading", { name: "E2E blocks algo" })).toBeVisible();
     await expect(page.locator(".react-flow__node")).toHaveCount(6);
     await expect(page.getByText('Saved as "E2E blocks algo"')).toBeVisible();

@@ -23,6 +23,8 @@ Then open the web address printed in the `web` lines of the startup output. Port
 
 Optional settings go in `backend/.env` (copy `backend/.env.example`): the account currency, the starting cash, and `MARKET_DATA_PROVIDER=fake` for deterministic offline prices. To run a second stack beside the first (say, against a scratch database), set `PORT` for the backend (`backend/dev.py`, default 8000), `DATABASE_URL` for its database, and `BACKEND_URL` for the Next.js dev server so it forwards `/api` to the right port. Next's own port is `next dev -p <port>`.
 
+To put it online (backend on a Hugging Face Space, frontend on Vercel), follow [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## What works
 
 - **Search and charts.** Search Yahoo Finance for stocks, ETFs and crypto worldwide (Ctrl+K). Candlestick charts from 1 day to max, with volume, SMA 20 and 50, EMA 20 and RSI 14.

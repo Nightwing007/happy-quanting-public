@@ -5,7 +5,7 @@ import * as api from "./api";
 import { LIVE_BASE } from "./api";
 import type { OrderFilters, TradeFilters } from "./api";
 import { useTradingBase } from "./trading-scope";
-import type { BacktestIn, CompileIn, CustomBlockIn, ListingIn, ListingUpdateIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, SubscribeIn, UserAlgoIn } from "./types";
+import type { BacktestIn, CompileIn, CustomBlockIn, DeploymentIn, ListingIn, ListingUpdateIn, OrderIn, ProtectionIn, SimControl, SimSessionIn, SubscribeIn, UserAlgoIn } from "./types";
 
 const THIRTY_SECONDS = 30_000;
 
@@ -52,6 +52,8 @@ export const queryKeys = {
   badgeCatalog: ["badge-catalog"] as const,
   myBadges: ["my-badges"] as const,
   userBadges: (username: string) => ["user-badges", username] as const,
+  deployments: ["deployments"] as const,
+  deployment: (id: number) => ["deployment", id] as const,
 };
 
 export const useHealth = () =>
@@ -139,6 +141,15 @@ export const useQuote = (symbol: string | null) =>
     queryFn: () => api.getQuote(symbol!),
     enabled: !!symbol,
     refetchInterval: THIRTY_SECONDS,
+  });
+
+// Tiles on the Trade page: the same cache entry as useQuote, but a symbol the data source does not know fails once.
+export const usePopularQuote = (symbol: string) =>
+  useQuery({
+    queryKey: queryKeys.quote(symbol),
+    queryFn: () => api.getQuote(symbol),
+    refetchInterval: THIRTY_SECONDS,
+    retry: false,
   });
 
 export const useBars = (symbol: string | null, interval: string, range: string, indicators: string[] = []) =>
@@ -629,5 +640,49 @@ export function useAcknowledgeBadgeSummary() {
   return useMutation({
     mutationFn: api.acknowledgeBadgeSummary,
     onSuccess: (data) => qc.setQueryData(queryKeys.myBadges, data),
+  });
+}
+
+/** True on a hosted demo, where nobody may bring their own code. Unknown (loading, old server) counts as not hosted. */
+export const useHosted = () => useHealth().data?.hosted_mode === true;
+
+// Deployments run on their own paper account, so moving cash in or out also changes the live portfolio.
+const DEPLOYMENT_POLL_MS = 10_000;
+
+export const useDeployments = (enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.deployments,
+    queryFn: api.listDeployments,
+    enabled,
+    refetchInterval: (q) => (q.state.data?.some((d) => d.status === "active" || d.status === "stopping") ? DEPLOYMENT_POLL_MS : false),
+  });
+
+export const useDeployment = (id: number) =>
+  useQuery({
+    queryKey: queryKeys.deployment(id),
+    queryFn: () => api.getDeployment(id),
+    retry: false,
+    refetchInterval: (q) => (q.state.data && q.state.data.status === "stopped" ? false : DEPLOYMENT_POLL_MS),
+  });
+
+function invalidateAfterDeploymentChange(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: queryKeys.deployments });
+  qc.invalidateQueries({ queryKey: ["deployment"] });
+  qc.invalidateQueries({ queryKey: queryKeys.portfolio });
+}
+
+export function useCreateDeployment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DeploymentIn) => api.createDeployment(body),
+    onSuccess: () => invalidateAfterDeploymentChange(qc),
+  });
+}
+
+export function useControlDeployment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: number; action: "pause" | "resume" | "stop" }) => api.controlDeployment(id, action),
+    onSuccess: () => invalidateAfterDeploymentChange(qc),
   });
 }

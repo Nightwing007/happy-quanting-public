@@ -24,8 +24,8 @@ test.describe("algos", () => {
       await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
     }
     await expect(page.locator("a", { hasText: "Open in lab" })).toHaveCount(5);
-    await expect(page.locator("a", { hasText: "Block editor" })).toBeVisible();
-    await expect(page.locator("a", { hasText: "Code editor" })).toBeVisible();
+    await expect(page.locator("a:visible", { hasText: "Block editor" })).toBeVisible();
+    await expect(page.locator("a:visible", { hasText: "Code editor" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "My algorithms" })).toBeVisible();
     await expect(page.getByText(/Nothing saved yet/)).toBeVisible();
   });

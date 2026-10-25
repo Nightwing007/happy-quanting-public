@@ -25,8 +25,8 @@ export function ProblemsPanel({
           "Checking your blocks..."
         ) : (
           <>
-            <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-medium text-emerald-700 dark:text-emerald-400">No problems.</span> Your blocks are
+            <CheckCircle2Icon className="size-4 text-up" />
+            <span className="font-medium text-up">No problems.</span> Your blocks are
             ready to test.
           </>
         )}

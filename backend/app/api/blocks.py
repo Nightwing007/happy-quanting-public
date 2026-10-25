@@ -25,6 +25,7 @@ from app.algos.blocks.compile import (
 from app.algos.sandbox import run_in_subprocess
 from app.algos.validate import validate_and_dry_run
 from app.api.deps import CurrentUser, DbSession
+from app.hosted import refuse_code, refuse_graph_code
 from app.models import CustomBlock
 from app.schemas import (
     AlgoParamOut,
@@ -126,6 +127,7 @@ def compile_for_user(
     """(the graph with its custom blocks filled in, problems, source). `play` also plays the
     result over made-up prices when the graph holds code blocks, so a runtime error in one is found."""
     graph = resolve_graph(db, user_id, graph)
+    refuse_graph_code(graph)  # before anything (the `play` dry run included) can start a sandbox
     problems = validate_graph(graph)
     if problems:
         return graph, [_problem_out(p) for p in problems], ""
@@ -175,6 +177,8 @@ def compile_blocks(body: CompileIn, db: DbSession, user: CurrentUser):
 
 
 def _checked(body: CustomBlockIn) -> None:
+    if body.kind == "code":
+        refuse_code()
     problems = validate_custom(body.kind, body.name, body.definition, runner=run_in_subprocess)
     if problems:
         raise HTTPException(

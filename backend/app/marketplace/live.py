@@ -3,19 +3,19 @@
 The background loop calls `run_subscriptions_once` after the live tick. Each active subscription
 keeps a `StrategyRun` (and, for uploaded code, its sandbox child process) between passes; after a
 restart the runs are simply rebuilt on the next pass, which loses only the strategy's own memory.
-Every failure is contained to its subscription.
+Every failure is contained to its subscription. The registry of runs is shared with the user's own
+deployments (`algos/live_runs.py`).
 """
 
 import logging
-import threading
-from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.algos import live_runs
 from app.algos.library import LIBRARY
-from app.algos.runner import StrategyRun, run_strategy_on
-from app.algos.sandbox import SandboxedStrategy, load_strategy
+from app.algos.live_runs import Held
+from app.algos.sandbox import load_strategy
 from app.market_data.base import MarketDataProvider
 from app.marketplace import listings, subscriptions
 from app.models import Subscription, SubscriptionStatus
@@ -23,33 +23,21 @@ from app.trading.tick import run_tick
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass
-class _Live:
-    run: StrategyRun
-    sandbox: SandboxedStrategy | None  # the child process of uploaded code; None for a library algo
-    version: int  # the listing version it was built from (the subscription's pin)
-
-
-_runs: dict[int, _Live] = {}
-# The loop thread steps runs while a request thread may stop one; a run is never closed mid-step.
-_lock = threading.RLock()
+_Live = Held
+_registry = live_runs.Registry()
+_runs = _registry.runs  # tests read it; the registry owns the lock
 
 
 def drop(sub_id: int) -> None:
     """Forget a subscription's run and close its sandbox child."""
-    with _lock:
-        live = _runs.pop(sub_id, None)
-    if live is not None and live.sandbox is not None:
-        live.sandbox.close()
+    _registry.drop(sub_id)
 
 
 def drop_all() -> None:
-    for sub_id in list(_runs):
-        drop(sub_id)
+    _registry.drop_all()
 
 
-def _build(ctx, listing_id: int, sub: Subscription) -> _Live:
+def _build(ctx, listing_id: int, sub: Subscription) -> Held:
     """Build from the version the subscriber is pinned to, never the listing's current fields."""
     code, _interval = listings.code_for(ctx.db, listing_id, sub.listing_version)
     if isinstance(code, str):
@@ -58,27 +46,13 @@ def _build(ctx, listing_id: int, sub: Subscription) -> _Live:
     else:
         sandbox, (key, params) = None, code
         strategy = LIBRARY[key]
-    try:
-        run = run_strategy_on(ctx, strategy, params, list(sub.symbols), closed_only=True)
-    except BaseException:
-        if sandbox is not None:
-            sandbox.close()
-        raise
-    return _Live(run, sandbox, sub.listing_version)
+    return live_runs.build_held(ctx, strategy, sandbox, params, list(sub.symbols), sub.listing_version)
 
 
 def _step_active(db: Session, provider: MarketDataProvider, sub: Subscription) -> None:
     ctx = subscriptions.sub_context(db, provider, sub)
-    with _lock:
-        live = _runs.get(sub.id)
-        if live is not None and live.version != sub.listing_version:
-            drop(sub.id)  # the subscriber upgraded: run the version they moved to
-            live = None
-        if live is None:
-            live = _runs[sub.id] = _build(ctx, sub.listing_id, sub)
-        else:
-            live.run.rebind(ctx)
-        live.run.step()
+    # The subscriber upgraded: the registry drops a run built from another version and rebuilds.
+    _registry.step(sub.id, ctx, lambda: _build(ctx, sub.listing_id, sub), sub.listing_version)
     subscriptions.settle_fees(db, sub)
 
 

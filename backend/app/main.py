@@ -15,8 +15,21 @@ from app import clock
 from app.algos import jobs as backtest_jobs
 from app.algos.api import ParameterError
 from app.algos.backtest import BacktestError
+from app.algos.deployments import drop_all as drop_all_deployments
+from app.algos.deployments import run_deployments_once
 from app.algos.runner import StrategyRunError
-from app.api import algos, backtests, badges, blocks, market, marketplace, sim, trading, watchlist
+from app.api import (
+    algos,
+    backtests,
+    badges,
+    blocks,
+    deployments,
+    market,
+    marketplace,
+    sim,
+    trading,
+    watchlist,
+)
 from app.api import auth as auth_api
 from app.api import settings as settings_api
 from app.api.deps import Provider
@@ -24,6 +37,7 @@ from app.auth import AuthError, ensure_demo_password
 from app.badges import award as badge_award
 from app.config import Settings, get_settings
 from app.db import SessionLocal
+from app.hosted import HostedModeError
 from app.market_data import get_provider
 from app.market_data.base import DataUnavailable, MarketDataError, SymbolNotFound
 from app.market_data.history import HistoryRangeError
@@ -60,6 +74,8 @@ def _fill_once() -> None:
             # Subscriptions trade on their own accounts, after the live tick so both see one clock.
             # This loop only exists when background jobs are on.
             run_subscriptions_once(db, provider)
+            # ...and so do the user's own deployments, under the same isolation.
+            run_deployments_once(db, provider)
             # Badges last, so they see what the tick just filled and closed.
             badge_award.sweep(db, clock.now())
     except Exception:  # noqa: BLE001 - the loop must survive any single failure
@@ -110,7 +126,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         if worker is not None:
             backtest_jobs.stop_worker(*worker)
-        drop_all()  # close any subscription sandbox children
+        drop_all()  # close any subscription or deployment sandbox children
+        drop_all_deployments()
         for task in tasks:
             task.cancel()
         for task in tasks:
@@ -129,6 +146,7 @@ app.include_router(sim.trading_router)
 app.include_router(backtests.router)
 app.include_router(marketplace.router)
 app.include_router(badges.router)
+app.include_router(deployments.router)
 app.include_router(settings_api.router)
 app.include_router(watchlist.router)
 
@@ -195,6 +213,13 @@ def _marketplace_error(request: Request, exc: MarketplaceError) -> JSONResponse:
 app.add_exception_handler(MarketplaceError, _marketplace_error)
 
 
+def _hosted_error(request: Request, exc: HostedModeError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message, "code": exc.code})
+
+
+app.add_exception_handler(HostedModeError, _hosted_error)
+
+
 def _bad_settings(request: Request, exc: ParameterError | StrategyRunError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
@@ -229,9 +254,11 @@ app.add_exception_handler(RequestValidationError, _validation_error)
 
 
 @app.get("/api/health")
-def health(provider: Provider, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str]:
+def health(provider: Provider, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str | bool]:
     return {
         "status": "ok",
         "data_source": provider.name,
         "base_currency": settings.base_currency,
+        # The frontend hides the code editor and upload when this is true.
+        "hosted_mode": settings.hosted_mode,
     }

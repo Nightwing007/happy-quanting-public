@@ -29,11 +29,11 @@ export const CATEGORY_TITLES: Record<string, string> = {
 };
 /** A coloured top edge per category, so the canvas reads at a glance. */
 export const CATEGORY_BAR: Record<string, string> = {
-  universe: "bg-slate-500",
-  signal: "bg-sky-500",
-  combine: "bg-violet-500",
-  action: "bg-emerald-500",
-  risk: "bg-amber-500",
+  universe: "bg-dim",
+  signal: "bg-primary",
+  combine: "bg-accent-hi",
+  action: "bg-up",
+  risk: "bg-warn",
   custom: "bg-pink-500",
 };
 

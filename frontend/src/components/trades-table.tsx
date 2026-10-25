@@ -21,8 +21,8 @@ export function DirectionBadge({ direction, className }: { direction: "long" | "
       variant="outline"
       className={cn(
         direction === "short"
-          ? "border-orange-500/60 bg-orange-500/15 text-orange-700 dark:text-orange-300"
-          : "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300",
+          ? "border-warn/60 bg-warn/15 text-warn"
+          : "border-up/40 bg-up/10 text-up",
         className,
       )}
     >
@@ -39,8 +39,8 @@ export function ClosedHowBadge({ closedHow }: { closedHow: string | null | undef
       variant="outline"
       className={
         closedHow === "stop_loss"
-          ? "border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-300"
-          : "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300"
+          ? "border-down/60 bg-down/10 text-down"
+          : "border-up/40 bg-up/10 text-up"
       }
     >
       {closedHow === "stop_loss" ? <Term id="stop_loss" focusable={false}>Stop-loss</Term> : <Term id="target" focusable={false}>Target</Term>}
@@ -48,9 +48,24 @@ export function ClosedHowBadge({ closedHow }: { closedHow: string | null | undef
   );
 }
 
-/** Open trades with an Exit button each. Used on the dashboard and the trade page. */
-export function TradesTable({ trades, showSymbol = true }: { trades: Trade[]; showSymbol?: boolean }) {
-  const accountCurrency = usePortfolio().data?.currency ?? "USD";
+/**
+ * Open trades with an Exit button each. Used on the dashboard and the trade page. `readOnly` drops the
+ * buttons (they would act on the live account) and `currency` names the account the trades belong to,
+ * for a deployment's trades.
+ */
+export function TradesTable({
+  trades,
+  showSymbol = true,
+  readOnly = false,
+  currency,
+}: {
+  trades: Trade[];
+  showSymbol?: boolean;
+  readOnly?: boolean;
+  currency?: string;
+}) {
+  const liveCurrency = usePortfolio().data?.currency;
+  const accountCurrency = currency ?? liveCurrency ?? "USD";
   const [exiting, setExiting] = useState<Trade | null>(null);
   const [protecting, setProtecting] = useState<Trade | null>(null);
 
@@ -126,7 +141,7 @@ export function TradesTable({ trades, showSymbol = true }: { trades: Trade[]; sh
                 {t.target_price ? formatPrice(t.target_price, t.currency) : "—"}
               </TableCell>
               <TableCell className="text-right">
-                {t.status === "open" ? (
+                {readOnly ? null : t.status === "open" ? (
                   <div className="flex justify-end gap-1.5">
                     <Button variant="outline" size="sm" onClick={() => setProtecting(t)}>
                       Stop / target

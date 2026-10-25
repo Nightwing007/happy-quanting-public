@@ -509,17 +509,55 @@ class FeeLedger(Base):
 
 
 class CashTransfer(Base):
-    """Capital moving between a subscriber's live account and the subscription's account."""
+    """Capital moving between a person's live account and an algo sub-account: a subscription's or
+    a deployment's (exactly one of the two is set)."""
 
     __tablename__ = "cash_transfers"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    subscription_id: Mapped[int] = mapped_column(
-        ForeignKey("subscriptions.id", name="fk_cash_transfers_subscription_id")
+    subscription_id: Mapped[int | None] = mapped_column(
+        ForeignKey("subscriptions.id", name="fk_cash_transfers_subscription_id"), nullable=True
+    )
+    deployment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("deployments.id", name="fk_cash_transfers_deployment_id"), nullable=True
     )
     kind: Mapped[str] = mapped_column(String)  # "fund" (live -> sub-account) or "return" (back)
     amount: Mapped[Decimal] = mapped_column(DecimalString)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class DeploymentStatus(StrEnum):
+    ACTIVE = "active"
+    PAUSED = "paused"  # keeps its positions and their protection; the strategy places nothing new
+    STOPPING = "stopping"  # exits are placed or waiting for a market to open
+    STOPPED = "stopped"
+
+
+class Deployment(Base):
+    """The user's own algorithm (a library one with tuned settings, or one they saved) running live
+    on a dedicated `kind="algo"` paper account funded from their live cash."""
+
+    __tablename__ = "deployments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="fk_deployments_user_id"))
+    name: Mapped[str] = mapped_column(String)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", name="fk_deployments_account_id"))
+    symbols: Mapped[list] = mapped_column(JSON)
+    capital: Mapped[Decimal] = mapped_column(DecimalString)
+    status: Mapped[str] = mapped_column(String, default=DeploymentStatus.ACTIVE)  # DeploymentStatus
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    stopped_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # What runs is a snapshot taken at deploy time, never a pointer to the saved algorithm: editing
+    # or deleting it afterwards must not change (or break) a deployment that is trading real
+    # positions. `user_algo_id` only says where it came from.
+    strategy_kind: Mapped[str] = mapped_column(String)  # "library" or "mine"
+    strategy_key: Mapped[str] = mapped_column(String)  # a library key; "" when `source` runs
+    params: Mapped[dict] = mapped_column(JSON)  # every setting, decimals as strings
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)  # code; a block graph's compiled code too
+    user_algo_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_algos.id", name="fk_deployments_user_algo_id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class User(Base):

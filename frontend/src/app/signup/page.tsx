@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { SplitFlap } from "@/components/motion/split-flap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,11 @@ function SignupForm() {
   return (
     <Card className="mx-auto mt-8 w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Create an account</CardTitle>
+        <CardTitle>
+          <h1 className="text-[26px] leading-none">
+            <SplitFlap text="Create an account" />
+          </h1>
+        </CardTitle>
         <CardDescription>
           Usernames are 3 to 30 characters: a-z, 0-9 and _. Passwords need at least 8 characters.
         </CardDescription>

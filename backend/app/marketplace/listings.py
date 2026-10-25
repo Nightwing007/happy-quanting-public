@@ -14,6 +14,7 @@ from app import clock
 from app.algos.api import validate_params
 from app.algos.library import LIBRARY
 from app.algos.validate import Problem, validate_source
+from app.hosted import refuse_code, refuse_saved_code
 from app.market_data.base import MarketDataError, MarketDataProvider
 from app.market_data.history import LIMITS
 from app.models import AlgoListing, ListingPerformance, ListingStatus, ListingVersion, User, UserAlgo
@@ -265,6 +266,7 @@ def create_listing(
         )
     source = strategy_key = params = None
     if from_source is not None:
+        refuse_code()
         default_interval = check_source(from_source).interval
         source = from_source
     else:
@@ -272,6 +274,7 @@ def create_listing(
         if saved is None or saved.owner_user_id != owner.id:
             raise MarketplaceError("algo_not_found", f"There is no saved algorithm {from_user_algo_id}.", 404)
         if saved.source is not None:  # editor code is listed as uploaded code
+            refuse_saved_code(saved)
             default_interval = check_source(saved.source).interval
             source = saved.source
         else:
@@ -319,6 +322,7 @@ def update_listing(db: Session, owner: User, listing_id: int, changes: dict[str,
         raise MarketplaceError("changelog_too_long", f"A changelog is at most {MAX_CHANGELOG} characters.")
     bumped = False
     if changes.get("source") is not None:
+        refuse_code()
         if listing.source is None:
             raise MarketplaceError(
                 "invalid_form", "This listing is built from a saved algorithm; it has no code to replace."

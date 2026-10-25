@@ -71,7 +71,7 @@ export function BadgeCase({ username }: { username?: string }) {
           {countEarned} of {all.length} <Term id="badge">badges</Term>
         </span>
         {champion && earnedAt.has("champion") && (
-          <span className="ml-2 font-semibold text-amber-600 dark:text-amber-400">
+          <span className="ml-2 font-semibold text-warn">
             · <Term id="champion">Champion</Term>
           </span>
         )}

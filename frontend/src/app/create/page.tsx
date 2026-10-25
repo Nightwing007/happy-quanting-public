@@ -1,5 +1,5 @@
-import { MyListings } from "@/components/create/my-listings";
+import { CreateHub } from "@/components/create/create-hub";
 
 export default function CreatePage() {
-  return <MyListings />;
+  return <CreateHub />;
 }

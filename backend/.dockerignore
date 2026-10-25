@@ -1,0 +1,17 @@
+.venv
+.env
+.env.*
+!.env.example
+data
+tests
+__pycache__
+**/__pycache__
+*.pyc
+*.db
+.pytest_cache
+.ruff_cache
+requirements-dev.txt
+openapi.json
+dev.py
+Dockerfile
+.dockerignore

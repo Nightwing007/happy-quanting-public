@@ -7,36 +7,27 @@ other. Strategy execution lives in `marketplace/live.py`; this module is the mon
 """
 
 import logging
-import threading
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.market_data.base import TRADABLE_TYPES, MarketDataError, MarketDataProvider
+from app.algos import live_runs
+from app.market_data.base import MarketDataProvider
 from app.marketplace.listings import MarketplaceError, _load, _market_codes, not_found
 from app.models import (
     Account,
-    AccountKind,
     AlgoListing,
     CashTransfer,
     FeeLedger,
     ListingStatus,
-    Order,
-    OrderOrigin,
-    OrderStatus,
     Subscription,
     SubscriptionStatus,
-    Trade,
-    TradeStatus,
     User,
 )
-from app.sim.runner import MAX_SYMBOLS, _instrument
 from app.trading import engine
 from app.trading.context import TradingContext
-from app.trading.errors import TradingError
-from app.trading.markets import market_for
 from app.trading.money import money
 
 logger = logging.getLogger(__name__)
@@ -46,13 +37,7 @@ HUNDRED = Decimal(100)
 
 # The background loop and a stop request can both reach a subscription at once. Settling a fee or
 # returning the cash reads the account, then writes; without this both would pay or return it.
-_sub_locks: dict[int, threading.RLock] = {}
-_sub_locks_guard = threading.Lock()
-
-
-def _sub_lock(sub_id: int) -> threading.RLock:
-    with _sub_locks_guard:
-        return _sub_locks.setdefault(sub_id, threading.RLock())
+_sub_lock = live_runs.KeyedLocks()
 
 
 def subscription_not_found(sub_id: int) -> MarketplaceError:
@@ -61,9 +46,7 @@ def subscription_not_found(sub_id: int) -> MarketplaceError:
 
 def sub_context(db: Session, provider: MarketDataProvider, sub: Subscription) -> TradingContext:
     """The subscription's account on the real clock (looked up per call so a test can replace it)."""
-    account = db.get(Account, sub.account_id)
-    assert account is not None
-    return TradingContext(db, account, provider, lambda: clock.now())
+    return live_runs.account_context(db, provider, sub.account_id)
 
 
 # --- reading -----------------------------------------------------------------------------------
@@ -138,48 +121,16 @@ def subscribe(
     if listing.status != ListingStatus.PUBLISHED:
         raise not_found(listing_id)  # a draft or retired listing is invisible to everyone else
 
-    names = list(dict.fromkeys(s.strip().upper() for s in symbols if s.strip()))
-    if not names:
-        raise MarketplaceError("no_symbols", "Pick at least one symbol to run the algorithm on.")
-    if len(names) > MAX_SYMBOLS:
-        raise MarketplaceError("too_many_symbols", f"Pick at most {MAX_SYMBOLS} symbols.")
-    live = engine.account_for_user(db, user.id)
-    allowed = _market_codes(listing.markets)
-    for symbol in names:
-        try:
-            inst = _instrument(provider, symbol)
-            if inst.type not in TRADABLE_TYPES:
-                raise MarketplaceError("symbol_not_tradable", f"{symbol} can be charted but not traded.")
-            market = market_for(inst.symbol, inst.type)
-            engine._broker_for(live, market)  # the user's broker for this segment must offer the market
-        except MarketDataError as why:
-            raise MarketplaceError("symbol_unknown", f"Symbol {symbol}: {why.message}") from why
-        except TradingError as why:
-            raise MarketplaceError(why.code, why.message) from why
-        if market.code not in allowed:
-            raise MarketplaceError(
-                "symbol_market",
-                f"{symbol} trades on {market.name}, which this algorithm doesn't support.",
-            )
+    def err(code: str, message: str) -> MarketplaceError:
+        return MarketplaceError(code, message)
 
-    if not capital.is_finite() or money(capital) <= 0:
-        raise MarketplaceError("invalid_capital", "Capital must be more than zero.")
-    capital = money(capital)
-    available = live.cash - live.margin_used
-    if capital > available:
-        raise MarketplaceError(
-            "insufficient_cash",
-            f"You have {available:f} {live.currency} available and asked to allocate {capital:f}.",
-        )
+    names = live_runs.clean_symbols(symbols, err)
+    live = engine.account_for_user(db, user.id)
+    live_runs.check_symbols(provider, live, names, _market_codes(listing.markets), err)
+    capital = live_runs.check_capital(live, capital, err)
 
     now = clock.now()
-    account = Account(
-        currency=live.currency, cash=capital, starting_cash=capital, realized_pnl=ZERO, margin_used=ZERO,
-        created_at=now, kind=AccountKind.ALGO, user_id=user.id, broker_india=live.broker_india,
-        broker_international=live.broker_international, broker_crypto=live.broker_crypto,
-    )  # fmt: skip
-    db.add(account)
-    db.flush()
+    account = live_runs.open_account(db, live, user.id, capital)
     sub = Subscription(
         subscriber_user_id=user.id, listing_id=listing.id, listing_version=listing.version, symbols=names,
         capital=capital, account_id=account.id, fee_percent=listing.fee_percent, high_water_mark=ZERO,
@@ -187,7 +138,6 @@ def subscribe(
     )  # fmt: skip
     db.add(sub)
     db.flush()
-    live.cash -= capital
     db.add(CashTransfer(subscription_id=sub.id, kind="fund", amount=capital, created_at=now))
     db.commit()
     return sub
@@ -260,43 +210,6 @@ def _settle_fees_locked(db: Session, sub: Subscription) -> FeeLedger | None:
 # --- stopping ----------------------------------------------------------------------------------
 
 
-def _wind_down(ctx: TradingContext) -> None:
-    """Cancel waiting entries and ask for every open trade to be closed. Safe to repeat: a trade
-    that already has a waiting exit is left alone."""
-    db = ctx.db
-    waiting = list(
-        db.scalars(select(Order).where(Order.account_id == ctx.account.id, Order.status == OrderStatus.OPEN))
-    )
-    exiting = {o.trade_id for o in waiting if o.trade_id is not None}
-    for order in waiting:
-        if order.trade_id is None and order.origin == OrderOrigin.USER:
-            engine.cancel_order(ctx, order.id)  # an entry that would reopen what we are closing
-    open_trades = db.scalars(
-        select(Trade)
-        .where(Trade.account_id == ctx.account.id, Trade.status == TradeStatus.OPEN)
-        .order_by(Trade.id)
-    )
-    for trade in list(open_trades):
-        if trade.id in exiting:
-            continue
-        try:
-            engine.exit_trade(ctx, trade.id)  # the Exit button's path; waits if the market is closed
-        except (TradingError, MarketDataError) as why:
-            db.rollback()
-            logger.warning("Subscription exit of trade %s refused, will retry: %s", trade.id, why)
-
-
-def _is_flat(ctx: TradingContext) -> bool:
-    db, account_id = ctx.db, ctx.account.id
-    open_trade = db.scalar(
-        select(Trade.id).where(Trade.account_id == account_id, Trade.status == TradeStatus.OPEN).limit(1)
-    )
-    open_order = db.scalar(
-        select(Order.id).where(Order.account_id == account_id, Order.status == OrderStatus.OPEN).limit(1)
-    )
-    return open_trade is None and open_order is None
-
-
 def advance_stop(db: Session, provider: MarketDataProvider, sub: Subscription) -> bool:
     """Move a stopping subscription forward: exit what is open, settle the final fee, and once the
     account is flat return its cash to the live account. Returns whether it is now stopped."""
@@ -310,16 +223,11 @@ def _advance_stop_locked(db: Session, provider: MarketDataProvider, sub: Subscri
         return True  # the other thread finished it: the cash is already back
     ctx = sub_context(db, provider, sub)
     db.refresh(ctx.account)
-    _wind_down(ctx)
+    live_runs.wind_down(ctx)
     settle_fees(db, sub)
-    if not _is_flat(ctx):
+    if not live_runs.is_flat(ctx):
         return False
-    account = ctx.account
-    amount = account.cash
-    if amount != 0:
-        engine.account_for_user(db, sub.subscriber_user_id).cash += amount
-        account.cash = ZERO
-        db.add(CashTransfer(subscription_id=sub.id, kind="return", amount=amount, created_at=clock.now()))
+    live_runs.return_cash(db, ctx.account, sub.subscriber_user_id, {"subscription_id": sub.id})
     sub.status = SubscriptionStatus.STOPPED
     sub.stopped_at = clock.now()
     db.commit()

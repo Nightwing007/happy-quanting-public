@@ -27,7 +27,7 @@ from app.algos.api import OrderIntent, Strategy, validate_params
 from app.algos.library import LIBRARY
 from app.algos.runner import _EngineBackend, run_strategy_on
 from app.algos.sandbox import load_strategy
-from app.market_data.base import TRADABLE_TYPES, Bar, Instrument, MarketDataProvider
+from app.market_data.base import TRADABLE_TYPES, Bar, Instrument, MarketDataError, MarketDataProvider
 from app.market_data.fx import get_fx_rate
 from app.market_data.history import (
     HistoryRangeError,
@@ -161,6 +161,7 @@ class _Point:
     cash: Decimal
     positions: Decimal
     invested: bool
+    notional: Decimal = ZERO  # what the open positions are worth gross (a short counts too)
 
 
 def _resolve_strategy(key: str | None, cls: type[Strategy] | None) -> tuple[str, type[Strategy]]:
@@ -230,16 +231,18 @@ def sweep_scratch_accounts(db: Session) -> int:
     return len(ids)
 
 
-def _mark(ctx: TradingContext) -> tuple[Decimal, Decimal, bool]:
-    """(cash + positions, positions, whether anything is open): what the account is worth at the
-    replay's price, valued as `get_portfolio` does so the two agree. A long counts at market
-    value, a short at what it took in less what covering would cost."""
+def _mark(ctx: TradingContext) -> tuple[Decimal, Decimal, bool, Decimal]:
+    """(cash + positions, positions, whether anything is open, gross notional): what the account
+    is worth at the replay's price, valued as `get_portfolio` does so the two agree. A long counts
+    at market value, a short at what it took in less what covering would cost. The notional is
+    what the open positions are worth in full (a short counts at its cover cost), i.e. how much of
+    the account is in the market, which `positions` is not for a short."""
     trades = list(
         ctx.db.scalars(
             select(Trade).where(Trade.account_id == ctx.account.id, Trade.status == TradeStatus.OPEN)
         )
     )
-    positions = ZERO
+    positions = notional = ZERO
     for trade in trades:
         try:
             quote = ctx.provider.get_quote(trade.symbol)
@@ -247,11 +250,12 @@ def _mark(ctx: TradingContext) -> tuple[Decimal, Decimal, bool]:
         except Exception:  # noqa: BLE001 - an unpriced position is valued at cost, as the portfolio does
             quote, fx = None, None
         view = engine._value_trade(trade, quote, fx)
+        notional += view.market_value
         if trade.direction == TradeDirection.LONG:
             positions += view.market_value
         else:
             positions += trade.entry_value - view.market_value
-    return ctx.account.cash + positions, positions, bool(trades)
+    return ctx.account.cash + positions, positions, bool(trades), notional
 
 
 def _charges_by_category(orders: Sequence[Order]) -> dict[str, Decimal]:
@@ -336,6 +340,11 @@ def _thin(items: list, stride: int) -> list:
     return [x for i, x in enumerate(items) if i % stride == 0 or i == len(items) - 1]
 
 
+def _share(point: _Point) -> Decimal:
+    """Percent of the account's equity that sat in open positions at this close."""
+    return point.notional / point.equity * HUNDRED if point.equity > 0 else ZERO
+
+
 def _trade_metrics(
     rows: list[BacktestTradeOut],
     points: list[_Point],
@@ -364,7 +373,8 @@ def _trade_metrics(
         win_rate_pct=_pct(D(len(wins)) / len(closed) * HUNDRED) if closed else None,
         average_win=_pct(sum(wins, ZERO) / len(wins)) if wins else None,
         average_loss=_pct(sum(losses, ZERO) / len(losses)) if losses else None,
-        profit_factor=(_pct(sum(wins, ZERO) / -sum(losses, ZERO)) if wins and losses else None),
+        # Nothing lost: no ratio (not infinite). Nothing won but something lost: a factor of 0.
+        profit_factor=_pct(sum(wins, ZERO) / -sum(losses, ZERO)) if losses else None,
         total_charges=sum(by_category.values(), ZERO),
         charges_by_category=by_category,
         gross_profit=gross_profit if gross_profit > 0 else None,
@@ -373,6 +383,8 @@ def _trade_metrics(
         else None,
         financing_paid=sum((r.financing for r in rows), ZERO),
         exposure_pct=_pct(D(sum(p.invested for p in points)) / len(points) * HUNDRED) if points else ZERO,
+        avg_exposure_pct=_pct(sum((_share(p) for p in points), ZERO) / len(points)) if points else ZERO,
+        max_position_pct=_pct(max((_share(p) for p in points), default=ZERO)),
     )
 
 
@@ -631,9 +643,9 @@ def _run_backtest(
             hold.try_buying()
             run.step()
             if stamp in closes:
-                equity, positions, invested = _mark(ctx)
-                points.append(_Point(stamp, equity, account.cash, positions, invested))
-                hold_equity, hold_positions, _ = _mark(hold_ctx)
+                equity, positions, invested, notional = _mark(ctx)
+                points.append(_Point(stamp, equity, account.cash, positions, invested, notional))
+                hold_equity, hold_positions, _, _ = _mark(hold_ctx)
                 hold_points.append(_Point(stamp, hold_equity, hold_account.cash, hold_positions, True))
             if progress is not None and index % report_every == 0:
                 progress(min(99, 100 * index // len(visits)))
@@ -673,6 +685,14 @@ class _BuyAndHold:
             available = self.backend.available_cash()
             if available <= 0:
                 return
+            try:
+                quote = self.ctx.provider.get_quote(symbol)
+            except MarketDataError:
+                continue  # no price yet is not a failed try
+            # Another symbol's visit (a coin trades hourly through the night, a stock opens hours
+            # later) is not a try for this one: placing the order now would only leave it resting.
+            if not hours.can_fill(market_for(symbol, quote.type), quote.as_of, self.ctx.now()):
+                continue
             self.waiting[symbol] += 1
             percent = min(HUNDRED, self.allotment / available * HUNDRED)
             self.backend.submit_now(OrderIntent("buy", symbol, percent_of_cash=percent))

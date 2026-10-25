@@ -5,6 +5,9 @@ import type {
   CompileResult,
   CustomBlock,
   CustomBlockIn,
+  Deployment,
+  DeploymentDetail,
+  DeploymentIn,
   BacktestDetail,
   BacktestIn,
   BacktestSummary,
@@ -344,3 +347,13 @@ export const acknowledgeBadgeSummary = () => request<MyBadges>("/api/badges/me/s
 
 export const getUserBadges = (username: string) =>
   request<UserBadges>(`/api/users/${encodeURIComponent(username)}/badges`);
+
+export const createDeployment = (body: DeploymentIn) =>
+  request<Deployment>("/api/deployments", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+export const listDeployments = () => request<Deployment[]>("/api/deployments");
+
+export const getDeployment = (id: number) => request<DeploymentDetail>(`/api/deployments/${id}`);
+
+export const controlDeployment = (id: number, action: "pause" | "resume" | "stop") =>
+  request<Deployment>(`/api/deployments/${id}/${action}`, { method: "POST" });

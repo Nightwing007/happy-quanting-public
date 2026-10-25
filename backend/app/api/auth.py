@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -32,6 +34,21 @@ def _set_cookie(response: Response, token: str) -> None:
 
 
 def _ip(request: Request) -> str:
+    """The caller's address for the login limiter.
+
+    Forwarding headers are read only when TRUST_PROXY_HEADERS is on (we sit behind a proxy that
+    sets them); otherwise any caller could spoof them to dodge the limit. Order: first hop of
+    X-Forwarded-For (the original client), x-vercel-forwarded-for (Vercel's own copy), X-Real-IP,
+    then the socket address.
+    """
+    if get_settings().trust_proxy_headers:
+        forwarded = request.headers.get("x-forwarded-for") or request.headers.get("x-vercel-forwarded-for")
+        first = forwarded.split(",")[0].strip() if forwarded else ""
+        if first:
+            return first
+        real = (request.headers.get("x-real-ip") or "").strip()
+        if real:
+            return real
     return request.client.host if request.client else "unknown"
 
 
@@ -77,6 +94,8 @@ def login(body: LoginIn, request: Request, response: Response, db: DbSession):
         raise auth.AuthError(
             "Too many failed attempts. Please wait 15 minutes and try again.", "too_many_attempts", 429
         )
+    if auth.login_limiter.slow(username):
+        time.sleep(auth.login_limiter.delay_seconds)  # sync route: holds one worker thread only
     user = db.scalar(select(User).where(User.username == username))
     ok = auth.verify_password(body.password, user.password_hash if user else _DUMMY_HASH)
     if user is None or not ok:

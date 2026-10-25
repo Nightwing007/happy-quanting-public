@@ -58,9 +58,21 @@ function WhatItDid({ order }: { order: Order }) {
 }
 
 /** Shared by /orders and the per-symbol list on /trade. */
-export function OrdersTable({ orders, showSymbol = true }: { orders: Order[]; showSymbol?: boolean }) {
+export function OrdersTable({
+  orders,
+  showSymbol = true,
+  readOnly = false,
+  currency,
+}: {
+  orders: Order[];
+  showSymbol?: boolean;
+  /** No Cancel button (it would act on the live account); `currency` names a deployment's account. */
+  readOnly?: boolean;
+  currency?: string;
+}) {
   const cancel = useCancelOrder();
-  const accountCurrency = usePortfolio().data?.currency ?? "USD";
+  const liveCurrency = usePortfolio().data?.currency;
+  const accountCurrency = currency ?? liveCurrency ?? "USD";
 
   function onCancel(order: Order) {
     cancel.mutate(order.id, {
@@ -103,7 +115,7 @@ export function OrdersTable({ orders, showSymbol = true }: { orders: Order[]; sh
                 </TableCell>
               )}
               <TableCell
-                className={o.side === "buy" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}
+                className={o.side === "buy" ? "text-up" : "text-down"}
               >
                 {o.side}
               </TableCell>
@@ -135,7 +147,7 @@ export function OrdersTable({ orders, showSymbol = true }: { orders: Order[]; sh
                 )}
               </TableCell>
               <TableCell className="text-right">
-                {o.status === "open" && (
+                {!readOnly && o.status === "open" && (
                   <Button
                     variant="outline"
                     size="sm"

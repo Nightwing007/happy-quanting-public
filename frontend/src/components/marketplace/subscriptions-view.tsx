@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatRatio } from "@/lib/format";
 import { useListing, useStopSubscription, useSubscriptions, useUpgradeSubscription } from "@/lib/queries";
 import type { Subscription } from "@/lib/types";
+import { PageHeader } from "@/components/motion/page-header";
 
 const STATUS_BADGE: Record<Subscription["status"], { label: string; variant: "default" | "secondary" | "outline" }> = {
   active: { label: "Running", variant: "default" },
@@ -198,12 +199,15 @@ export function SubscriptionsView() {
   const { data, isPending, error, refetch } = useSubscriptions();
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">My subscriptions</h1>
-        <Button variant="outline" nativeButton={false} render={<Link href="/marketplace" />}>
-          Browse the marketplace
-        </Button>
-      </div>
+      <PageHeader
+        title="My subscriptions"
+        eyebrow="HFT · Market"
+        actions={
+          <Button variant="outline" nativeButton={false} render={<Link href="/marketplace" />}>
+            Browse the marketplace
+          </Button>
+        }
+      />
       {error && !data && <QueryError error={error} title="Couldn't load your subscriptions" onRetry={() => refetch()} />}
       {isPending && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

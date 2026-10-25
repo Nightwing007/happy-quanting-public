@@ -39,11 +39,18 @@ async function realRoutes(page: Page): Promise<string[]> {
     if (state.status === "done" || state.status === "failed") break;
     await page.waitForTimeout(1000);
   }
+  const dep = await api.post("/api/deployments", {
+    data: { library_key: "sma_crossover", params: {}, symbols: ["BTC-USD"], capital: "1000" },
+  });
+  expect(dep.ok(), await dep.text()).toBeTruthy();
+  const deployment = await dep.json();
   const listings = await (await api.get("/api/marketplace/listings")).json();
   return PAGE_ROUTES.filter((r) => !SIGNED_OUT.has(r)).map((r) =>
     r === "/sim/1"
       ? `/sim/${sim.id}`
-      : r === "/algos/backtests/1"
+      : r === "/deployments/1"
+        ? `/deployments/${deployment.id}`
+        : r === "/algos/backtests/1"
         ? `/algos/backtests/${bt.id}`
         : r === "/marketplace/1"
           ? `/marketplace/${listings[0].id}`

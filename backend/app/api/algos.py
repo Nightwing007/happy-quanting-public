@@ -14,6 +14,7 @@ from app.algos.sandbox import load_strategy, run_in_subprocess
 from app.algos.validate import validate_and_dry_run, validate_source
 from app.api.blocks import compile_for_user
 from app.api.deps import CurrentUser, DbSession
+from app.hosted import refuse_code
 from app.models import UserAlgo
 from app.schemas import (
     AlgoOut,
@@ -76,6 +77,7 @@ def algo_rules():
 @router.post("/validate", response_model=ValidationReportOut)
 def validate_code(body: ValidateIn, user: CurrentUser):
     """Check uploaded strategy code against the rules in docs/algo-rules.md; nothing is saved."""
+    refuse_code()
     report = validate_and_dry_run(body.source, runner=run_in_subprocess)
     meta = report.meta
     return ValidationReportOut(
@@ -154,6 +156,8 @@ def _code_of(body: UserAlgoIn, db, user) -> tuple[str | None, dict | None]:
     """The code to save and the graph it came from. A block graph is compiled here, so what is
     stored is ordinary source that goes through the same checks as anything else."""
     if body.graph is None:
+        if body.source is not None:
+            refuse_code()
         return body.source, None
     if body.source is not None or body.strategy is not None:
         raise HTTPException(status_code=400, detail="Send one of `strategy`, `source` or `graph`.")

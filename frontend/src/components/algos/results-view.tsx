@@ -41,7 +41,7 @@ import { ResultsActions } from "./results-actions";
 import { SeriesChart, type ChartLine } from "./series-chart";
 
 const EMPTY: never[] = [];
-const COLOR_STRATEGY = "#2563eb";
+const COLOR_STRATEGY = "#a855f7";
 const COLOR_HOLD = "#9ca3af";
 const COLOR_DRAWDOWN = "#dc2626";
 
@@ -133,7 +133,7 @@ function MetricCards({ results }: { results: BacktestResults }) {
         label="Total return"
         term="total_return"
         value={formatPercent(m.total_return_pct)}
-        tone={toNumber(m.total_return_pct) < 0 ? "text-red-600 dark:text-red-400" : undefined}
+        tone={toNumber(m.total_return_pct) < 0 ? "text-down" : undefined}
         note={`${formatMoney(m.starting_cash, currency)} to ${formatMoney(m.final_equity, currency)} · buy and hold ${formatPercent(hold.total_return_pct)}`}
       />
       <Stat

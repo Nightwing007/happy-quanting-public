@@ -12,14 +12,14 @@ const HOW: Record<string, { label: string; className: string }> = {
   exit: { label: "Exited", className: "" },
   sell: { label: "Exited", className: "" },
   cover: { label: "Exited", className: "" },
-  stop_loss: { label: "Stop-loss fired", className: "border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-300" },
+  stop_loss: { label: "Stop-loss fired", className: "border-down/60 bg-down/10 text-down" },
   target: {
     label: "Target reached",
-    className: "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300",
+    className: "border-up/40 bg-up/10 text-up",
   },
   square_off: {
     label: "Squared off by broker",
-    className: "border-orange-500/60 bg-orange-500/15 text-orange-700 dark:text-orange-300",
+    className: "border-warn/60 bg-warn/15 text-warn",
   },
 };
 

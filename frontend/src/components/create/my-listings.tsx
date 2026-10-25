@@ -156,8 +156,8 @@ export function MyListings() {
   const earnings = useEarnings();
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">My listings</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+        <h2 className="t-head text-xl">My listings</h2>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" nativeButton={false} render={<Link href="/marketplace/earnings" />}>
             Earnings

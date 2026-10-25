@@ -135,3 +135,68 @@ def test_demo_password_is_set_once(db_session: Session) -> None:
     assert pw and auth.ensure_demo_password(db_session) is None
     demo = db_session.scalar(select(User))
     assert auth.verify_password(pw, demo.password_hash)
+
+
+# --- limiter behind a proxy (TRUST_PROXY_HEADERS) ---------------------------------------------
+
+BAD = {"username": "ghost", "password": "nope-nope-nope"}
+
+
+def _fail(client: TestClient, ip: str) -> int:
+    return client.post("/api/auth/login", json=BAD, headers={"X-Forwarded-For": ip}).status_code
+
+
+def _trust(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "true")
+    get_settings.cache_clear()
+
+
+def _request(*pairs: tuple[str, str]):
+    from starlette.requests import Request
+
+    headers = [(k.encode(), v.encode()) for k, v in pairs]
+    return Request({"type": "http", "headers": headers, "client": ("1.2.3.4", 1)})
+
+
+def test_forwarded_headers_ignored_when_setting_off() -> None:
+    from app.api.auth import _ip
+
+    assert _ip(_request(("x-forwarded-for", "9.9.9.9"), ("x-real-ip", "8.8.8.8"))) == "1.2.3.4"
+
+
+def test_spoofed_header_cannot_bypass_limit_when_setting_off(client: TestClient) -> None:
+    codes = [_fail(client, f"10.0.0.{i}") for i in range(6)]
+    assert codes == [401] * 5 + [429]
+
+
+def test_first_forwarded_hop_is_used_when_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.auth import _ip
+
+    _trust(monkeypatch)
+    assert _ip(_request(("x-forwarded-for", "9.9.9.9, 10.0.0.1, 10.0.0.2"))) == "9.9.9.9"
+    assert _ip(_request(("x-vercel-forwarded-for", "7.7.7.7"))) == "7.7.7.7"
+    assert _ip(_request(("x-real-ip", "8.8.8.8"))) == "8.8.8.8"
+    assert _ip(_request()) == "1.2.3.4"
+
+
+def test_different_forwarded_ips_do_not_share_a_lockout(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _trust(monkeypatch)
+    assert [_fail(client, "5.5.5.5, 10.0.0.1") for _ in range(6)] == [401] * 5 + [429]
+    assert _fail(client, "6.6.6.6, 10.0.0.1") == 401  # same username, other client: not locked
+
+
+def test_failures_across_ips_slow_a_username_but_never_lock_it(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _trust(monkeypatch)
+    waits: list[float] = []
+    monkeypatch.setattr("app.api.auth.time.sleep", waits.append)
+    monkeypatch.setattr(auth.login_limiter, "slow_after", 6)
+    assert [_fail(client, f"4.4.4.{i}") for i in range(6)] == [401] * 6
+    assert waits == []
+    assert _fail(client, "4.4.4.99") == 401  # not locked, but made to wait
+    assert waits == [auth.login_limiter.delay_seconds]

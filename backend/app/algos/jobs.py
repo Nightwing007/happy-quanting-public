@@ -25,6 +25,7 @@ from app.algos.backtest import (
 from app.algos.sandbox import SandboxError, UserCodeError, load_strategy
 from app.config import get_settings
 from app.db import SessionLocal
+from app.hosted import refuse_code, refuse_saved_code
 from app.market_data import get_provider
 from app.market_data.base import MarketDataError, MarketDataProvider
 from app.models import Backtest, BacktestStatus, UserAlgo
@@ -61,6 +62,7 @@ def queue_backtest(
     strategy, params = body.strategy, body.params
     source = body.source
     if source is not None:
+        refuse_code()
         if body.strategy is not None or body.algo_id is not None:
             raise BacktestError("Give one of: a library key, a saved algorithm, or code.")
         return _queue_source(db, provider, body, source, cash, owner_user_id, today)
@@ -69,6 +71,7 @@ def queue_backtest(
         if saved is None or saved.owner_user_id != owner_user_id:
             raise BacktestNotFound(f"There is no saved algorithm {body.algo_id}.")
         if saved.source is not None:  # editor code runs like an uploaded `source`
+            refuse_saved_code(saved)
             merged = body.model_copy(update={"params": {**saved.params, **body.params}})
             return _queue_source(db, provider, merged, saved.source, cash, owner_user_id, today)
         # The saved settings are the starting point; anything sent with the request wins.
@@ -183,7 +186,9 @@ def run_backtest_job(
     db: Session, backtest_id: int, provider: MarketDataProvider | None = None, *, today: date | None = None
 ) -> None:
     """Run one queued backtest to the end, storing its results (or why it failed) on its row."""
-    row = _load(db, backtest_id)  # the worker runs every owner's jobs
+    row = db.get(Backtest, backtest_id)  # the worker runs every owner's jobs
+    if row is None:  # deleted between being picked and starting: nothing to run, not an error
+        return
     provider = provider or get_provider()
     row.status = BacktestStatus.RUNNING
     row.progress = 0

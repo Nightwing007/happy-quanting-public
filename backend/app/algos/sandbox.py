@@ -42,6 +42,7 @@ import multiprocessing
 import os
 import pickle
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from types import SimpleNamespace
@@ -71,6 +72,7 @@ from app.algos.validate import (
     play,
     validate_source,
 )
+from app.config import get_settings
 
 _START_SECONDS = 60.0  # spawning imports pandas; not part of any limit
 _POLL_SECONDS = 0.05
@@ -79,6 +81,24 @@ _HOOKS = ("on_start", "on_bar", "on_trade_closed")
 _BACKEND_METHODS = "now cash available_cash bars price position open_trades queue set_protection log".split()
 _NO_BACKEND = SimpleNamespace(symbols=())  # `check_params` has no `ctx`, so nothing is asked
 _NEEDS_SYMBOL = ("bars", "price", "position")
+
+# Hosted mode caps the children alive at once (each imports pandas, ~150 MB on a small host). A run
+# past the cap waits this long for a slot, then fails with a sentence a person can read.
+_SLOT_WAIT_SECONDS = 20.0
+_slots: threading.BoundedSemaphore | None = None
+_slots_lock = threading.Lock()
+
+
+def _slot_pool() -> threading.BoundedSemaphore | None:
+    """The pool of child slots; None (no cap) unless hosted mode is on."""
+    global _slots
+    settings = get_settings()
+    if not settings.hosted_mode:
+        return None
+    with _slots_lock:
+        if _slots is None:
+            _slots = threading.BoundedSemaphore(max(1, settings.max_sandboxes))
+        return _slots
 
 
 class SandboxError(Exception):
@@ -367,6 +387,7 @@ class SandboxedStrategy:
         self._run_spent = 0.0
         self._log_lines = 0
         self._closed = False
+        self._slot: threading.BoundedSemaphore | None = None  # the cap slot this child holds
 
     # --- the hooks -------------------------------------------------------------------
     def on_start(self, ctx: StrategyContext) -> None:
@@ -504,6 +525,7 @@ class SandboxedStrategy:
         # core in every child, and a few concurrent sandboxes exhaust memory (OpenBLAS MemoryError).
         for var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
             os.environ.setdefault(var, "1")
+        self._take_slot()
         context = multiprocessing.get_context("spawn")
         parent_end, child_end = context.Pipe(duplex=True)
         proc = context.Process(
@@ -514,6 +536,7 @@ class SandboxedStrategy:
         try:
             proc.start()
         except Exception as why:  # noqa: BLE001
+            self._release_slot()
             raise SandboxError("sandbox_failed", f"The sandbox could not start ({why}).") from None
         finally:
             child_end.close()
@@ -526,6 +549,22 @@ class SandboxedStrategy:
         if message[0] != "ready":
             raise SandboxError("sandbox_failed", "The sandbox did not start properly.")
         self.warmup_bars = max(0, message[1])
+
+    def _take_slot(self) -> None:
+        pool = _slot_pool()
+        if pool is None:
+            return
+        if not pool.acquire(timeout=_SLOT_WAIT_SECONDS):
+            raise SandboxError(
+                "sandbox_busy",
+                "The server is already running as many strategies as it can. Please try again in a minute.",
+            )
+        self._slot = pool
+
+    def _release_slot(self) -> None:
+        slot, self._slot = self._slot, None
+        if slot is not None:
+            slot.release()
 
     def _over_memory(self) -> bool:
         if self._memory is None:
@@ -562,6 +601,7 @@ class SandboxedStrategy:
             conn.close()
         if memory is not None:
             memory.close()
+        self._release_slot()
 
     def __enter__(self) -> SandboxedStrategy:
         return self

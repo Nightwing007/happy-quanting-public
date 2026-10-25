@@ -1,0 +1,10 @@
+import { PageSkeleton, TitleSkeleton, CardGridSkeleton } from "@/components/motion/skeletons";
+
+export default function Loading() {
+  return (
+    <PageSkeleton>
+      <TitleSkeleton width="w-64" />
+      <CardGridSkeleton count={2} height="h-48" />
+    </PageSkeleton>
+  );
+}

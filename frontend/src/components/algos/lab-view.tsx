@@ -25,8 +25,10 @@ import {
 } from "@/lib/queries";
 import { formatDay } from "@/lib/sim-format";
 import type { Algo, BacktestIn, UserAlgo } from "@/lib/types";
+import { DeployButton, settingLabel } from "@/components/deployments/deploy-dialog";
 import { BacktestOutcome } from "./backtest-outcome";
 import { initialValues, ParamForm, type ParamValues } from "./param-form";
+import { PageHeader } from "@/components/motion/page-header";
 
 const MAX_SYMBOLS = 10;
 const SEGMENT_FIELD = { india: "broker_india", international: "broker_international", crypto: "broker_crypto" } as const;
@@ -98,6 +100,9 @@ function LabForm({ algo, mine }: { algo: Algo; mine: UserAlgo | null }) {
       { onSuccess: (b) => setRunId(b.id) },
     );
   }
+
+  // Deploying uses the settings as tweaked right now; nothing has to be saved first.
+  const deployParams = Object.fromEntries(algo.parameters.map((p) => [p.name, paramPayload(p, values[p.name] ?? p.default)]));
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
@@ -250,6 +255,17 @@ function LabForm({ algo, mine }: { algo: Algo; mine: UserAlgo | null }) {
           <Button type="submit" disabled={!canRun}>
             {busy ? "Running..." : "Run backtest"}
           </Button>
+          <DeployButton
+            variant="outline"
+            size="default"
+            disabled={fieldProblems.length > 0}
+            name={mine ? mine.name : algo.name}
+            markets={algo.markets}
+            what={mine ? { algo_id: mine.id, params: deployParams } : { library_key: algo.key, params: deployParams }}
+            source={mine ? `${mine.name}, built on ${algo.name}` : `${algo.name}, a ready-made algorithm`}
+            settings={Object.entries(deployParams).map(([k, v]) => [settingLabel(k), String(v)])}
+            initialSymbols={symbols}
+          />
           {symbols.length === 0 && <span className="text-xs text-muted-foreground">Add at least one symbol.</span>}
           {runId !== null && (
             <Link href={`/algos/backtests/${runId}`} className="text-xs underline underline-offset-2">
@@ -284,20 +300,23 @@ export function LabView() {
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{mine ? mine.name : (algo?.name ?? "Algo lab")}</h1>
-        {algo && (
-          <p className="text-sm text-muted-foreground">
-            {mine ? `${algo.name}, with your saved settings. ` : ""}
-            {mine?.description || algo.description}
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          <Link href="/algos" className="underline underline-offset-2">
-            All algorithms
-          </Link>
-        </p>
-      </div>
+      <PageHeader
+        title={mine ? mine.name : (algo?.name ?? "Algo lab")}
+        eyebrow="HFT · Lab"
+        description={
+          <>
+            {algo && (
+              <span className="block">
+                {mine ? `${algo.name}, with your saved settings. ` : ""}
+                {mine?.description || algo.description}
+              </span>
+            )}
+            <Link href="/algos" className="text-xs underline underline-offset-2">
+              All algorithms
+            </Link>
+          </>
+        }
+      />
       {error && <QueryError error={error} title="Couldn't load the algorithms" />}
       {waiting && !error && <Skeleton className="h-64 w-full" />}
       {!waiting && !error && !algo && (
@@ -313,9 +332,9 @@ export function LabView() {
             <Link
               href={
                 mine?.graph
-                  ? `/algos/blocks?mine=${mine.id}`
+                  ? `/create/blocks?mine=${mine.id}`
                   : mine?.source != null
-                    ? `/algos/editor?mine=${mine.id}`
+                    ? `/create/editor?mine=${mine.id}`
                     : "/algos"
               }
               className="underline underline-offset-2"

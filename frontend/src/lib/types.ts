@@ -79,10 +79,16 @@ export type ListingOwner = Schemas["ListingOwnerOut"];
 export type ListingIn = Schemas["ListingIn"];
 export type ListingUpdateIn = Schemas["ListingUpdateIn"];
 export type ListingVersion = Schemas["ListingVersionOut"];
+export type Deployment = Schemas["DeploymentOut"];
+export type DeploymentDetail = Schemas["DeploymentDetailOut"];
+export type DeploymentIn = Schemas["DeploymentIn"];
+export type DeploymentLogLine = Schemas["DeploymentLogOut"];
 
 // /api/health is declared as a loose string map in the schema; pin down the real shape.
 export type Health = {
   status: string;
   data_source: string;
   base_currency: string;
+  /** A public deployment where nobody may bring their own code; absent on older servers. */
+  hosted_mode?: boolean;
 };

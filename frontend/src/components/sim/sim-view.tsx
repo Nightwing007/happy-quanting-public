@@ -1,5 +1,6 @@
 "use client";
 
+import { SplitFlap } from "@/components/motion/split-flap";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -112,7 +113,7 @@ function SimBody({ id }: { id: number }) {
   const priceLines = useMemo<ChartPriceLine[]>(() => {
     const lines: ChartPriceLine[] = [];
     if (position) {
-      lines.push({ price: toNumber(position.avg_price), title: "Avg entry", color: "#3b82f6", dashed: false });
+      lines.push({ price: toNumber(position.avg_price), title: "Avg entry", color: "#a855f7", dashed: false });
     }
     lines.push(...protectionLines((openTrades ?? []).filter((t) => t.symbol === symbol), currentPrice));
     return lines;
@@ -133,7 +134,7 @@ function SimBody({ id }: { id: number }) {
     <div className="grid min-w-0 grid-cols-1 gap-4">
       <div
         role="status"
-        className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-900 dark:text-amber-200"
+        className="flex flex-wrap items-center gap-x-2 gap-y-1 border border-warn/50 bg-warn/15 px-3 py-2 text-sm font-semibold text-foreground"
       >
         <FlaskConicalIcon className="size-4 shrink-0" />
         <span>SIMULATION · replayed data · {formatDayRange(data)}</span>
@@ -153,7 +154,7 @@ function SimBody({ id }: { id: number }) {
           <Card>
             <CardContent className="grid min-w-0 gap-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h1 className="text-2xl font-semibold tracking-tight">{symbol}</h1>
+                <h1 className="text-[28px] leading-none sm:text-[34px]"><SplitFlap text={symbol} /></h1>
                 {meta.data && <Badge variant="secondary">{meta.data.type}</Badge>}
                 <span className="text-xs text-muted-foreground">
                   {meta.data?.name} · {intervalWords(data.interval)} bars
@@ -189,13 +190,13 @@ function SimBody({ id }: { id: number }) {
                 )}
                 {priceLines.some((l) => l.title === "Stop") && (
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-block w-3 border-t-2 border-dashed border-red-600" />
+                    <span className="inline-block w-3 border-t-2 border-dashed border-down" />
                     Stop
                   </span>
                 )}
                 {priceLines.some((l) => l.title === "Target") && (
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-block w-3 border-t-2 border-dashed border-green-600" />
+                    <span className="inline-block w-3 border-t-2 border-dashed border-up" />
                     Target
                   </span>
                 )}

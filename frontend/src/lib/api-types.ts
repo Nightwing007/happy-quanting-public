@@ -1062,6 +1062,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Deployments */
+        get: operations["list_deployments_api_deployments_get"];
+        put?: never;
+        /** Create Deployment */
+        post: operations["create_deployment_api_deployments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deployments/{deployment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Deployment */
+        get: operations["get_deployment_api_deployments__deployment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deployments/{deployment_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause Deployment */
+        post: operations["pause_deployment_api_deployments__deployment_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deployments/{deployment_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume Deployment */
+        post: operations["resume_deployment_api_deployments__deployment_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deployments/{deployment_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop Deployment */
+        post: operations["stop_deployment_api_deployments__deployment_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -1376,6 +1462,10 @@ export interface components {
             financing_paid: string;
             /** Exposure Pct */
             exposure_pct: string;
+            /** Avg Exposure Pct */
+            avg_exposure_pct?: string | null;
+            /** Max Position Pct */
+            max_position_pct?: string | null;
         };
         /**
          * BacktestPointOut
@@ -1837,6 +1927,143 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** DeploymentDetailOut */
+        DeploymentDetailOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "paused" | "stopping" | "stopped";
+            /**
+             * Strategy Kind
+             * @enum {string}
+             */
+            strategy_kind: "library" | "mine";
+            /** Strategy Key */
+            strategy_key: string;
+            /** Runs Code */
+            runs_code: boolean;
+            /** User Algo Id */
+            user_algo_id: number | null;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Symbols */
+            symbols: string[];
+            /** Currency */
+            currency: string;
+            /** Capital */
+            capital: string;
+            /** Equity */
+            equity: string;
+            /** Realized Pnl */
+            realized_pnl: string;
+            /** Unrealized Pnl */
+            unrealized_pnl: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Stopped At */
+            stopped_at: string | null;
+            portfolio: components["schemas"]["PortfolioOut"];
+            /** Open Trades */
+            open_trades: components["schemas"]["TradeOut"][];
+            /** Orders */
+            orders: components["schemas"]["OrderOut"][];
+            /** Log */
+            log: components["schemas"]["DeploymentLogOut"][];
+            /** Total Charges */
+            total_charges: string;
+            /** Total Pnl */
+            total_pnl: string;
+        };
+        /**
+         * DeploymentIn
+         * @description Give exactly one of `library_key` or `algo_id`. `params` are the settings to run with, over
+         *     the library defaults or over the saved algorithm's own.
+         */
+        DeploymentIn: {
+            /** Library Key */
+            library_key?: string | null;
+            /** Algo Id */
+            algo_id?: number | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+            /** Symbols */
+            symbols: string[];
+            /** Capital */
+            capital: number | string;
+            /** Name */
+            name?: string | null;
+        };
+        /** DeploymentLogOut */
+        DeploymentLogOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * DeploymentOut
+         * @description The user's own algorithm running on a paper sub-account. Figures come from that account.
+         */
+        DeploymentOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "paused" | "stopping" | "stopped";
+            /**
+             * Strategy Kind
+             * @enum {string}
+             */
+            strategy_kind: "library" | "mine";
+            /** Strategy Key */
+            strategy_key: string;
+            /** Runs Code */
+            runs_code: boolean;
+            /** User Algo Id */
+            user_algo_id: number | null;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Symbols */
+            symbols: string[];
+            /** Currency */
+            currency: string;
+            /** Capital */
+            capital: string;
+            /** Equity */
+            equity: string;
+            /** Realized Pnl */
+            realized_pnl: string;
+            /** Unrealized Pnl */
+            unrealized_pnl: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Stopped At */
+            stopped_at: string | null;
         };
         /** EarnedBadgeOut */
         EarnedBadgeOut: {
@@ -5638,6 +5865,183 @@ export interface operations {
             };
         };
     };
+    list_deployments_api_deployments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentOut"][];
+                };
+            };
+        };
+    };
+    create_deployment_api_deployments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeploymentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_deployment_api_deployments__deployment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_deployment_api_deployments__deployment_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_deployment_api_deployments__deployment_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_deployment_api_deployments__deployment_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_settings_api_settings_get: {
         parameters: {
             query?: never;
@@ -5810,7 +6214,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: string;
+                        [key: string]: string | boolean;
                     };
                 };
             };

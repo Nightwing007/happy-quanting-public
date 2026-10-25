@@ -977,6 +977,10 @@ class BacktestMetricsOut(BaseModel):
     charges_pct_of_gross_profit: Money | None
     financing_paid: Money
     exposure_pct: Money  # share of bars with a position open
+    # Capital in the market, as a share of equity at the closes: the average (flat counts as 0) and
+    # the peak. None on runs saved before these existed (their results are stored as JSON).
+    avg_exposure_pct: Money | None = None
+    max_position_pct: Money | None = None
 
 
 class BacktestPurchaseOut(BaseModel):
@@ -1251,6 +1255,53 @@ class SubscriptionOut(BaseModel):
     high_water_mark: Money
     created_at: datetime
     stopped_at: datetime | None
+
+
+class DeploymentIn(BaseModel):
+    """Give exactly one of `library_key` or `algo_id`. `params` are the settings to run with, over
+    the library defaults or over the saved algorithm's own."""
+
+    library_key: str | None = None
+    algo_id: int | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    symbols: list[str] = Field(min_length=1)
+    capital: Decimal
+    name: str | None = Field(default=None, max_length=80)
+
+
+class DeploymentOut(BaseModel):
+    """The user's own algorithm running on a paper sub-account. Figures come from that account."""
+
+    id: int
+    name: str
+    status: Literal["active", "paused", "stopping", "stopped"]
+    strategy_kind: Literal["library", "mine"]
+    strategy_key: str  # a library key; "" when the pinned code runs
+    runs_code: bool  # the pinned snapshot is code (editor, block graph) rather than a library algorithm
+    user_algo_id: int | None  # where it was copied from; None once that algorithm is deleted
+    params: dict[str, Any]  # the settings pinned at deploy time
+    symbols: list[str]
+    currency: str
+    capital: Money
+    equity: Money  # what the sub-account is worth now (once stopped: what came back)
+    realized_pnl: Money
+    unrealized_pnl: Money
+    created_at: datetime
+    stopped_at: datetime | None
+
+
+class DeploymentLogOut(BaseModel):
+    at: datetime
+    text: str
+
+
+class DeploymentDetailOut(DeploymentOut):
+    portfolio: PortfolioOut
+    open_trades: list[TradeOut]
+    orders: list[OrderOut]  # newest first
+    log: list[DeploymentLogOut]  # the last 200 lines, oldest first; empty after a server restart
+    total_charges: Money
+    total_pnl: Money
 
 
 class ListingEarningsOut(BaseModel):

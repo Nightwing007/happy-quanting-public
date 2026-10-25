@@ -31,7 +31,7 @@ function CreatorView({ username }: { username: string }) {
         <UserAvatar name={c.display_name} url={c.avatar_url} size="lg" />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{c.display_name}</h1>
+            <h1 className="t-display text-[28px] leading-none sm:text-[34px]">{c.display_name}</h1>
             <CreatorBadges ids={shown} />
           </div>
           <p className="text-sm text-muted-foreground">

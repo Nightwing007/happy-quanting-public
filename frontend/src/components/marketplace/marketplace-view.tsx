@@ -8,23 +8,23 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MARKET_FILTERS } from "@/lib/marketplace-format";
 import { useListings } from "@/lib/queries";
 import { ListingCard, ListingSkeletons } from "./listing-card";
+import { PageHeader } from "@/components/motion/page-header";
 
 export function MarketplaceView() {
   const [market, setMarket] = useState<string | null>(null);
   const { data, isPending, error, refetch } = useListings(market);
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Marketplace</h1>
-          <p className="text-sm text-muted-foreground">
-            Algorithms by other people, with performance measured on real charges. You see how they performed, never how they work.
-          </p>
-        </div>
-        <Button variant="outline" nativeButton={false} render={<Link href="/marketplace/subscriptions" />}>
-          My subscriptions
-        </Button>
-      </div>
+      <PageHeader
+        title="Marketplace"
+        eyebrow="HFT · Market"
+        description="Algorithms by other people, with performance measured on real charges. You see how they performed, never how they work."
+        actions={
+          <Button variant="outline" nativeButton={false} render={<Link href="/marketplace/subscriptions" />}>
+            My subscriptions
+          </Button>
+        }
+      />
       <ToggleGroup
         variant="outline"
         size="sm"

@@ -53,6 +53,11 @@ def test_another_users_data_is_a_404_or_empty(
     algo = client.post("/api/algos/mine", json={"name": "Mine", "strategy": "sma_crossover", "params": {}})
     assert algo.status_code == 200, algo.text
     algo_id = algo.json()["id"]
+    deployed = client.post(
+        "/api/deployments", json={"algo_id": algo_id, "symbols": ["AAPL"], "capital": "1000"}
+    )
+    assert deployed.status_code == 200, deployed.text
+    deployment_id = deployed.json()["id"]
 
     # --- user B (other) sees none of it ----------------------------------------------------
     b = second_client
@@ -76,10 +81,18 @@ def test_another_users_data_is_a_404_or_empty(
     no_algo = {k: v for k, v in BACKTEST_BODY.items() if k not in ("strategy", "params")}
     assert b.post("/api/backtests", json={**no_algo, "algo_id": algo_id}).status_code == 404
 
+    assert b.get("/api/deployments").json() == []
+    assert b.get(f"/api/deployments/{deployment_id}").status_code == 404
+    for action in ("pause", "resume", "stop"):
+        assert b.post(f"/api/deployments/{deployment_id}/{action}").status_code == 404
+    deploy_body = {"algo_id": algo_id, "symbols": ["AAPL"], "capital": "1000"}
+    assert b.post("/api/deployments", json=deploy_body).status_code == 404  # nor deploy A's algorithm
+
     # --- ...and none of B's attempts changed A's things ------------------------------------
     assert len(client.get("/api/orders").json()) == 2
     assert client.get(f"/api/backtests/{backtest_id}").status_code == 200
     assert len(client.get("/api/algos/mine").json()) == 1
+    assert client.get(f"/api/deployments/{deployment_id}").json()["status"] == "active"
 
 
 @pytest.mark.real_calendar  # the sim replays a real past day

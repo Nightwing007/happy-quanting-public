@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /** Colour for a signed money string; zero stays neutral. Never compares the strings. */
 export function pnlClass(value: string | number | null | undefined) {
   if (isZero(value)) return "text-muted-foreground";
-  return toNumber(value) > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
+  return toNumber(value) > 0 ? "text-up" : "text-down";
 }
 
 /** A signed, coloured profit/loss amount with an optional percentage. */

@@ -21,7 +21,7 @@ import type { ListingDetail, ListingPerformance, PerformanceResults } from "@/li
 import { CreatorLink } from "./listing-card";
 import { SubscribeDialog } from "./subscribe-dialog";
 
-const COLOR_STRATEGY = "#2563eb";
+const COLOR_STRATEGY = "#a855f7";
 const COLOR_HOLD = "#9ca3af";
 const COLOR_DRAWDOWN = "#dc2626";
 
@@ -102,7 +102,7 @@ function Metrics({ results }: { results: PerformanceResults }) {
         label="Total return"
         term="total_return"
         value={formatPercent(m.total_return_pct)}
-        tone={toNumber(m.total_return_pct) < 0 ? "text-red-600 dark:text-red-400" : undefined}
+        tone={toNumber(m.total_return_pct) < 0 ? "text-down" : undefined}
         note={`${formatMoney(m.starting_cash, currency)} to ${formatMoney(m.final_equity, currency)} · buy and hold ${formatPercent(hold.total_return_pct)}`}
       />
       <Stat
@@ -288,7 +288,7 @@ function ListingView({ id }: { id: number }) {
         </Link>
       </p>
       <div className="grid min-w-0 gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{listing.name}</h1>
+        <h1 className="t-display text-[28px] leading-tight break-words sm:text-[34px]">{listing.name}</h1>
         <p className="text-muted-foreground">{listing.tagline}</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <CreatorLink creator={listing.creator} />

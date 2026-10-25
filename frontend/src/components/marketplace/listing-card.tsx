@@ -1,5 +1,6 @@
 "use client";
 
+import { useDirectionalHover } from "@/components/motion/directional-hover";
 import { Term } from "@/components/term";
 import Link from "next/link";
 import { CreatorBadges } from "@/components/badges/creator-badges";
@@ -27,8 +28,9 @@ export function CreatorLink({ creator }: { creator: Listing["creator"] }) {
 
 export function ListingCard({ listing }: { listing: Listing }) {
   const stats = headlineStats(listing);
+  const dh = useDirectionalHover({ flood: true });
   return (
-    <Card>
+    <Card className={dh.className} onPointerEnter={dh.onPointerEnter} onPointerLeave={dh.onPointerLeave}>
       <CardHeader className="gap-2">
         <CreatorLink creator={listing.creator} />
         <CardTitle className="text-base">
@@ -54,7 +56,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
               <div>
                 <dt className="text-xs text-muted-foreground">Return</dt>
                 <dd
-                  className={`font-semibold tabular-nums ${toNumber(stats.returnValue) < 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}
+                  className={`font-semibold tabular-nums ${toNumber(stats.returnValue) < 0 ? "text-down" : "text-up"}`}
                 >
                   {stats.ret}
                 </dd>

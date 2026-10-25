@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
 import { useEarnings, useMe } from "@/lib/queries";
+import { PageHeader } from "@/components/motion/page-header";
 
 function Earnings() {
   const { data, isPending, error, refetch } = useEarnings();
@@ -63,7 +64,7 @@ export function EarningsView() {
   const me = useMe();
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <h1 className="text-2xl font-semibold tracking-tight">My earnings</h1>
+      <PageHeader title="My earnings" eyebrow="HFT · Market" />
       {me.isPending && <Skeleton className="h-48 w-full" />}
       {me.data && !me.data.is_creator && (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

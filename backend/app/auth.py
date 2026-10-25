@@ -97,12 +97,39 @@ def end_session(db: Session, token: str | None) -> None:
 
 
 class LoginLimiter:
-    """5 failed logins per (username, ip) in 15 minutes, in memory (resets on restart)."""
+    """In memory (resets on restart). Two guards on failed logins:
 
-    def __init__(self, max_failures: int = 5, window_seconds: float = 15 * 60) -> None:
+    - lockout: `max_failures` (5) per (username, ip) in 15 minutes -> 429 for that pair only;
+    - slow-down: `slow_after` (20) failures for a username across ALL ips in the window -> every
+      attempt on that username waits `delay_seconds` first. Never a lockout, so one attacker (or
+      one shared proxy address) cannot lock the real owner out; it only makes guessing slower.
+    """
+
+    def __init__(
+        self,
+        max_failures: int = 5,
+        window_seconds: float = 15 * 60,
+        slow_after: int = 20,
+        delay_seconds: float = 2.0,
+    ) -> None:
         self.max_failures = max_failures
         self.window = window_seconds
+        self.slow_after = slow_after
+        self.delay_seconds = delay_seconds
         self._failures: dict[tuple[str, str], list[float]] = {}
+        self._by_user: dict[str, list[float]] = {}
+
+    def _recent_user(self, username: str) -> list[float]:
+        cutoff = time.monotonic() - self.window
+        recent = [t for t in self._by_user.get(username, []) if t > cutoff]
+        if recent:
+            self._by_user[username] = recent
+        else:
+            self._by_user.pop(username, None)
+        return recent
+
+    def slow(self, username: str) -> bool:
+        return len(self._recent_user(username)) >= self.slow_after
 
     def _recent(self, key: tuple[str, str]) -> list[float]:
         cutoff = time.monotonic() - self.window
@@ -118,13 +145,18 @@ class LoginLimiter:
 
     def fail(self, username: str, ip: str) -> None:
         self._recent((username, ip))
-        self._failures.setdefault((username, ip), []).append(time.monotonic())
+        now = time.monotonic()
+        self._failures.setdefault((username, ip), []).append(now)
+        self._recent_user(username)
+        self._by_user.setdefault(username, []).append(now)
 
     def clear(self, username: str, ip: str) -> None:
+        # Only this ip's lockout: one address succeeding must not wipe the slow-down tally.
         self._failures.pop((username, ip), None)
 
     def reset(self) -> None:
         self._failures.clear()
+        self._by_user.clear()
 
 
 login_limiter = LoginLimiter()

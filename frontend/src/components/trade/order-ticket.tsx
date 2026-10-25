@@ -254,13 +254,13 @@ export function OrderTicket({ quote }: { quote: Quote }) {
           >
             <ToggleGroupItem
               value="buy"
-              className="flex-1 aria-pressed:bg-green-600 aria-pressed:text-white dark:aria-pressed:bg-green-700"
+              className="flex-1 aria-pressed:bg-up aria-pressed:text-primary-foreground"
             >
               Buy
             </ToggleGroupItem>
             <ToggleGroupItem
               value="sell"
-              className="flex-1 aria-pressed:bg-red-600 aria-pressed:text-white dark:aria-pressed:bg-red-700"
+              className="flex-1 aria-pressed:bg-down aria-pressed:text-primary-foreground"
             >
               Sell
             </ToggleGroupItem>
@@ -369,7 +369,7 @@ export function OrderTicket({ quote }: { quote: Quote }) {
                   <dd className="text-right tabular-nums">
                     {portfolio.data ? `${formatQuantity(heldLong?.quantity ?? "0")} ${quote.symbol}` : "—"}
                     {heldShort && (
-                      <span className="block text-xs text-orange-700 dark:text-orange-300">
+                      <span className="block text-xs text-warn">
                         <Term id="short">short</Term> {formatQuantity(heldShort.quantity)}
                       </span>
                     )}
@@ -390,8 +390,8 @@ export function OrderTicket({ quote }: { quote: Quote }) {
                 disabled={disabled}
                 className={cn(
                   side === "buy"
-                    ? "bg-green-600 text-white hover:bg-green-600/90 dark:bg-green-700"
-                    : "bg-red-600 text-white hover:bg-red-600/90 dark:bg-red-700",
+                    ? "bg-up text-primary-foreground hover:bg-up/90"
+                    : "bg-down text-primary-foreground hover:bg-down/90",
                 )}
               >
                 {place.isPending ? "Placing..." : `${buttonLabel} ${quote.symbol}${kind === "limit" ? " (limit)" : ""}`}

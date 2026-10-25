@@ -145,13 +145,13 @@ export function ChartPanel({ symbol, currency, orders, timeZone, priceLines }: P
             <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
               {priceLines.some((l) => l.title === "Stop") && (
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="inline-block w-3 border-t-2 border-dashed border-red-600" />
+                  <span className="inline-block w-3 border-t-2 border-dashed border-down" />
                   <Term id="stop_loss">Stop</Term>: closes the trade at the market price if the price reaches it, to limit a loss.
                 </span>
               )}
               {priceLines.some((l) => l.title === "Target") && (
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="inline-block w-3 border-t-2 border-dashed border-green-600" />
+                  <span className="inline-block w-3 border-t-2 border-dashed border-up" />
                   <Term id="target">Target</Term>: closes the trade at the market price if the price reaches it, to take a profit.
                 </span>
               )}

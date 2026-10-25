@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChartPanel } from "@/components/trade/chart-panel";
 import { MetricsCard } from "@/components/trade/metrics-card";
 import { OrderTicket } from "@/components/trade/order-ticket";
 import { QuoteHeader } from "@/components/trade/quote-header";
+import { TradeHome } from "@/components/trade/trade-home";
+import { PageHeader } from "@/components/motion/page-header";
+import { pushRecent } from "@/lib/recent-symbols";
 import { OrdersTable } from "@/components/orders-table";
 import { TradesTable } from "@/components/trades-table";
 import { QueryError } from "@/components/query-error";
@@ -70,7 +73,7 @@ export function TradeView() {
   const priceLines = useMemo<ChartPriceLine[]>(() => {
     const lines: ChartPriceLine[] = [];
     if (position) {
-      lines.push({ price: toNumber(position.avg_price), title: "Avg entry", color: "#3b82f6", dashed: false });
+      lines.push({ price: toNumber(position.avg_price), title: "Avg entry", color: "#a855f7", dashed: false });
       if (position.break_even_price) {
         lines.push({ price: toNumber(position.break_even_price), title: "Break-even", color: "#f59e0b", dashed: true });
       }
@@ -79,19 +82,18 @@ export function TradeView() {
     return lines;
   }, [position, openTrades, symbol, currentPrice]);
 
-  if (!symbol) {
-    return (
-      <div className="grid grid-cols-1 gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Trade</h1>
-        <p className="text-sm text-muted-foreground">Press Ctrl+K to search for a symbol.</p>
-      </div>
-    );
-  }
+  // A symbol that loaded is remembered for the "recently viewed" tiles on this page without a symbol.
+  const loadedSymbol = quote?.symbol;
+  useEffect(() => {
+    if (loadedSymbol) pushRecent(loadedSymbol);
+  }, [loadedSymbol]);
+
+  if (!symbol) return <TradeHome />;
 
   if (error && !quote) {
     return (
       <div className="grid grid-cols-1 gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">{symbol}</h1>
+        <PageHeader title={symbol} />
         <QueryError error={error} title={`Couldn't load ${symbol}`} onRetry={() => refetch()} />
       </div>
     );

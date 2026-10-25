@@ -17,12 +17,15 @@ import { RulesPanel } from "@/components/create/rules-panel";
 import { Preview, SymbolPicker } from "@/components/create/upload-flow";
 import { algoIntervalWords } from "@/lib/algo-format";
 import { marketWord } from "@/lib/marketplace-format";
-import { useCreateMyAlgo, useMyAlgos, useUpdateMyAlgo, useValidateCode } from "@/lib/queries";
+import { DeployDialog } from "@/components/deployments/deploy-dialog";
+import { useCreateMyAlgo, useHosted, useMyAlgos, useUpdateMyAlgo, useValidateCode } from "@/lib/queries";
 import type { StrategyMeta, UserAlgo, ValidationReport } from "@/lib/types";
 import type { CodeEditorHandle } from "./code-editor";
 import { SaveAlgoDialog } from "./save-dialog";
 import { SimPanel } from "./sim-panel";
 import { STARTER_TEMPLATE } from "./starter";
+import { PageHeader } from "@/components/motion/page-header";
+import { HostedNote } from "@/components/hosted-note";
 
 // Monaco is large and needs the browser: load it only when the page is opened.
 const CodeEditor = dynamic(() => import("./code-editor"), {
@@ -63,7 +66,8 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
       ? { id: initialSaved.id, name: initialSaved.name, description: initialSaved.description, source: initialSaved.source }
       : null,
   );
-  const [dialog, setDialog] = useState<{ publishing: boolean } | null>(null);
+  const [dialog, setDialog] = useState<{ publishing: boolean; deploying?: boolean } | null>(null);
+  const [deployId, setDeployId] = useState<number | null>(null);
 
   const { mutate: validateCode } = validate;
   const check = useCallback(
@@ -93,11 +97,12 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
   const saving = create.isPending || update.isPending;
   const saveError = (create.error ?? update.error)?.message ?? null;
 
-  function save(name: string, description: string, then: "publish" | null) {
+  function save(name: string, description: string, then: "publish" | "deploy" | null) {
     const done = (row: UserAlgo) => {
       setSaved({ id: row.id, name: row.name, description: row.description, source });
       setDialog(null);
       if (then === "publish") router.push(`/create/upload?mine=${row.id}`);
+      else if (then === "deploy") setDeployId(row.id);
       else toast.success(`Saved "${row.name}" to My algorithms.`);
     };
     if (saved) update.mutate({ id: saved.id, name, description, source }, { onSuccess: done });
@@ -108,6 +113,13 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
     if (saved && !dirty) return router.push(`/create/upload?mine=${saved.id}`);
     if (saved) return save(saved.name, saved.description, "publish");
     setDialog({ publishing: true });
+  }
+
+  // A deployment runs a saved algorithm, so unsaved or changed code is saved first.
+  function deploy() {
+    if (saved && !dirty) return setDeployId(saved.id);
+    if (saved) return save(saved.name, saved.description, "deploy");
+    setDialog({ publishing: false, deploying: true });
   }
 
   function pick(line: number) {
@@ -131,7 +143,7 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
           {problems.length > 0 && <ProblemsList problems={problems} onPick={pick} />}
           {passes && meta && (
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <span className="flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="flex items-center gap-1.5 font-medium text-up">
                 <CheckCircle2Icon className="size-4" />
                 Your code passes every check.
               </span>
@@ -155,6 +167,9 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
             </Button>
             <Button type="button" variant="outline" onClick={publish} disabled={!source.trim() || saving}>
               Publish
+            </Button>
+            <Button type="button" variant="outline" onClick={deploy} disabled={!source.trim() || saving || !meta || !passes}>
+              Deploy
             </Button>
             <span className="text-xs text-muted-foreground" aria-live="polite">
               {saved ? (dirty ? `Unsaved changes to "${saved.name}"` : `Saved as "${saved.name}"`) : "Not saved yet"}
@@ -192,9 +207,10 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
           initialName={saved?.name ?? meta?.name ?? ""}
           initialDescription={saved?.description ?? meta?.description ?? ""}
           publishing={dialog.publishing}
+          deploying={dialog.deploying}
           pending={saving}
           error={saveError}
-          onSave={(name, description) => save(name, description, dialog.publishing ? "publish" : null)}
+          onSave={(name, description) => save(name, description, dialog.publishing ? "publish" : dialog.deploying ? "deploy" : null)}
           onClose={() => {
             setDialog(null);
             create.reset();
@@ -202,11 +218,23 @@ function Workspace({ saved: initialSaved }: { saved: UserAlgo | null }) {
           }}
         />
       )}
+      {saved && meta && (
+        <DeployDialog
+          open={deployId !== null}
+          onOpenChange={(open) => !open && setDeployId(null)}
+          name={saved.name}
+          markets={meta.markets}
+          what={{ algo_id: saved.id }}
+          source={`${saved.name}, your own code`}
+          initialSymbols={symbols}
+        />
+      )}
     </div>
   );
 }
 
 export function EditorView() {
+  const hosted = useHosted();
   const params = useSearchParams();
   const raw = params.get("mine");
   const mineId = raw === null ? null : Number(raw);
@@ -216,22 +244,26 @@ export function EditorView() {
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{found ? found.name : "Code editor"}</h1>
-        <p className="text-sm text-muted-foreground">
-          Write your own algorithm, check it against the rules, test it, and save or publish it.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          <Link href="/algos" className="underline underline-offset-2">
-            All algorithms
-          </Link>
-        </p>
-      </div>
-      {mineId !== null && mine.error && (
+      <PageHeader
+        title={found ? found.name : "Code editor"}
+        eyebrow="HFT · Create"
+        description={
+          <>
+            <span className="block">
+              Write your own algorithm, check it against the rules, test it, and save or publish it.
+            </span>
+            <Link href="/algos" className="text-xs underline underline-offset-2">
+              All algorithms
+            </Link>
+          </>
+        }
+      />
+      {hosted && <HostedNote />}
+      {!hosted && mineId !== null && mine.error && (
         <QueryError error={mine.error} title="Couldn't load your algorithms" onRetry={() => mine.refetch()} />
       )}
-      {waiting && !mine.error && <Skeleton className="h-96 w-full" />}
-      {mineId !== null && !mine.isPending && !mine.error && (!found || found.source === null || found.graph) && (
+      {!hosted && waiting && !mine.error && <Skeleton className="h-96 w-full" />}
+      {!hosted && mineId !== null && !mine.isPending && !mine.error && (!found || found.source === null || found.graph) && (
         <Alert>
           <AlertDescription>
             {found?.graph
@@ -240,7 +272,7 @@ export function EditorView() {
                 ? "That saved algorithm is built on a ready-made one, so it opens in the lab."
                 : `You have no saved algorithm ${raw}.`}{" "}
             <Link
-              href={found?.graph ? `/algos/blocks?mine=${found.id}` : found ? `/algos/lab?mine=${found.id}` : "/algos"}
+              href={found?.graph ? `/create/blocks?mine=${found.id}` : found ? `/algos/lab?mine=${found.id}` : "/algos"}
               className="underline underline-offset-2"
             >
               {found?.graph ? "Open in the block editor" : found ? "Open in the lab" : "Back to algorithms"}
@@ -248,7 +280,7 @@ export function EditorView() {
           </AlertDescription>
         </Alert>
       )}
-      {!waiting && !mine.error && (mineId === null || (found && found.source !== null && !found.graph)) && (
+      {!hosted && !waiting && !mine.error && (mineId === null || (found && found.source !== null && !found.graph)) && (
         <Workspace key={found?.id ?? "new"} saved={found} />
       )}
     </div>

@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatMoney } from "@/lib/format";
 import { useOrders, usePortfolio, useResetPortfolio } from "@/lib/queries";
+import { PageHeader } from "@/components/motion/page-header";
 
 const FILTERS = [
   { value: "all", label: "All" },
@@ -76,10 +77,7 @@ export default function OrdersPage() {
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
-        <ResetAccount />
-      </div>
+      <PageHeader title="Orders" eyebrow="Account" actions={<ResetAccount />} />
       <Tabs value={filter} onValueChange={(v) => setFilter(String(v))} className="min-w-0">
         <div className="min-w-0 overflow-x-auto">
           <TabsList>

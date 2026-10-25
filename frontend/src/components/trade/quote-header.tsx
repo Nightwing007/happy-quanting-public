@@ -1,6 +1,8 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
+import { LiveDot } from "@/components/motion/live-dot";
+import { SplitFlap } from "@/components/motion/split-flap";
 import { Term } from "@/components/term";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,19 +12,17 @@ import { article, formatPercent, formatPrice, formatPriceChange, isZero, toNumbe
 import type { Quote } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// Green open, amber lunch break, grey closed, outline when the hours are unknown.
+// A lamp for the state: lit when open, amber for a lunch break, dark when closed or unknown.
+export function marketTone(market: NonNullable<Quote["market"]>): "up" | "warn" | "off" {
+  if (market.state === "open") return "up";
+  if (market.state === "closed" && market.reason === "lunch break") return "warn";
+  return "off";
+}
+
 function MarketBadge({ market }: { market: NonNullable<Quote["market"]> }) {
-  const variant = market.state === "unknown" ? "outline" : "secondary";
-  const tone =
-    market.state === "open"
-      ? "bg-green-600/15 text-green-700 dark:text-green-400"
-      : market.state === "closed" && market.reason === "lunch break"
-        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-        : market.state === "closed"
-          ? "text-muted-foreground"
-          : "";
   return (
-    <Badge variant={variant} className={cn("h-auto whitespace-normal py-0.5", tone)}>
+    <Badge variant="outline" className="h-auto gap-1.5 whitespace-normal py-0.5">
+      <LiveDot tone={marketTone(market)} pulse={market.state === "open"} />
       {market.state === "closed" ? <Term id="amo">{market.label}</Term> : market.label}
     </Badge>
   );
@@ -47,7 +47,9 @@ export function QuoteHeader({ quote }: { quote: Quote }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{quote.symbol}</h1>
+              <h1 className="text-[28px] leading-none sm:text-[34px]">
+                <SplitFlap text={quote.symbol} />
+              </h1>
               <Badge variant="secondary">{quote.type}</Badge>
               {quote.market && <MarketBadge market={quote.market} />}
             </div>
@@ -66,14 +68,14 @@ export function QuoteHeader({ quote }: { quote: Quote }) {
         </div>
 
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-3xl font-semibold tabular-nums">{formatPrice(quote.price, quote.currency)}</span>
+          <span className="text-3xl font-medium tabular-nums">{formatPrice(quote.price, quote.currency)}</span>
           {hasChange && (
             <span
               className={cn(
                 "tabular-nums",
                 direction === 0 && "text-muted-foreground",
-                direction > 0 && "text-green-600 dark:text-green-400",
-                direction < 0 && "text-red-600 dark:text-red-400",
+                direction > 0 && "text-up",
+                direction < 0 && "text-down",
               )}
             >
               {formatPriceChange(quote.change, quote.currency, quote.price)} ({formatPercent(quote.change_percent)})

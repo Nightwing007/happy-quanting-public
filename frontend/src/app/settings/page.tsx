@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBrokers, useSettings, useUpdateSettings } from "@/lib/queries";
 import type { BrokerGroup, Settings } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/motion/page-header";
 
 const FIELD: Record<string, keyof Settings> = {
   india: "broker_india",
@@ -113,12 +114,11 @@ export default function SettingsPage() {
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Your broker decides the brokerage and currency-conversion fees on every trade, and which markets you can
-        trade at all. Different brokers charge differently, but taxes and exchange fees are the same whichever one
-        you pick.
-      </p>
+      <PageHeader
+        title="Settings"
+        eyebrow="Account"
+        description="Your broker decides the brokerage and currency-conversion fees on every trade, and which markets you can trade at all. Different brokers charge differently, but taxes and exchange fees are the same whichever one you pick."
+      />
       {loadError && !(settings.data && brokers.data) && (
         <QueryError
           error={loadError}

@@ -15,7 +15,7 @@ async function editorText(page: Page, text: string, where: "start" | "all") {
 test.describe("editor", () => {
   test("the starter template validates and shows its summary", async ({ user }) => {
     const { page } = user;
-    await go(page, "/algos/editor");
+    await go(page, "/create/editor");
     await expect(page.getByRole("heading", { name: "Code editor" })).toBeVisible();
     await expect(page.getByText(PASSES)).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText(/Buy and wait/).first()).toBeVisible();
@@ -24,7 +24,7 @@ test.describe("editor", () => {
 
   test("a forbidden import is marked in the editor and listed as a problem", async ({ user }) => {
     const { page } = user;
-    await go(page, "/algos/editor");
+    await go(page, "/create/editor");
     await expect(page.getByText(PASSES)).toBeVisible({ timeout: 60_000 });
     await editorText(page, "import os\n", "start");
     await page.getByRole("button", { name: "Validate" }).click();
@@ -50,7 +50,7 @@ test.describe("editor", () => {
 
   test("backtest the template on a symbol, then save it to My algorithms", async ({ user }) => {
     const { page } = user;
-    await go(page, "/algos/editor");
+    await go(page, "/create/editor");
     await expect(page.getByText(PASSES)).toBeVisible({ timeout: 60_000 });
 
     await page.getByRole("button", { name: "Search symbols" }).filter({ hasText: "Add a symbol" }).click();
@@ -73,7 +73,7 @@ test.describe("editor", () => {
     const card = page.locator("[data-slot=card]").filter({ hasText: "E2E editor algo" });
     await expect(card).toContainText("Your own code");
     await card.locator("a", { hasText: "Edit in editor" }).click();
-    await expect(page).toHaveURL(/\/algos\/editor\?mine=\d+/);
+    await expect(page).toHaveURL(/\/create\/editor\?mine=\d+/);
     await expect(page.getByRole("heading", { name: "E2E editor algo" })).toBeVisible();
     await expect(page.getByText(PASSES)).toBeVisible({ timeout: 60_000 });
   });

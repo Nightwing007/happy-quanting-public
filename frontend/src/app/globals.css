@@ -7,9 +7,34 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+  --font-display: var(--font-display-face), var(--font-body), ui-sans-serif, sans-serif;
+  --font-heading: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --color-void: var(--void);
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-hot: var(--line-hot);
+  --color-dim: var(--dim);
+  --color-wash: var(--wash);
+  --color-flood: var(--flood);
+  --color-accent-hi: var(--accent-hi);
+  --color-accent-dim: var(--accent-dim);
+  --color-accent-ink: var(--accent-ink);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-warn: var(--warn);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* No drop shadows anywhere. Kept as a no-op value (not "none") so ring utilities still compose. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +74,116 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Light theme: the cream paper with ink type (Thomso sponsor page). */
+  --void: #f3ede1;
+  --ink: #ebe3d2;
+  --panel: #faf6ed;
+  --raised: #f7f1e4;
+  --line: #d3c9b5;
+  --line-hot: #a99d85;
+  --dim: #5b5268;
+  --wash: #e9dff4;
+  --flood: #120e1c;
+  --flood-fg: #f4eddd;
+  --accent-hi: #7e22ce;
+  --accent-dim: #d9c2f2;
+  --accent-ink: #ffffff;
+  --up: #0a7a4a;
+  --down: #c0262d;
+  --warn: #8a5a00;
+
+  --background: var(--void);
+  --foreground: #120e1c;
+  --card: var(--panel);
+  --card-foreground: #120e1c;
+  --popover: var(--panel);
+  --popover-foreground: #120e1c;
+  /* The fixed violet #A855F7, darkened where it carries text or a fill (AA on cream and with white on top). */
+  --primary: #7e22ce;
+  --primary-foreground: #ffffff;
+  --secondary: #ebe3d2;
+  --secondary-foreground: #120e1c;
+  --muted: #ebe3d2;
+  --muted-foreground: #4d4560;
+  --accent: #e7dcf2;
+  --accent-foreground: #120e1c;
+  --destructive: var(--down);
+  --border: var(--line);
+  --input: var(--line-hot);
+  --ring: #7e22ce;
+  --chart-1: #7e22ce;
+  --chart-2: #0a7a4a;
+  --chart-3: #8a5a00;
+  --chart-4: #c0262d;
+  --chart-5: #4d4560;
+  --radius: 0px;
+  --sidebar: var(--panel);
+  --sidebar-foreground: #120e1c;
+  --sidebar-primary: #7e22ce;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e7dcf2;
+  --sidebar-accent-foreground: #120e1c;
+  --sidebar-border: var(--line);
+  --sidebar-ring: #7e22ce;
+  --lamp: #7e22ce;
+  --shimmer: rgb(255 255 255 / 0.6);
+  --flap-face: #211b2e;
+  --flap-face-low: #15111e;
+  --flap-ink: #f4eddd;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Dark theme: the stage. Layered surfaces all in the #07050e family. */
+  --void: #07050e;
+  --ink: #0b0813;
+  --panel: #110d1b;
+  --raised: #181226;
+  --line: #261e38;
+  --line-hot: #43355f;
+  --dim: #9187a6;
+  --wash: #1a1330;
+  --flood: #251a45;
+  --flood-fg: #f4eddd;
+  --accent-hi: #c084fc;
+  --accent-dim: #4b2a78;
+  --accent-ink: #120e1c;
+  --up: #3ddc97;
+  --down: #ff6b6b;
+  --warn: #f5b942;
+
+  --background: var(--void);
+  --foreground: #f4eddd;
+  --card: var(--panel);
+  --card-foreground: #f4eddd;
+  --popover: var(--panel);
+  --popover-foreground: #f4eddd;
+  --primary: #a855f7;
+  --primary-foreground: #120e1c;
+  --secondary: var(--raised);
+  --secondary-foreground: #f4eddd;
+  --muted: #151021;
+  --muted-foreground: #aaa1bd;
+  --accent: var(--raised);
+  --accent-foreground: #f4eddd;
+  --destructive: var(--down);
+  --border: var(--line);
+  --input: var(--line-hot);
+  --ring: #a855f7;
+  --chart-1: #a855f7;
+  --chart-2: #3ddc97;
+  --chart-3: #f5b942;
+  --chart-4: #ff6b6b;
+  --chart-5: #aaa1bd;
+  --sidebar: var(--panel);
+  --sidebar-foreground: #f4eddd;
+  --sidebar-primary: #a855f7;
+  --sidebar-primary-foreground: #120e1c;
+  --sidebar-accent: var(--raised);
+  --sidebar-accent-foreground: #f4eddd;
+  --sidebar-border: var(--line);
+  --sidebar-ring: #a855f7;
+  --lamp: #a855f7;
+  --shimmer: rgb(168 85 247 / 0.08);
 }
 
 @layer base {
@@ -126,5 +195,282 @@
   }
   html {
     @apply font-sans;
+    /* Every number in the app uses tabular figures: columns of money line up and live values don't jitter. */
+    font-variant-numeric: tabular-nums;
   }
+  ::selection {
+    background: var(--accent-dim);
+    color: var(--foreground);
+  }
+}
+
+/* Type scale. Display (Anton, uppercase) is for page titles only; tables and forms keep Inter. */
+.t-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.t-head {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.t-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.t-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Directional flood: the sheet is the ::before; useDirectionalHover sweeps its clip-path in from the edge
+   the pointer entered by and out through the edge it left by. */
+.dh {
+  position: relative;
+  isolation: isolate;
+}
+.dh::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--wash);
+  clip-path: polygon(0 0, 0 0, 0 0, 0 0);
+  pointer-events: none;
+}
+/* Cards and tiles that link somewhere get the full sheet: ink on paper, a violet-lit panel on the stage,
+   with the text reversed to match. */
+.dh-flood::before {
+  background:
+    radial-gradient(90% 120% at 50% 130%, color-mix(in oklab, var(--primary) 38%, transparent), transparent 62%),
+    var(--flood);
+}
+.dh-flood:hover,
+.dh-flood:focus-visible {
+  color: var(--flood-fg);
+  --muted-foreground: color-mix(in oklab, var(--flood-fg) 72%, transparent);
+  --foreground: var(--flood-fg);
+  --dim: color-mix(in oklab, var(--flood-fg) 60%, transparent);
+  --up: #3ddc97;
+  --down: #ff6b6b;
+  transition: color 160ms var(--ease-out-expo);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dh:hover::before,
+  .dh:focus-visible::before {
+    clip-path: inset(0);
+  }
+}
+
+/* Lamp: a live state (open market, running sim). Glow is reserved for lamps and the badge Champion. */
+.lamp {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--lamp);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--lamp) 28%, transparent),
+    0 0 14px var(--lamp);
+}
+.lamp[data-tone="up"] {
+  --lamp: var(--up);
+}
+.lamp[data-tone="warn"] {
+  --lamp: var(--warn);
+}
+.lamp[data-tone="off"] {
+  --lamp: var(--dim);
+  box-shadow: none;
+  opacity: 0.55;
+}
+@keyframes lamp-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lamp[data-pulse] {
+    animation: lamp-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* Skeleton shimmer: a slow sweep over the muted block. */
+.skeleton {
+  background-color: var(--muted);
+  background-image: linear-gradient(100deg, transparent 30%, var(--shimmer) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  background-position: 120% 0;
+}
+@keyframes skeleton-sweep {
+  to {
+    background-position: -120% 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: skeleton-sweep 1.8s var(--ease-out-expo) infinite;
+  }
+}
+
+/* Route transition: a short fade only; the sections rise on their own (.rise). */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: page-enter 200ms ease-out backwards;
+  }
+}
+
+/* Rise with stagger (Thomso): 760ms, 70ms per item, at most 8 items staggered. Opacity is full by 40% of
+   the run, and nothing is hidden on the JS side, so numbers are in the DOM from the first paint. */
+@keyframes rise {
+  from {
+    transform: translateY(22px);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 760ms var(--ease-out-expo) calc(min(var(--i, 0), 7) * 70ms) backwards;
+  }
+}
+
+/* Gap-ruled ledger: the rules are the gaps showing the line colour, so every rule is exactly 1px. */
+.ledger {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.ledger > *:not(.skeleton) {
+  background: var(--panel);
+  min-width: 0;
+}
+
+/* Split-flap wheels (see components/motion/split-flap.tsx): two leaves on a spindle, hinge line between.
+   The real letter stays in the DOM for assistive tech and tests. The faces are dark in both themes. */
+.sf-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.14em 0.4em;
+  vertical-align: top;
+}
+.sf-word {
+  display: inline-flex;
+  gap: 0.06em;
+  white-space: nowrap;
+}
+.sf-tile {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 0.74em;
+  height: 1.2em;
+  border-radius: 0.09em;
+  background: linear-gradient(var(--flap-face) 0 50%, var(--flap-face-low) 50% 100%);
+  color: var(--flap-ink);
+  backface-visibility: hidden;
+  /* A faint rim so the dark faces still read on the stage ground. */
+  box-shadow: inset 0 0 0 1px rgb(244 237 221 / 0.1);
+}
+.sf-tile::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 1px;
+  background: rgb(0 0 0 / 0.7);
+  pointer-events: none;
+}
+.sf-ghost {
+  grid-area: 1 / 1;
+  display: none;
+}
+.sf-real {
+  grid-area: 1 / 1;
+}
+.sf-ghost::before {
+  content: attr(data-g);
+}
+.sf-tile[data-flap] .sf-real {
+  visibility: hidden;
+}
+.sf-tile[data-flap] .sf-ghost {
+  display: block;
+}
+
+/* Frosted pill with a round arrow: the primary call to action on landing-style surfaces. */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.cta-pill,
+.cta-round {
+  display: grid;
+  place-items: center;
+  height: 48px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--foreground) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--foreground) 28%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  transition: background-color 200ms ease;
+}
+.cta-pill {
+  padding: 0 28px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+}
+.cta-round {
+  width: 48px;
+}
+.cta-arrow {
+  width: 20px;
+  height: 20px;
+  transform: rotate(-45deg);
+  transition: transform 320ms var(--ease-out-expo);
+}
+.cta:hover .cta-pill,
+.cta:hover .cta-round,
+.cta:focus-visible .cta-pill,
+.cta:focus-visible .cta-round {
+  background: color-mix(in oklab, var(--primary) 26%, transparent);
+}
+.cta:hover .cta-arrow,
+.cta:focus-visible .cta-arrow {
+  transform: none;
+}
+.cta:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+  border-radius: 9999px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta-arrow {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Numbers are mono everywhere: the Tailwind tabular-nums class already marks every figure in the app. */
+.tabular-nums {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
 }

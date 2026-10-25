@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { SplitFlap } from "@/components/motion/split-flap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,11 @@ function ProfileForm({ user }: { user: User }) {
   return (
     <Card className="mx-auto w-full max-w-lg">
       <CardHeader>
-        <CardTitle>Your profile</CardTitle>
+        <CardTitle>
+          <h1 className="text-[26px] leading-none">
+            <SplitFlap text="Your profile" />
+          </h1>
+        </CardTitle>
         <CardDescription>Signed in as @{user.username}</CardDescription>
       </CardHeader>
       <CardContent>

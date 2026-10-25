@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { SplitFlap } from "@/components/motion/split-flap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,11 @@ function LoginForm() {
   return (
     <Card className="mx-auto mt-8 w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Log in</CardTitle>
+        <CardTitle>
+          <h1 className="text-[26px] leading-none">
+            <SplitFlap text="Log in" />
+          </h1>
+        </CardTitle>
         <CardDescription>Welcome back to Happy Quanting.</CardDescription>
       </CardHeader>
       <CardContent>

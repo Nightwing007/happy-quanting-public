@@ -41,7 +41,7 @@ export function BlockNode({ id, data, selected }: NodeProps<BlockFlowNode>) {
       <div className={cn("h-1.5 rounded-t-lg", CATEGORY_BAR[spec?.category ?? "custom"])} />
       <div className="grid gap-0.5 px-3 py-2">
         <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
-          {bad && <TriangleAlertIcon aria-label="This block has a problem" className="size-3.5 shrink-0 text-red-500" />}
+          {bad && <TriangleAlertIcon aria-label="This block has a problem" className="size-3.5 shrink-0 text-down" />}
           {spec?.label ?? "Unknown block"}
         </p>
         {summary && <p className="line-clamp-2 text-[0.7rem] leading-snug text-muted-foreground">{summary}</p>}
@@ -55,7 +55,7 @@ export function BlockNode({ id, data, selected }: NodeProps<BlockFlowNode>) {
                 type="target"
                 position={Position.Left}
                 id={port.name}
-                className={cn(HANDLE_BASE, port.type === "signal" ? "bg-sky-500!" : "bg-amber-500!")}
+                className={cn(HANDLE_BASE, port.type === "signal" ? "bg-primary!" : "bg-warn!")}
               />
               {portLabel(port.name, port.type, port.multi, true)}
             </div>
@@ -66,7 +66,7 @@ export function BlockNode({ id, data, selected }: NodeProps<BlockFlowNode>) {
                 type="source"
                 position={Position.Right}
                 id={port.name}
-                className={cn(HANDLE_BASE, port.type === "signal" ? "bg-sky-500!" : "bg-amber-500!")}
+                className={cn(HANDLE_BASE, port.type === "signal" ? "bg-primary!" : "bg-warn!")}
               />
               {portLabel(port.name, port.type, port.multi, false)}
             </div>

@@ -40,6 +40,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Preview, SymbolPicker } from "@/components/create/upload-flow";
+import { DeployDialog } from "@/components/deployments/deploy-dialog";
+import { HostedNote } from "@/components/hosted-note";
 import { SaveAlgoDialog } from "@/components/editor/save-dialog";
 import { SimPanel } from "@/components/editor/sim-panel";
 import type { ParamValue } from "@/lib/algo-format";
@@ -49,6 +51,7 @@ import {
   useCompileBlocks,
   useCreateCustomBlock,
   useCreateMyAlgo,
+  useHosted,
   useMyAlgos,
   useUpdateMyAlgo,
 } from "@/lib/queries";
@@ -77,6 +80,7 @@ import { Inspector } from "./inspector";
 import { DRAG_TYPE, Palette } from "./palette";
 import { ProblemsPanel } from "./problems-panel";
 import { TEMPLATES, type Template } from "./templates";
+import { PageHeader } from "@/components/motion/page-header";
 
 // Monaco is large and needs the browser: load it only when the code is first shown.
 const CodeEditor = dynamic(() => import("@/components/editor/code-editor"), {
@@ -162,7 +166,9 @@ function Workspace({ saved: initialSaved, blocks }: { saved: UserAlgo | null; bl
   const [nodes, setNodes] = useState<BlockFlowNode[]>(initial.nodes);
   const [edges, setEdges] = useState<Edge[]>(initial.edges);
   const [drawer, setDrawer] = useState<"palette" | "inspector" | null>(null);
-  const [dialog, setDialog] = useState<"save" | "publish" | "group" | "code" | null>(null);
+  const [dialog, setDialog] = useState<"save" | "publish" | "deploy" | "group" | "code" | null>(null);
+  const [deployId, setDeployId] = useState<number | null>(null);
+  const hosted = useHosted();
   const [pendingTemplate, setPendingTemplate] = useState<Template | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -333,11 +339,12 @@ function Workspace({ saved: initialSaved, blocks }: { saved: UserAlgo | null; bl
     flow.fitView({ nodes: [{ id: nodeId }], maxZoom: 1, duration: 300 });
   }
 
-  function save(name: string, description: string, then: "publish" | null) {
+  function save(name: string, description: string, then: "publish" | "deploy" | null) {
     const done = (row: UserAlgo) => {
       setSaved({ id: row.id, name: row.name, description: row.description, json: graphJson });
       setDialog(null);
       if (then === "publish") router.push(`/create/upload?mine=${row.id}`);
+      else if (then === "deploy") setDeployId(row.id);
       else toast.success(`Saved "${row.name}" to My algorithms.`);
     };
     const payload = { name, description, graph: graph as unknown as Record<string, unknown> };
@@ -349,6 +356,13 @@ function Workspace({ saved: initialSaved, blocks }: { saved: UserAlgo | null; bl
     if (saved && !dirty) return router.push(`/create/upload?mine=${saved.id}`);
     if (saved) return save(saved.name, saved.description, "publish");
     setDialog("publish");
+  }
+
+  // A deployment runs a saved algorithm, so unsaved or changed blocks are saved first.
+  function deploy() {
+    if (saved && !dirty) return setDeployId(saved.id);
+    if (saved) return save(saved.name, saved.description, "deploy");
+    setDialog("deploy");
   }
 
   const closeSave = () => {
@@ -380,9 +394,11 @@ function Workspace({ saved: initialSaved, blocks }: { saved: UserAlgo | null; bl
           >
             Make a block
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => setDialog("code")}>
-            <CodeIcon /> New code block
-          </Button>
+          {!hosted && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setDialog("code")}>
+              <CodeIcon /> New code block
+            </Button>
+          )}
           <Button type="button" variant="outline" size="sm" onClick={fit} disabled={empty}>
             <MaximizeIcon /> Fit to view
           </Button>
@@ -481,6 +497,9 @@ function Workspace({ saved: initialSaved, blocks }: { saved: UserAlgo | null; bl
           <Button type="button" variant="outline" onClick={publish} disabled={empty || !passes || saving}>
             Publish
           </Button>
+          <Button type="button" variant="outline" onClick={deploy} disabled={empty || !passes || !meta || saving}>
+            Deploy
+          </Button>
           <span className="text-xs text-muted-foreground" aria-live="polite">
             {saved ? (dirty ? `Unsaved changes to "${saved.name}"` : `Saved as "${saved.name}"`) : "Not saved yet"}
             {!empty && !passes && !checking ? " · fix the problems above to save or test" : ""}
@@ -535,25 +554,41 @@ function Workspace({ saved: initialSaved, blocks }: { saved: UserAlgo | null; bl
           )}
         </Section>
 
+        {hosted ? (
+          <HostedNote />
+        ) : (
         <p className="text-xs text-muted-foreground">
           Code blocks follow the same code rules as uploaded strategies. They are listed in &ldquo;The rules&rdquo; on the{" "}
-          <Link href="/algos/editor" className="underline underline-offset-2">
+          <Link href="/create/editor" className="underline underline-offset-2">
             code editor page
           </Link>{" "}
           and in the New code block window.
         </p>
+        )}
       </div>
 
-      {(dialog === "save" || dialog === "publish") && (
+      {(dialog === "save" || dialog === "publish" || dialog === "deploy") && (
         <SaveAlgoDialog
           initialName={saved?.name ?? ""}
           initialDescription={saved?.description ?? ""}
           publishing={dialog === "publish"}
+          deploying={dialog === "deploy"}
           what="blocks"
           pending={saving}
           error={saveError}
-          onSave={(name, description) => save(name, description, dialog === "publish" ? "publish" : null)}
+          onSave={(name, description) => save(name, description, dialog === "publish" ? "publish" : dialog === "deploy" ? "deploy" : null)}
           onClose={closeSave}
+        />
+      )}
+      {saved && meta && (
+        <DeployDialog
+          open={deployId !== null}
+          onOpenChange={(open) => !open && setDeployId(null)}
+          name={saved.name}
+          markets={meta.markets}
+          what={{ algo_id: saved.id }}
+          source={`${saved.name}, built with blocks`}
+          initialSymbols={symbols}
         />
       )}
       {dialog === "group" && groupable && (
@@ -628,17 +663,20 @@ export function BlockEditorView() {
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{found?.graph ? found.name : "Block editor"}</h1>
-        <p className="text-sm text-muted-foreground">
-          Build an algorithm by connecting big blocks, no code needed. Check it, test it, then save or publish it.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          <Link href="/algos" className="underline underline-offset-2">
-            All algorithms
-          </Link>
-        </p>
-      </div>
+      <PageHeader
+        title={found?.graph ? found.name : "Block editor"}
+        eyebrow="HFT · Create"
+        description={
+          <>
+            <span className="block">
+              Build an algorithm by connecting big blocks, no code needed. Check it, test it, then save or publish it.
+            </span>
+            <Link href="/algos" className="text-xs underline underline-offset-2">
+              All algorithms
+            </Link>
+          </>
+        }
+      />
       {mineId !== null && mine.error && (
         <QueryError error={mine.error} title="Couldn't load your algorithms" onRetry={() => mine.refetch()} />
       )}
@@ -651,7 +689,7 @@ export function BlockEditorView() {
               ? "That saved algorithm wasn't built with blocks, so it opens somewhere else."
               : `You have no saved algorithm ${raw}.`}{" "}
             <Link
-              href={!found ? "/algos" : found.source !== null ? `/algos/editor?mine=${found.id}` : `/algos/lab?mine=${found.id}`}
+              href={!found ? "/algos" : found.source !== null ? `/create/editor?mine=${found.id}` : `/algos/lab?mine=${found.id}`}
               className="underline underline-offset-2"
             >
               {!found ? "Back to algorithms" : found.source !== null ? "Open in the code editor" : "Open in the lab"}

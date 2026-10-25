@@ -46,8 +46,8 @@ export function indicatorColor(i: IndicatorSeries, index = 0): string {
 
 export function themeColors(dark: boolean) {
   return dark
-    ? { text: "#a1a1aa", grid: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", cross: "#71717a" }
-    : { text: "#52525b", grid: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.12)", cross: "#a1a1aa" };
+    ? { text: "#aaa1bd", grid: "rgba(168,85,247,0.08)", border: "rgba(168,85,247,0.2)", cross: "#7e6a9c" }
+    : { text: "#4d4560", grid: "rgba(18,14,28,0.07)", border: "rgba(18,14,28,0.18)", cross: "#8a8099" };
 }
 
 // Daily-and-longer bars carry "YYYY-MM-DD"; intraday bars carry unix seconds. Both are valid chart times.

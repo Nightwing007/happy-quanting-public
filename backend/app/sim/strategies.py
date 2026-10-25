@@ -25,6 +25,7 @@ from app.algos.library import LIBRARY
 from app.algos.runner import LogLine, StrategyRun, run_strategy_on
 from app.algos.sandbox import SandboxedStrategy, load_strategy
 from app.algos.validate import validate_source
+from app.hosted import refuse_code, refuse_saved_code
 from app.market_data.base import Bar, MarketDataProvider
 from app.marketplace import listings
 from app.models import AlgoListing, ListingStatus, SimSession, User, UserAlgo
@@ -67,6 +68,7 @@ def resolve(db: Session, spec: SimStrategyIn, owner_user_id: int | None) -> Reso
         if algo is None or algo.owner_user_id != owner_user_id:  # someone else's is "not found"
             raise SimNotFound(f"There is no saved algorithm {spec.algo_id}.")
         if algo.source is not None:
+            refuse_saved_code(algo)
             # Editor code is pinned on the session like `source`, so a later edit or delete of the
             # saved algorithm can't change a running sim.
             meta = listings.check_source(algo.source)
@@ -81,6 +83,7 @@ def resolve(db: Session, spec: SimStrategyIn, owner_user_id: int | None) -> Reso
         )
         return Resolved(algo.name, cls.interval, fields)
     if spec.kind == "source":
+        refuse_code()
         if not spec.source:
             raise SimError("Send the algorithm's code in `source`.")
         meta = listings.check_source(spec.source)  # raises with every problem, each worded with its line
